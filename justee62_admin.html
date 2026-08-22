@@ -1026,7 +1026,7 @@ tr:last-child td {
 </style>
 </head>
 <body>
-<div style="position:fixed;top:2px;left:4px;font-size:9px;color:rgba(255,255,255,0.35);z-index:99999;pointer-events:none;font-family:monospace;letter-spacing:.3px;">v2026.08.23-1</div>
+<div style="position:fixed;top:2px;left:4px;font-size:9px;color:rgba(255,255,255,0.35);z-index:99999;pointer-events:none;font-family:monospace;letter-spacing:.3px;">v2026.08.23-2</div>
 <script>
 // ── 테스트 모드 데이터 ──────────────────────────────────────────────────────
 // 테스트 모드 ON: window.TEST_MODE = true
@@ -3511,7 +3511,7 @@ function renderTab0(data, w) {
       var result = rec ? rec.result : '';
       var resultCls = result === '결신' ? 'b-red' : result === '이미신자' ? 'b-green' : result === '확신' ? 'b-blue' : 'b-gray';
       var recEvangType = rec ? rec.evangType || '' : '';
-      var isPersonal = (recEvangType === '개인' || recEvangType === '관계' || recEvangType === 'QQ');
+      var isPersonal = (recEvangType === '개인' || recEvangType === '관계');
 
       joMembers.forEach(function(m, mi) {
         var action = m.role === '리더' ? (rec ? rec.leaderAction : '') :
