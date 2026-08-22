@@ -408,6 +408,19 @@ body {
   border-top: 2px solid #8fa3d0;
 }
 
+/* 복음제시현황(weekly-acc-tbl)과 테이블 크기(폰트/여백) 통일 */
+.gospel-tbl th,
+.gospel-tbl td,
+.team-tbl th,
+.team-tbl td {
+  font-size: 10px;
+  padding: 4px 5px;
+}
+
+.team-tbl .td-jo {
+  font-size: 11px;
+}
+
 /* 복음제시현황 주차별 테이블 — border-collapse 방식 */
 .weekly-acc-tbl {
   border-collapse: collapse;
@@ -1460,7 +1473,7 @@ window.TEST_DATA = {"records": [{"저장일시": "2026-03-14", "주차": 3, "전
       </div>
     </div>
     <div class="tbl-scroll">
-      <table>
+      <table class="team-tbl">
         <thead>
           <tr>
             <th colspan="4" style="background:#1a3a9e;color:#fff;border-right:1px solid #c5cde8;">조 정보</th>
