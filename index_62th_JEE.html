@@ -1801,7 +1801,7 @@ pre.code-block {
 <!-- FORM PAGE -->
 <div id="form-page" class="page active">
 <div class="hd" style="position:relative;">
-<div style="position:absolute;top:10px;left:14px;font-size:10px;font-weight:400;color:rgba(40,50,80,0.4);letter-spacing:.2px;z-index:10;pointer-events:none;">v2026.08.23-2</div>
+<div style="position:absolute;top:10px;left:14px;font-size:10px;font-weight:400;color:rgba(40,50,80,0.4);letter-spacing:.2px;z-index:10;pointer-events:none;">v2026.08.23-4</div>
 <div class="server-connected-badge" id="server-connected-badge">
     <span class="scb-label">연결됨</span>
     <span class="scb-dot"></span>
@@ -5183,7 +5183,7 @@ async function handleSubmit() {
   var personalWarn = checkPersonalActionWarning();
   if (personalWarn) {
     // 오류 데이터 저장 방지 — confirm 없이 무조건 차단
-    showStatus('⚠️ 개인전도 조원 행동을 확인해 주세요. 전도자만 [하였고], 나머지는 [불참하였고]로 설정 후 다시 제출하세요.', 'warn');
+    showStatus('⚠️ 개인/관계 전도의 조원 행동을 확인해 주세요. 전도자만 [하였고], 나머지는 [불참하였고]로 설정 후 다시 제출하세요.', 'warn');
     return;
   }
   // ── 통계 수치 2 이상 경고 (접촉횟수 제외) — 강제 차단 ───────────────────────
@@ -5237,7 +5237,8 @@ function checkStatsOverflow() {
 // 개인전도 유형인데 참관하였고로 선택된 조원 검사
 function checkPersonalActionWarning() {
   var type = (document.getElementById('evang_type') || {}).value || '';
-  var isPersonal = (type === '개인' || type === '관계' || type === 'QQ');
+  // QQ는 조장만 [하였고], 나머지는 [참관하였고]가 정상 동작이므로 이 검증 대상에서 제외
+  var isPersonal = (type === '개인' || type === '관계');
   if (!isPersonal) return '';
 
   var problems = [];
@@ -5253,7 +5254,7 @@ function checkPersonalActionWarning() {
   }
 
   if (!problems.length) return '';
-  return '⚠️ 개인전도는 전도자 1명만 [하였고], 나머지는 [불참하였고]로 선택해야 합니다.\n\n현재 [참관하였고]로 선택된 조원:\n• ' + problems.join('\n• ');
+  return '⚠️ 개인/관계 전도는 전도자 1명만 [하였고], 나머지는 [불참하였고]로 선택해야 합니다.\n\n현재 [참관하였고]로 선택된 조원:\n• ' + problems.join('\n• ');
 }
 
 async function submitServer() {
