@@ -4453,7 +4453,7 @@ async function exportPdf(tbodyId, filename) {
     container.style.cssText = 'position:fixed;left:-9999px;top:0;background:#fff;padding:12px;z-index:-1;';
     var title = document.createElement('div');
     title.style.cssText = 'font-weight:900;font-size:13px;margin-bottom:8px;color:#1a3a9e;';
-    title.textContent = filename.replace(/_/g,' ') + ' (' + new Date().toISOString().slice(0,10) + ')';
+    title.textContent = filename.replace(/^tab\d+_/, '').replace(/_/g,' ');
     container.appendChild(title);
     var cloned = tbl.cloneNode(true);
     cloned.style.cssText = 'border-collapse:collapse;font-size:8px;width:100%;';
@@ -4462,6 +4462,12 @@ async function exportPdf(tbodyId, filename) {
       el.style.padding = '3px 4px';
       el.style.whiteSpace = 'normal';
       el.style.wordBreak = 'break-all';
+      // sticky 위치 고정 스타일 제거 — html2canvas가 sticky를 캡처 시점 스크롤 위치대로
+      // 잘못 렌더링해서 '조'/'이름' 컬럼이 엉뚱한 위치(맨 끝)로 밀리는 문제 방지
+      el.style.position = 'static';
+      el.style.left = 'auto';
+      el.style.zIndex = 'auto';
+      el.style.boxShadow = 'none';
     });
     container.appendChild(cloned);
     document.body.appendChild(container);
