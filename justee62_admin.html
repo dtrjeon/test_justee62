@@ -1026,7 +1026,7 @@ tr:last-child td {
 </style>
 </head>
 <body>
-<div style="position:fixed;top:2px;left:4px;font-size:9px;color:rgba(255,255,255,0.35);z-index:99999;pointer-events:none;font-family:monospace;letter-spacing:.3px;">v2026.08.22-3</div>
+<div style="position:fixed;top:2px;left:4px;font-size:9px;color:rgba(255,255,255,0.35);z-index:99999;pointer-events:none;font-family:monospace;letter-spacing:.3px;">v2026.08.23-1</div>
 <script>
 // ── 테스트 모드 데이터 ──────────────────────────────────────────────────────
 // 테스트 모드 ON: window.TEST_MODE = true
@@ -1674,18 +1674,18 @@ window.TEST_DATA = {"records": [{"저장일시": "2026-03-14", "주차": 3, "전
       <div style="display:flex;gap:6px;align-items:center;margin-bottom:6px;">
         <div style="flex:1;">
           <div style="font-size:9px;color:var(--text3);margin-bottom:2px;">시작일</div>
-          <input type="date" id="set-train-start" onchange="updateTrainPeriodInfo()" style="width:100%;padding:5px 6px;border:1px solid rgba(0,0,20,0.15);border-radius:6px;font-size:13px;font-family:'Noto Sans KR',sans-serif;">
+          <input type="date" id="set-train-start" onchange="updateTrainPeriodInfo()" style="width:100%;padding:5px 6px;border:1px solid rgba(0,0,20,0.15);border-radius:6px;font-size:16px;font-family:'Noto Sans KR',sans-serif;">
         </div>
         <div style="color:var(--text3);padding-top:14px;font-size:12px;">~</div>
         <div style="flex:1;">
           <div style="font-size:9px;color:var(--text3);margin-bottom:2px;">종료일 <span style="color:#aaa;">(자동)</span></div>
-          <input type="date" id="set-train-end" onchange="onTrainEndChange()" style="width:100%;padding:5px 6px;border:1px solid rgba(0,0,20,0.15);border-radius:6px;font-size:13px;font-family:'Noto Sans KR',sans-serif;">
+          <input type="date" id="set-train-end" onchange="onTrainEndChange()" style="width:100%;padding:5px 6px;border:1px solid rgba(0,0,20,0.15);border-radius:6px;font-size:16px;font-family:'Noto Sans KR',sans-serif;">
         </div>
       </div>
       <!-- 2행: 총 주차 -->
       <div style="display:flex;align-items:center;gap:6px;">
         <span style="font-size:10px;color:var(--text3);white-space:nowrap;">총 주차</span>
-        <input type="number" id="set-total-weeks" min="1" max="52" value="13" onchange="onTotalWeeksChange()" style="width:56px;padding:5px 6px;border:1px solid rgba(0,0,20,0.15);border-radius:6px;font-size:13px;font-family:'Noto Sans KR',sans-serif;text-align:center;">
+        <input type="number" id="set-total-weeks" min="1" max="52" value="13" onchange="onTotalWeeksChange()" style="width:56px;padding:5px 6px;border:1px solid rgba(0,0,20,0.15);border-radius:6px;font-size:16px;font-family:'Noto Sans KR',sans-serif;text-align:center;">
         <span style="font-size:10px;color:var(--text3);">주</span>
         <div id="train-period-info" style="font-size:10px;color:var(--text3);flex:1;text-align:right;"></div>
       </div>
