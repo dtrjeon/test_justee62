@@ -1819,12 +1819,12 @@ pre.code-block {
     <div class="sec-lbl">1. 조 선택 &amp; 팀 구성원
     </div>
     <!-- 주차 + 조 선택 한 줄 -->
-    <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;flex-wrap:wrap;">
       <label style="font-size:12px;font-weight:700;color:rgba(30,40,80,0.7);white-space:nowrap;">주차</label>
       <select id="report-week" onchange="syncPreview()" style="width:90px;background:#fff;border:1px solid rgba(0,0,20,0.18);border-radius:6px;padding:8px 8px;font-size:16px;color:#0f1428;outline:none;font-weight:700;">
         <option value="">선택</option>
       </select>
-      <select id="q1_jo" onchange="onJoSelect()" style="width:90px;background:#fff;border:1px solid rgba(0,0,20,0.18);border-radius:6px;padding:8px 8px;font-size:16px;color:#0f1428;outline:none;font-weight:700;">
+      <select id="q1_jo" onchange="onJoSelect()" style="width:auto;max-width:100%;flex:1;min-width:140px;background:#fff;border:1px solid rgba(0,0,20,0.18);border-radius:6px;padding:8px 8px;font-size:15px;color:#0f1428;outline:none;font-weight:700;">
         <option value="">조 선택</option>
       </select>
       <span style="font-size:13px;color:rgba(30,40,80,0.7);white-space:nowrap;">현장전도 보고 드리겠습니다.</span>
@@ -2011,7 +2011,7 @@ pre.code-block {
     <div class="q5-step" id="q5-step-2" style="display:none;">
       <div class="q5-step-label"><span class="q5-step-num">②</span> 이유대답 <span class="q5-check" id="q5-check-2" style="display:none;">✔️</span></div>
       <div class="rg" style="margin-top:7px;">
-        <div class="rb"><input type="radio" name="reason" value="믿음" id="r1" onchange="var s=window.scrollY;onQ5Change();requestAnimationFrame(function(){window.scrollTo(0,s);})"><label for="r1">믿음(예수님)</label></div>
+        <div class="rb"><input type="radio" name="reason" value="믿음" id="r1" onchange="var s=window.scrollY;onQ5Change();requestAnimationFrame(function(){window.scrollTo(0,s);})"><label for="r1" style="white-space:nowrap;font-size:11px;padding-left:2px;padding-right:2px;">믿음(예수님)</label></div>
         <div class="rb"><input type="radio" name="reason" value="행위" id="r2" onchange="var s=window.scrollY;onQ5Change();requestAnimationFrame(function(){window.scrollTo(0,s);})"><label for="r2">행위</label></div>
         <div class="rb"><input type="radio" name="reason" value="불확실" id="r3" onchange="var s=window.scrollY;onQ5Change();requestAnimationFrame(function(){window.scrollTo(0,s);})"><label for="r3">불확실</label></div>
         <div class="rb"><input type="radio" name="reason" value="대답안함" id="r4" onchange="var s=window.scrollY;onQ5Change();requestAnimationFrame(function(){window.scrollTo(0,s);})"><label for="r4">대답안함</label></div>
@@ -3704,7 +3704,7 @@ async function suggestEvangCount() {
     } catch (e) {}
   }
 
-  if (!records || !records.length) return;
+  if (!records) records = []; // 서버 조회 실패 시에도 아래 로직을 계속 진행 (첫 보고서 대응)
 
   // 3) 같은 조 + 같은 전도유형 + (개인전도 시 같은 전도자) 중 최대 횟수 찾기
   var member = v('personal_member'); // 개인전도 전도자
