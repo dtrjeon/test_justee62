@@ -4901,10 +4901,8 @@ function onTestimony6Change() {
     var badgeEl = document.getElementById('diag-badge-wrap');
     if (hvEl) hvEl.textContent = '천국 확신 있었고';
     if (rsEl) rsEl.textContent = '믿음';
-    if (nameEl) { nameEl.textContent = '이미신자 / 머리신자'; nameEl.className = 'diag-name orange'; }
-    if (badgeEl) badgeEl.innerHTML = '<span class="diag-badge orange">이미신자 / 머리신자</span>';
-    document.getElementById('diag-card').style.display = 'block';
-    var fv = document.getElementById('diag-final-val');
+    if (nameEl) { nameEl.textContent = '이미신자'; nameEl.className = 'diag-name orange'; }
+    if (badgeEl) badgeEl.innerHTML = '<span class="diag-badge orange">이미신자</span>';
     if (fv) { fv.textContent = '이미신자'; fv.className = 'diag-final-val 이미신자'; }
     document.getElementById('diag-final-row').style.display = 'flex';
     var saved = '진단: 이미신자 | 영접: 불필요 | 결과: 이미신자';
@@ -4927,10 +4925,8 @@ function onTestimony6Change() {
     var badgeEl = document.getElementById('diag-badge-wrap');
     if (hvEl) hvEl.textContent = '천국 확신 있었고';
     if (rsEl) rsEl.textContent = '믿음';
-    if (nameEl) { nameEl.textContent = '이미신자 / 머리신자'; nameEl.className = 'diag-name orange'; }
-    if (badgeEl) badgeEl.innerHTML = '<span class="diag-badge orange">이미신자 / 머리신자</span>';
-    document.getElementById('diag-card').style.display = 'block';
-    document.getElementById('diag-final-row').style.display = 'none';
+    if (nameEl) { nameEl.textContent = '머리신자'; nameEl.className = 'diag-name orange'; }
+    if (badgeEl) badgeEl.innerHTML = '<span class="diag-badge orange">머리신자</span>';
 
   } else {
     resetDiagCard();
@@ -4970,7 +4966,12 @@ function onYeopjeopChange() {
   var fv = document.getElementById('diag-final-val');
   if (fv) { fv.textContent = result; fv.className = 'diag-final-val ' + (clsMap[result] || result); }
   document.getElementById('diag-final-row').style.display = 'flex';
-  var saved = '진단: ' + info.diag + ' | 영접: ' + yj + ' | 결과: ' + result;
+  // 이미신자/머리신자처럼 하나의 조합(있었고+믿음)에 두 갈래로 나뉘는 경우,
+  // 실제 선택한 값(testimony6)이 있으면 그 값만 진단명으로 사용 (결합 라벨 방지)
+  var diagLabel = info.diag;
+  var t6ForDiag = radio('testimony6');
+  if (t6ForDiag === '이미신자' || t6ForDiag === '머리신자') diagLabel = t6ForDiag;
+  var saved = '진단: ' + diagLabel + ' | 영접: ' + yj + ' | 결과: ' + result;
   document.getElementById('diag-saved-result').value = saved;
   var resultEl = document.getElementById('q8_result');
   if (resultEl) resultEl.value = result;
