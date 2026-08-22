@@ -1801,7 +1801,7 @@ pre.code-block {
 <!-- FORM PAGE -->
 <div id="form-page" class="page active">
 <div class="hd" style="position:relative;">
-<div style="position:absolute;top:10px;left:14px;font-size:10px;font-weight:400;color:rgba(40,50,80,0.4);letter-spacing:.2px;z-index:10;pointer-events:none;">v2026.08.23-1</div>
+<div style="position:absolute;top:10px;left:14px;font-size:10px;font-weight:400;color:rgba(40,50,80,0.4);letter-spacing:.2px;z-index:10;pointer-events:none;">v2026.08.23-2</div>
 <div class="server-connected-badge" id="server-connected-badge">
     <span class="scb-label">연결됨</span>
     <span class="scb-dot"></span>
@@ -2768,11 +2768,11 @@ var _lastSavedDiagResult = '';
 var _isApplyingFormData = false;
 
 // ── 제출 잠금 ───────────────────────────────────────────────
-function setSubmitLock(locked) {
+function setSubmitLock(locked, docNum) {
   var btn = document.getElementById('preview-submit-btn');
   if (!btn) return;
   if (locked) {
-    localStorage.setItem(LS_SUBMITTED, '1');
+    localStorage.setItem(LS_SUBMITTED, docNum || v('doc_number') || '1');
     btn.disabled = true;
     btn.style.background = 'linear-gradient(135deg,#888,#666)';
     btn.style.cursor = 'not-allowed';
@@ -2785,6 +2785,18 @@ function setSubmitLock(locked) {
     btn.style.cursor = 'pointer';
     btn.innerHTML = '<span style="font-size:22px;line-height:1;">📊</span><span style="font-size:10px;font-weight:700;color:#fff;white-space:nowrap;">제출하기</span>';
     btn.title = '';
+  }
+}
+
+// 현재 폼의 문서번호가, 마지막으로 제출완료된 문서번호와 일치할 때만 잠금 유지.
+// 문서번호가 바뀌었다면(=새 보고서 작성 중) 잠금을 자동 해제한다.
+function checkSubmitLockForCurrentDoc() {
+  var storedDoc = localStorage.getItem(LS_SUBMITTED);
+  var curDoc = v('doc_number');
+  if (storedDoc && curDoc && storedDoc === curDoc) {
+    setSubmitLock(true, storedDoc);
+  } else {
+    setSubmitLock(false);
   }
 }
 
@@ -4135,6 +4147,7 @@ function autoDocNumber() {
   if (el) {
     el.value = docNum;
     syncPreview();
+    checkSubmitLockForCurrentDoc();
   }
 }
 
@@ -7132,10 +7145,8 @@ window.onload = function() {
   // 앱 설정 적용 (임상 탭 on/off 등)
   applyAppSettings();
 
-  // 제출 잠금 상태 복원
-  if (isSubmitLocked()) {
-    setTimeout(function() { setSubmitLock(true); }, 100);
-  }
+  // 제출 잠금 상태 복원 — 현재 문서번호와 일치할 때만 (다른 새 보고서면 자동 해제)
+  setTimeout(function() { checkSubmitLockForCurrentDoc(); }, 150);
 
   // 주차 드롭다운 동적 생성 (mon_trainEnd 기준)
   buildReportWeekSelect();
