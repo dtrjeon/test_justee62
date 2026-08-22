@@ -7418,8 +7418,8 @@ function promptAdminPwForDelete(docNum) {
   btn.style.display = 'none';
   var pwHtml =
     '<div id="delete-pw-row" style="display:flex;gap:6px;align-items:center;">' +
-    '<input id="delete-pw-input" type="password" maxlength="10" placeholder="관리자 비밀번호"' +
-    ' style="flex:1;padding:10px 12px;border:1.5px solid rgba(200,0,0,0.4);border-radius:8px;font-size:14px;outline:none;"' +
+    '<input id="delete-pw-input" type="tel" inputmode="numeric" pattern="[0-9]*" autocomplete="off" maxlength="10" placeholder="관리자 비밀번호"' +
+    ' style="flex:1;padding:10px 12px;border:1.5px solid rgba(200,0,0,0.4);border-radius:8px;font-size:14px;outline:none;-webkit-text-security:disc;"' +
     ' onkeydown="if(event.key===\'Enter\')confirmAdminPwDelete(\'' + docNum + '\')">' +
     '<button onclick="confirmAdminPwDelete(\'' + docNum + '\')" ' +
     ' style="padding:10px 14px;background:#c00;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;">확인</button>' +
@@ -7538,8 +7538,8 @@ function showStatus(msg, type) {
   <div style="background:#fff;border-radius:14px;padding:28px 24px;width:280px;box-shadow:0 8px 32px rgba(0,0,0,0.2);text-align:center;">
     <div style="font-size:32px;margin-bottom:8px;">🔒</div>
     <div style="font-size:14px;font-weight:700;color:#1a3a9e;margin-bottom:16px;">관리자 인증</div>
-    <input type="password" id="admin-auth-input" maxlength="10" placeholder="비밀번호 입력"
-      style="width:100%;height:42px;font-size:18px;text-align:center;border:1.5px solid #c5cde8;border-radius:8px;outline:none;letter-spacing:4px;margin-bottom:8px;"
+    <input type="tel" inputmode="numeric" pattern="[0-9]*" autocomplete="off" id="admin-auth-input" maxlength="10" placeholder="비밀번호 입력"
+      style="width:100%;height:42px;font-size:18px;text-align:center;border:1.5px solid #c5cde8;border-radius:8px;outline:none;letter-spacing:4px;margin-bottom:8px;-webkit-text-security:disc;"
       onkeydown="if(event.key==='Enter')confirmAdminAuth()">
     <div id="admin-auth-error" style="font-size:11px;color:#c00;min-height:16px;margin-bottom:10px;"></div>
     <div style="display:flex;gap:8px;">
