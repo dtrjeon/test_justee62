@@ -1801,7 +1801,7 @@ pre.code-block {
 <!-- FORM PAGE -->
 <div id="form-page" class="page active">
 <div class="hd" style="position:relative;">
-<div style="position:absolute;top:10px;left:14px;font-size:10px;font-weight:400;color:rgba(40,50,80,0.4);letter-spacing:.2px;z-index:10;pointer-events:none;">v2026.08.22-3</div>
+<div style="position:absolute;top:10px;left:14px;font-size:10px;font-weight:400;color:rgba(40,50,80,0.4);letter-spacing:.2px;z-index:10;pointer-events:none;">v2026.08.22-5</div>
 <div class="server-connected-badge" id="server-connected-badge">
     <span class="scb-label">연결됨</span>
     <span class="scb-dot"></span>
@@ -2182,7 +2182,8 @@ pre.code-block {
               <div style="display:flex;align-items:center;gap:1.5mm;margin-bottom:1.5mm;margin-top:4mm;"><span id="sj_cb_rel" style="width:7pt;height:7pt;border:0.8pt solid #222;display:inline-block;flex-shrink:0;"></span>관 계</div>
               <div style="display:flex;align-items:center;gap:1.5mm;margin-bottom:1.5mm;"><span id="sj_cb_q"   style="width:7pt;height:7pt;border:0.8pt solid #222;display:inline-block;flex-shrink:0;"></span>질문지</div>
               <div style="display:flex;align-items:center;gap:1.5mm;margin-bottom:1.5mm;"><span id="sj_cb_7d"  style="width:7pt;height:7pt;border:0.8pt solid #222;display:inline-block;flex-shrink:0;"></span>칠일후</div>
-              <div style="display:flex;align-items:center;gap:1.5mm;">              <span id="sj_cb_ind" style="width:7pt;height:7pt;border:0.8pt solid #222;display:inline-block;flex-shrink:0;"></span>개 인</div>
+              <div style="display:flex;align-items:center;gap:1.5mm;margin-bottom:1.5mm;"><span id="sj_cb_ind" style="width:7pt;height:7pt;border:0.8pt solid #222;display:inline-block;flex-shrink:0;"></span>개 인</div>
+              <div style="display:flex;align-items:center;gap:1.5mm;"><span id="sj_cb_qq" style="width:7pt;height:7pt;border:0.8pt solid #222;display:inline-block;flex-shrink:0;"></span>QQ</div>
             </td>
             <td style="padding:1.5mm 2mm;vertical-align:top;line-height:1.7;">
               <div style="font-weight:700;margin-bottom:0.5mm;">〈진단질문 1,2〉</div>
@@ -5979,7 +5980,8 @@ function syncSuju() {
   setEl2('sj_t_target', v('t_target'));
   setEl2('sj_t_decision', v('t_decision'));
   setEl2('sj_t_reject', v('t_reject'));
-  setEl2('sj_t_believer', v('t_believer'));
+  setEl2('sj_t_believer', v('t_confirm'));  // 5번째 칸 = "확신" 헤더 → t_confirm 값
+  setEl2('sj_t_imsin', v('t_believer'));    // 6번째 칸 = "이미신자" 헤더 → t_believer 값
   // 인적정보
   setEl2('sj_location', v('q3_location'));
   setEl2('sj_age', v('q3_age'));
@@ -6156,11 +6158,11 @@ function syncSuju() {
     '관계': 'sj_cb_rel',
     '관계(팀)': 'sj_cb_rel',
     '질문지(팀)': 'sj_cb_q',
-    'QQ': 'sj_cb_q',
+    'QQ': 'sj_cb_qq',
     '7일후(팀)': 'sj_cb_7d',
     '개인': 'sj_cb_ind'
   };
-  ['sj_cb_rel', 'sj_cb_q', 'sj_cb_7d', 'sj_cb_ind'].forEach(function(id) {
+  ['sj_cb_rel', 'sj_cb_q', 'sj_cb_7d', 'sj_cb_ind', 'sj_cb_qq'].forEach(function(id) {
     var el = document.getElementById(id);
     if (el) el.style.background = '';
   });
@@ -6522,7 +6524,7 @@ function buildSujuHtml(r) {
     '관계': 'rel',
     '관계(팀)': 'rel',
     '질문지(팀)': 'q',
-    'QQ': 'q',
+    'QQ': 'qq',
     '7일후(팀)': '7d',
     '개인': 'ind'
   };
@@ -6570,7 +6572,8 @@ function buildSujuHtml(r) {
     '<div style="display:flex;align-items:center;gap:1.5mm;margin-bottom:1.5mm;margin-top:4mm;">' + etCb('rel') + '관 계</div>' +
     '<div style="display:flex;align-items:center;gap:1.5mm;margin-bottom:1.5mm;">' + etCb('q') + '질문지</div>' +
     '<div style="display:flex;align-items:center;gap:1.5mm;margin-bottom:1.5mm;">' + etCb('7d') + '칠일후</div>' +
-    '<div style="display:flex;align-items:center;gap:1.5mm;">' + etCb('ind') + '개 인</div>' +
+    '<div style="display:flex;align-items:center;gap:1.5mm;margin-bottom:1.5mm;">' + etCb('ind') + '개 인</div>' +
+    '<div style="display:flex;align-items:center;gap:1.5mm;">' + etCb('qq') + 'QQ</div>' +
     '</td>' +
     '<td style="padding:1.5mm 2mm;vertical-align:top;line-height:1.7;">' +
     '<div style="font-weight:700;margin-bottom:0.5mm;">〈진단질문 1,2〉</div>' +
