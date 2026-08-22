@@ -429,10 +429,12 @@ body {
 }
 
 /* 복음참여/팀전도/복음제시 세 테이블 전체 폭 통일 (컬럼 수가 달라도 동일한 폭으로 렌더링) */
+/* table-layout:fixed 필수 — auto면 컬럼이 많을 때 지정한 width를 무시하고 내용에 맞춰 늘어남 */
 .gospel-tbl,
 .team-tbl,
 .weekly-acc-tbl {
   width: 900px;
+  table-layout: fixed;
 }
 
 /* 1열(주차) 고정 */
