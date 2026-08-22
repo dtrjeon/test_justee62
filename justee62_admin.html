@@ -3,6 +3,13 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<link rel="apple-touch-icon" href="icons/icon-180.png">
+<link rel="icon" type="image/png" sizes="32x32" href="icons/icon-32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="icons/icon-16.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="전도관리자">
+<meta name="theme-color" content="#1a3a9e">
 <title>62기 수지주일반 전도현황</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&family=Bebas+Neue&display=swap" rel="stylesheet">
 <style>
@@ -2299,6 +2306,7 @@ function checkPassword() {
   var val = document.getElementById('lock-input').value;
   if (val === ADMIN_PW) {
     sessionStorage.setItem(LS_AUTH, '1');
+    localStorage.setItem('index_admin_verified', '1'); // 공개보고서 페이지와 인증 공유
     document.getElementById('lock-screen').style.display = 'none';
     document.getElementById('lock-input').value = '';
   } else {
@@ -2317,13 +2325,15 @@ function onLockInput() {
 }
 
 window.onload = function() {
-  // 세션에 인증 정보가 없으면 비밀번호 화면 표시
-  if (!sessionStorage.getItem(LS_AUTH)) {
+  // 세션 인증 또는 공개보고서 페이지에서의 인증(localStorage 공유)이 있으면 통과
+  var authed = sessionStorage.getItem(LS_AUTH) || localStorage.getItem('index_admin_verified');
+  if (!authed) {
     document.getElementById('lock-screen').style.display = 'flex';
     setTimeout(function() {
       document.getElementById('lock-input').focus();
     }, 100);
   } else {
+    sessionStorage.setItem(LS_AUTH, '1'); // 세션에도 동기화
     document.getElementById('lock-screen').style.display = 'none';
   }
   // 릴리즈 시각 (한국시간)
@@ -2373,9 +2383,9 @@ window.onload = function() {
   buildWeekSelect();
   buildJoSelect();
   updateConnBadge();
-  // 조정보(단계 포함) 항상 서버에서 최신으로 로드
+  // 조정보(단계 포함) + 훈련기간(그룹설정) 항상 서버에서 최신으로 로드
   if (CFG.url) {
-    syncJoFromServer().finally(function() {
+    Promise.all([syncJoFromServer(), loadGroupSettings()]).finally(function() {
       loadData();
     });
   } else {
@@ -5482,7 +5492,10 @@ function saveSettings() {
   closeSettings();
   updateConnBadge();
   showToast('✅ 설정이 저장됐습니다. 현재 주차: ' + currentWeek + '주');
-  if (CFG.url) loadData();
+  if (CFG.url) {
+    saveGroupSettings(); // 훈련기간을 구글시트(그룹설정)에도 함께 저장
+    loadData();
+  }
 }
 
 // ── 그룹 편성 설정 저장/불러오기 (그룹명 + 그룹장 + 이메일 통합) ──────────
@@ -5518,6 +5531,8 @@ async function saveGroupSettings() {
     var payload = {
       action: 'save_group_settings',
       adminEmail: CFG.adminEmail,
+      trainStart: CFG.trainStart || '',
+      trainEnd: CFG.trainEnd || '',
       groups: CFG.groups.map(function(g) {
         return { id: g.id, name: g.name, leader: g.leader, email: g.email };
       })
@@ -5545,6 +5560,26 @@ async function loadGroupSettings() {
   try {
     var res = await fetch(CFG.url + '?action=get_group_settings', { method: 'GET', redirect: 'follow' });
     var json = await res.json();
+    if (json.status === 'ok') {
+      // 훈련기간 서버값 반영 (서버가 신뢰 원본 — 항상 우선 적용)
+      if (json.trainStart) {
+        CFG.trainStart = json.trainStart;
+        localStorage.setItem('mon_trainStart', CFG.trainStart);
+        var tsEl = document.getElementById('set-train-start');
+        if (tsEl) tsEl.value = CFG.trainStart;
+      }
+      if (json.trainEnd) {
+        CFG.trainEnd = json.trainEnd;
+        localStorage.setItem('mon_trainEnd', CFG.trainEnd);
+        var teEl = document.getElementById('set-train-end');
+        if (teEl) teEl.value = CFG.trainEnd;
+      }
+      if (json.trainStart || json.trainEnd) {
+        currentWeek = calcCurrentWeek();
+        buildWeekSelect();
+        updateTrainPeriodInfo();
+      }
+    }
     if (json.status === 'ok' && json.groups && json.groups.length) {
       // 서버 데이터로 CFG.groups 업데이트 (email 포함)
       json.groups.forEach(function(sg) {

@@ -5,6 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icons/icon-180.png">
+<link rel="icon" type="image/png" sizes="32x32" href="icons/icon-32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="icons/icon-16.png">
+<meta name="theme-color" content="#1a3a9e">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="전도보고서">
 <meta name="mobile-web-app-capable" content="yes">
@@ -3470,6 +3474,33 @@ function getJoData() {
 
 function saveJoDataLS(arr) {
   localStorage.setItem(LS_JO, JSON.stringify(arr));
+}
+
+// ── 훈련기간 서버 동기화 ────────────────────────────────────
+// 관리자 대시보드(justee62_admin.html)에서 저장한 그룹설정 시트의
+// 훈련기간(시작일/종료일)을 불러와 localStorage(mon_trainStart/mon_trainEnd)에
+// 반영한다. 서버값이 있으면 항상 우선 적용되어 기기 간 훈련기간이 항상 일치한다.
+function syncTrainPeriodFromServer() {
+  if (!scriptUrl) return;
+  fetch(scriptUrl + '?action=get_group_settings', { method: 'GET', redirect: 'follow' })
+    .then(function(r) { return r.json(); })
+    .then(function(json) {
+      if (json.status !== 'ok') return;
+      var changed = false;
+      if (json.trainStart) {
+        localStorage.setItem('mon_trainStart', json.trainStart);
+        changed = true;
+      }
+      if (json.trainEnd) {
+        localStorage.setItem('mon_trainEnd', json.trainEnd);
+        changed = true;
+      }
+      if (changed) {
+        updateTrainPeriodBadge();
+        buildReportWeekSelect();
+      }
+    })
+    .catch(function() { /* 서버 오류 시 기존 localStorage 기본값 유지 */ });
 }
 
 function loadJoData() {
@@ -7099,6 +7130,9 @@ window.onload = function() {
 
   // 서버에서 조정보 불러오기 (드롭다운 갱신)
   loadJoData();
+
+  // 서버(그룹설정)에서 훈련기간 불러오기 — 관리자 대시보드와 항상 동일하게 유지
+  syncTrainPeriodFromServer();
 
   // 검색 타입 초기값 주차로 설정
   var stEl = document.getElementById('search-type');
