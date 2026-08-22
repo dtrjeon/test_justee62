@@ -1755,7 +1755,7 @@ pre.code-block {
 </style>
 </head>
 <body>
-<div style="position:fixed;top:4px;left:6px;font-size:9px;color:rgba(255,255,255,0.55);z-index:99999;pointer-events:none;font-family:monospace;letter-spacing:.3px;text-shadow:0 0 2px rgba(0,0,0,0.4);">v2026.08.22-2</div>
+<div style="position:fixed;top:4px;left:6px;font-size:9px;color:rgba(255,255,255,0.55);z-index:99999;pointer-events:none;font-family:monospace;letter-spacing:.3px;text-shadow:0 0 2px rgba(0,0,0,0.4);">v2026.08.22-3</div>
 
 <!-- 홈 화면 추가 안내 배너 (iOS Safari에서만 표시) -->
 <div id="pwa-banner" style="display:none;position:fixed;bottom:0;left:0;right:0;z-index:9999;
@@ -4904,6 +4904,8 @@ function onTestimony6Change() {
     if (rsEl) rsEl.textContent = '믿음';
     if (nameEl) { nameEl.textContent = '이미신자'; nameEl.className = 'diag-name orange'; }
     if (badgeEl) badgeEl.innerHTML = '<span class="diag-badge orange">이미신자</span>';
+    document.getElementById('diag-card').style.display = 'block';
+    var fv = document.getElementById('diag-final-val');
     if (fv) { fv.textContent = '이미신자'; fv.className = 'diag-final-val 이미신자'; }
     document.getElementById('diag-final-row').style.display = 'flex';
     var saved = '진단: 이미신자 | 영접: 불필요 | 결과: 이미신자';
@@ -4928,6 +4930,8 @@ function onTestimony6Change() {
     if (rsEl) rsEl.textContent = '믿음';
     if (nameEl) { nameEl.textContent = '머리신자'; nameEl.className = 'diag-name orange'; }
     if (badgeEl) badgeEl.innerHTML = '<span class="diag-badge orange">머리신자</span>';
+    document.getElementById('diag-card').style.display = 'block';
+    document.getElementById('diag-final-row').style.display = 'none';
 
   } else {
     resetDiagCard();
