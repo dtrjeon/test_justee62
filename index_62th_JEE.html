@@ -4826,6 +4826,11 @@ function onQ5Change() {
   var hv = radio('heaven'),
     rs = radio('reason');
   var scrollY = window.scrollY;
+  // 다른 입력창(예: 직업)에 포커스/키보드가 남아있으면 강제로 해제
+  if (document.activeElement && document.activeElement !== document.body &&
+      typeof document.activeElement.blur === 'function') {
+    document.activeElement.blur();
+  }
   document.getElementById('cond6-section').style.display = (hv === '있었고' && rs === '믿음') ? 'block' : 'none';
   document.getElementById('cond7-section').style.display = (hv === '없었고' && rs === '믿음') ? 'block' : 'none';
   document.getElementById('cond8-section').style.display = (hv && rs) ? 'block' : 'none';
@@ -4938,6 +4943,12 @@ function onYeopjeopChange() {
   if (_isApplyingFormData) return; // 불러오기 중 무시
   // 모바일에서 포커스 이동으로 인한 스크롤 방지
   var scrollY = window.scrollY;
+  // 다른 입력창(예: 직업)에 포커스/키보드가 남아있으면 강제로 해제
+  // → 남아있으면 레이아웃 변경 시 브라우저가 그 입력창으로 재스크롤시킴
+  if (document.activeElement && document.activeElement !== document.body &&
+      typeof document.activeElement.blur === 'function') {
+    document.activeElement.blur();
+  }
   var hv = radio('heaven'),
     rs = radio('reason'),
     yj = radio('yeopjeop');
