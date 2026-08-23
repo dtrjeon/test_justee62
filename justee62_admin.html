@@ -2449,16 +2449,10 @@ function buildJoSelect() {
   if (cur) sel.value = cur;
 }
 
-function buildWeekSelect() {
-  var sel = document.getElementById('week-select');
-  sel.innerHTML = '';
-  // 전체 옵션
-  var oAll = document.createElement('option');
-  oAll.value = 0;
-  oAll.textContent = '전체';
-  sel.appendChild(oAll);
-
-  // 최대 주차: trainEnd 기준 동적 계산, 없으면 13주 기본
+// 최대 주차: trainEnd 기준 동적 계산 (매주 정확히 7일 간격 전제), 없으면 13주 기본
+// buildWeekSelect(), renderTab3() 등 주차 관련 로직은 모두 이 함수를 통해
+// 동일한 최대 주차를 사용해야 함 — 하드코딩 금지
+function getMaxWeek() {
   var maxWeek = 13;
   if (CFG.trainStart && CFG.trainEnd) {
     var start = new Date(CFG.trainStart);
@@ -2470,6 +2464,19 @@ function buildWeekSelect() {
     var diffDays = Math.floor((end - startMonday) / (1000 * 60 * 60 * 24));
     maxWeek = Math.max(1, Math.floor(diffDays / 7) + 1);
   }
+  return maxWeek;
+}
+
+function buildWeekSelect() {
+  var sel = document.getElementById('week-select');
+  sel.innerHTML = '';
+  // 전체 옵션
+  var oAll = document.createElement('option');
+  oAll.value = 0;
+  oAll.textContent = '전체';
+  sel.appendChild(oAll);
+
+  var maxWeek = getMaxWeek();
 
   for (var w = 1; w <= maxWeek; w++) {
     var o = document.createElement('option');
@@ -4638,7 +4645,8 @@ function renderTab3(selectedWeek) {
     return r.jo;
   })).size || 10;
 
-  for (var w = 1; w <= 13; w++) {
+  var maxWeekTab3 = getMaxWeek();
+  for (var w = 1; w <= maxWeekTab3; w++) {
     var wData = allData.filter(function(r) {
       return Number(r.week) === w;
     });
