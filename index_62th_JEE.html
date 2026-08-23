@@ -1822,7 +1822,7 @@ pre.code-block {
     <!-- 주차 + 조 선택 한 줄 -->
     <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;flex-wrap:wrap;">
       <label style="font-size:12px;font-weight:700;color:rgba(30,40,80,0.7);white-space:nowrap;">주차</label>
-      <select id="report-week" onchange="syncPreview()" style="width:90px;background:#fff;border:1px solid rgba(0,0,20,0.18);border-radius:6px;padding:8px 8px;font-size:16px;color:#0f1428;outline:none;font-weight:700;">
+      <select id="report-week" onchange="syncPreview();updateWeekPeriodText();" style="width:90px;background:#fff;border:1px solid rgba(0,0,20,0.18);border-radius:6px;padding:8px 8px;font-size:16px;color:#0f1428;outline:none;font-weight:700;">
         <option value="">선택</option>
       </select>
       <select id="q1_jo" onchange="onJoSelect()" style="width:auto;max-width:100%;flex:1;min-width:140px;background:#fff;border:1px solid rgba(0,0,20,0.18);border-radius:6px;padding:8px 8px;font-size:15px;color:#0f1428;outline:none;font-weight:700;">
@@ -1830,6 +1830,7 @@ pre.code-block {
       </select>
       <span style="font-size:13px;color:rgba(30,40,80,0.7);white-space:nowrap;">현장전도 보고 드리겠습니다.</span>
     </div>
+    <div id="week-period-badge" style="display:none;font-size:11px;color:rgba(40,60,140,0.65);margin:-4px 0 12px 2px;">📆 <span id="week-period-text"></span></div>
     <!-- 3명 이름 동일선상 -->
     <div style="display:flex;gap:8px;align-items:flex-end;">
       <div style="flex:1;display:flex;flex-direction:column;gap:4px;">
@@ -2820,6 +2821,7 @@ function applyFormData(r) {
   var weekVal = String(r.week || '').replace('주차', '').trim();
   var weekEl = document.getElementById('report-week');
   if (weekEl) weekEl.value = weekVal;
+  updateWeekPeriodText();
 
   // 2. 문서정보
   sv('doc_number', r.doc_number);
@@ -3906,12 +3908,55 @@ function buildReportWeekSelect() {
   for (var w = 1; w <= maxWeek; w++) {
     var opt = document.createElement('option');
     opt.value = w;
-    opt.textContent = w + '주차';
+    var wPeriod = computeWeekPeriod(w);
+    opt.textContent = w + '주차' + (wPeriod ? ' (' + wPeriod + ')' : '');
     sel.appendChild(opt);
   }
 
   if (curVal) sel.value = curVal;
   updateTrainPeriodBadge();
+  updateWeekPeriodText();
+}
+
+// ── 선택된 주차의 기간(월/일~월/일) 계산 ─────────────────────
+// mon_trainStart를 월요일 기준으로 정렬 후, 주차 N = 시작 월요일 + (N-1)*7일 ~ +6일
+// (매주 정확히 7일 간격 규칙 전제 — 불규칙하면 이 계산은 사용하지 않음)
+function computeWeekPeriod(week) {
+  week = parseInt(week, 10);
+  if (!week || week < 1) return '';
+
+  var trainStart = localStorage.getItem('mon_trainStart') || '2026-08-30';
+  var start = new Date(trainStart);
+  if (isNaN(start)) return '';
+
+  var dow = start.getDay();
+  var diffToMonday = (dow === 0) ? -6 : 1 - dow;
+  var startMonday = new Date(start);
+  startMonday.setDate(start.getDate() + diffToMonday);
+
+  var weekStart = new Date(startMonday);
+  weekStart.setDate(startMonday.getDate() + (week - 1) * 7);
+  var weekEnd = new Date(weekStart);
+  weekEnd.setDate(weekStart.getDate() + 6);
+
+  var fmt = function(d) { return (d.getMonth() + 1) + '/' + d.getDate(); };
+  return fmt(weekStart) + '~' + fmt(weekEnd);
+}
+
+// 주차 select 값에 맞춰 "week-period-badge" 갱신
+function updateWeekPeriodText() {
+  var weekEl = document.getElementById('report-week');
+  var badge  = document.getElementById('week-period-badge');
+  var txtEl  = document.getElementById('week-period-text');
+  if (!weekEl || !badge || !txtEl) return;
+
+  var period = computeWeekPeriod(weekEl.value);
+  if (period) {
+    txtEl.textContent = weekEl.value + '주차 기간 ' + period;
+    badge.style.display = 'block';
+  } else {
+    badge.style.display = 'none';
+  }
 }
 
 function updateTrainPeriodBadge() {
@@ -3986,6 +4031,7 @@ function autoWeekFromDate() {
   if (weekEl) {
     weekEl.value = String(week);
     syncPreview();
+    updateWeekPeriodText();
   }
 }
 
