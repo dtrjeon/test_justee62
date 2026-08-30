@@ -1801,7 +1801,7 @@ pre.code-block {
 <!-- FORM PAGE -->
 <div id="form-page" class="page active">
 <div class="hd" style="position:relative;">
-<div style="position:absolute;top:10px;left:14px;font-size:10px;font-weight:400;color:rgba(40,50,80,0.4);letter-spacing:.2px;z-index:10;pointer-events:none;">v2026.08.31-1</div>
+<div style="position:absolute;top:10px;left:14px;font-size:10px;font-weight:400;color:rgba(40,50,80,0.4);letter-spacing:.2px;z-index:10;pointer-events:none;">v2026.08.31-2</div>
 <div class="server-connected-badge" id="server-connected-badge">
     <span class="scb-label">연결됨</span>
     <span class="scb-dot"></span>
@@ -5466,8 +5466,8 @@ function filterHistory() {
       c.style.display = 'none';
       return;
     }
-    // 프리셋 필터
-    if (_presetFilterActive && p && p.name) {
+    // 프리셋 필터 (관리자는 항상 전체 검색 — 내 조/그룹장 범위 제한 없음)
+    if (_presetFilterActive && p && p.name && !isAdminUser()) {
       if (p.scope === 'all') {
         // 전체 보기 — 필터 없음
       } else if (p.scope === 'group') {
@@ -5518,10 +5518,8 @@ function filterHistory() {
 function clearSearch() {
   ['search-input','search-evang-type','search-jo-sel','search-week-sel','search-member-sel'].forEach(function(id) {
     var el = document.getElementById(id);
-    if (el) { el.value = ''; el.style.display = 'none'; }
+    if (el) { el.value = ''; }
   });
-  document.getElementById('search-input').style.display = '';
-  document.getElementById('search-input').placeholder = '예: 62-9-질-1';
   document.getElementById('search-type').value = 'week';
   _presetFilterActive = false;
   var btn = document.getElementById('preset-filter-btn');
@@ -5529,13 +5527,18 @@ function clearSearch() {
     btn.classList.remove('active');
     btn.textContent = '👤 내 조';
   }
-  filterHistory();
+  // week 타입에 맞는 UI(드롭다운)를 다시 구성 + filterHistory() 실행
+  onSearchTypeChange();
+}
+
+function isAdminUser() {
+  return localStorage.getItem('index_admin_verified') === '1';
 }
 
 async function loadHistory() {
-  // 프리셋 필터 자동 활성화
+  // 프리셋 필터 자동 활성화 — 관리자는 내 조/그룹장 범위로 제한하지 않고 전체를 봄
   var p = getPreset();
-  if (p && p.name && !_presetFilterActive) {
+  if (p && p.name && !_presetFilterActive && !isAdminUser()) {
     _presetFilterActive = true;
     var btn = document.getElementById('preset-filter-btn');
     if (btn) {
@@ -5649,7 +5652,7 @@ async function loadServerHistory() {
 
 function renderHistory(records, src) {
   var bar = document.getElementById('search-bar');
-  if (bar && records && records.length > 0) bar.style.display = 'flex';
+  if (bar && records && records.length > 0) bar.style.display = 'grid';
   else if (bar) bar.style.display = 'none';
   clearSearch();
   var mpBtn = document.getElementById('multiprint-btn');
