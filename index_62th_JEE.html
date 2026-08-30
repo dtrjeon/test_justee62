@@ -2125,6 +2125,10 @@ pre.code-block {
   <div class="sec"><div class="sec-lbl">11. 현장전도에서 문제점/개선점</div><textarea id="q11" rows="2" placeholder="문제점을 입력하세요..." oninput="syncPreview()"></textarea></div>
   <div class="sec"><div class="sec-lbl">12. 요청받은 기도제목</div><textarea id="q12" rows="2" placeholder="기도제목을 입력하세요..." oninput="syncPreview()"></textarea></div>
   <div class="sec"><div class="sec-lbl">13. 기타</div><textarea id="q13" rows="2" placeholder="기타 사항을 입력하세요..." oninput="syncPreview()"></textarea></div>
+  <div class="sec" style="background:#fff8e1;border:1px solid #ffe0a3;border-radius:8px;padding:8px;margin-top:4px;">
+    <div class="sec-lbl" style="color:#8a5a00;">🔒 특이사항 공유 <span style="font-weight:400;color:#a68a55;font-size:11px;">(관리자에게만 이메일/대시보드로 전달됩니다 · 미리보기·인쇄에는 표시되지 않습니다)</span></div>
+    <textarea id="q14" rows="2" placeholder="관리자에게만 전달할 특이사항이 있으면 입력하세요..."></textarea>
+  </div>
   <div style="text-align:center;font-size:11px;color:rgba(32,80,200,0.4);letter-spacing:2px;margin-bottom:14px;">모든 영광을 하나님께 올려드립니다!</div>
 
   <!-- 문서 삭제 버튼 (프리셋 작성조 또는 관리자만 표시) -->
@@ -2946,7 +2950,7 @@ function applyFormData(r) {
   updateFollowup();
 
   // 12. 자유기술
-  ['q10', 'q11', 'q12', 'q13'].forEach(function(k) {
+  ['q10', 'q11', 'q12', 'q13', 'q14'].forEach(function(k) {
     sv(k, r[k]);
   });
 
@@ -5180,6 +5184,7 @@ function collectFormData() {
     q11: v('q11'),
     q12: v('q12'),
     q13: v('q13'),
+    q14: v('q14'),
     // 풀복음 완료일: 조장/훈련자/훈련생 중 전체복음 체크한 담당자의 날짜 (| 로 구분)
     gospel_date: (function() {
       var dates = [];
@@ -5631,6 +5636,7 @@ async function loadServerHistory() {
         q11: r['문제점(11번)'] || '',
         q12: r['기도제목(12번)'] || '',
         q13: r['기타(13번)'] || '',
+        q14: r['특이사항(공유)'] || '',
       };
     });
     updateScbState('ok');
@@ -5798,7 +5804,8 @@ function loadRecord(idx) {
     q10: r.q10 || r['느낀점(10번)'] || '',
     q11: r.q11 || r['문제점(11번)'] || '',
     q12: r.q12 || r['기도제목(12번)'] || '',
-    q13: r.q13 || r['기타(13번)'] || ''
+    q13: r.q13 || r['기타(13번)'] || '',
+    q14: r.q14 || r['특이사항(공유)'] || ''
   };
 
   // 수정 모드 플래그
@@ -6314,19 +6321,82 @@ function printImSang() {
   setTimeout(scalePreviewPaper, 50);
 }
 
-function printSuju() {
+// 수주반(A5) 단건 저장 — 모바일 브라우저의 인쇄(PDF저장)가 커스텀 A5 페이지
+// 크기를 지원하지 않아 A4 용지에 작게 배치되며(=여백 과다) 해상도도 낮아지는
+// 문제가 있어, 다중선택 출력과 동일한 html2canvas+jsPDF 고해상도 방식으로 통일.
+async function printSuju() {
   syncSuju();
-  var styleTag = document.getElementById('suju-print-style');
-  if (!styleTag) {
-    styleTag = document.createElement('style');
-    styleTag.id = 'suju-print-style';
-    styleTag.textContent = '@page{size:A5 portrait;margin:0;}.suju-paper{width:148mm;min-height:210mm;}';
-    document.head.appendChild(styleTag);
+  var r = collectFormData();
+  await renderSujuRecordsToPdf([r], '수주반_공개보고서_' + (r.doc_number || new Date().toISOString().slice(0, 10)));
+}
+
+// ── 수주반 A5 PDF 생성 공통 로직 (단건/다중 공용) ──────────
+// html2canvas 렌더 해상도를 scale 4로 올리고, 컨테이너 실제 렌더 높이를
+// 그대로 캡처해 내용이 짧아도 빈 페이지 여백만 커지지 않도록 함.
+async function renderSujuRecordsToPdf(records, filenamePrefix) {
+  if (!records || !records.length) return;
+
+  showStatus('⏳ PDF 생성 중... (' + records.length + '매)', 'info');
+
+  try {
+    await _loadScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js');
+    await _loadScript('https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js');
+  } catch (e) {
+    showStatus('라이브러리 로드 실패. 인쇄 방식으로 전환합니다.', 'warn');
+    _printViaWindow(records);
+    return;
   }
-  document.body.classList.add('print-suju');
-  window.print();
-  document.body.classList.remove('print-suju');
-  if (styleTag) styleTag.remove();
+
+  try {
+    var { jsPDF } = window.jspdf;
+    var pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a5' });
+    var A5_W = 148, A5_H = 210;
+    var PX_PER_MM = 3.7795;
+    var SCALE = 4; // 인쇄 해상도(≈362dpi) — 작은 글씨도 선명하게
+
+    // 임시 렌더링 컨테이너 (모바일 뷰포트 폭과 무관하게 A5 실제 크기로 고정)
+    var container = document.createElement('div');
+    container.style.cssText = 'position:fixed;left:-9999px;top:0;width:' + A5_W + 'mm;background:#fff;z-index:-1;';
+    document.body.appendChild(container);
+
+    for (var i = 0; i < records.length; i++) {
+      var r = records[i];
+      container.innerHTML = buildSujuHtml(r);
+      container.style.minHeight = A5_H + 'mm';
+      await new Promise(function(res) { setTimeout(res, 120); });
+
+      var canvas = await html2canvas(container, {
+        scale: SCALE,
+        useCORS: true,
+        backgroundColor: '#ffffff',
+        windowWidth: Math.round(A5_W * PX_PER_MM),
+        windowHeight: Math.round(A5_H * PX_PER_MM),
+        width: Math.round(A5_W * PX_PER_MM),
+        height: Math.round(A5_H * PX_PER_MM)
+      });
+      var imgData = canvas.toDataURL('image/jpeg', 0.98);
+      if (i > 0) pdf.addPage('a5', 'portrait');
+      // A5 페이지 전체를 꽉 채워서 배치 (여백 없이 실제 물리 크기와 일치)
+      pdf.addImage(imgData, 'JPEG', 0, 0, A5_W, A5_H);
+      showStatus('⏳ PDF 생성 중... (' + (i + 1) + '/' + records.length + '매)', 'info');
+    }
+
+    document.body.removeChild(container);
+
+    var blob = pdf.output('blob');
+    var blobUrl = URL.createObjectURL(blob);
+    var previewWin = window.open(blobUrl, '_blank');
+    if (!previewWin) {
+      var fname = (filenamePrefix || '수주반_공개보고서') + '.pdf';
+      pdf.save(fname);
+      showStatus('✅ PDF 저장 완료! (' + records.length + '매)', 'success');
+    } else {
+      showStatus('✅ PDF 미리보기 탭이 열렸습니다. 탭에서 저장하세요. (' + records.length + '매)', 'success');
+    }
+  } catch (e) {
+    showStatus('PDF 생성 오류: ' + e.message, 'error');
+    console.error(e);
+  }
 }
 
 // ── Admin 연동 ────────────────────────────────────────
@@ -6820,75 +6890,7 @@ async function printMultiSuju() {
     showStatus('출력할 보고서를 선택해주세요.', 'warn');
     return;
   }
-
-  showStatus('⏳ PDF 생성 중... (' + selected.length + '매)', 'info');
-
-  // jsPDF + html2canvas 동적 로드
-  try {
-    await _loadScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js');
-    await _loadScript('https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js');
-  } catch (e) {
-    showStatus('라이브러리 로드 실패. 인쇄 방식으로 전환합니다.', 'warn');
-    _printViaWindow(selected);
-    return;
-  }
-
-  try {
-    var {
-      jsPDF
-    } = window.jspdf;
-    var pdf = new jsPDF({
-      orientation: 'portrait',
-      unit: 'mm',
-      format: 'a5'
-    });
-    var A5_W = 148,
-      A5_H = 210;
-
-    // 임시 렌더링 컨테이너
-    var container = document.createElement('div');
-    container.style.cssText = 'position:fixed;left:-9999px;top:0;width:' + A5_W + 'mm;background:#fff;z-index:-1;';
-    document.body.appendChild(container);
-
-    for (var i = 0; i < selected.length; i++) {
-      var r = selected[i];
-      container.innerHTML = buildSujuHtml(r);
-      container.style.minHeight = A5_H + 'mm';
-      // 렌더링 대기
-      await new Promise(function(res) {
-        setTimeout(res, 120);
-      });
-      var canvas = await html2canvas(container, {
-        scale: 3,
-        useCORS: true,
-        backgroundColor: '#ffffff',
-        width: Math.round(A5_W * 3.7795),
-        height: Math.round(A5_H * 3.7795)
-      });
-      var imgData = canvas.toDataURL('image/jpeg', 0.97);
-      if (i > 0) pdf.addPage('a5', 'portrait');
-      pdf.addImage(imgData, 'JPEG', 0, 0, A5_W, A5_H);
-      showStatus('⏳ PDF 생성 중... (' + (i + 1) + '/' + selected.length + '매)', 'info');
-    }
-
-    document.body.removeChild(container);
-
-    // Blob URL로 새 탭에서 미리보기 — 탭에서 저장 가능
-    var blob = pdf.output('blob');
-    var blobUrl = URL.createObjectURL(blob);
-    var previewWin = window.open(blobUrl, '_blank');
-    if (!previewWin) {
-      // 팝업 차단 시 직접 다운로드
-      var fname = '수주반_공개보고서_' + new Date().toISOString().slice(0, 10) + '.pdf';
-      pdf.save(fname);
-      showStatus('✅ PDF 저장 완료! (' + selected.length + '매)', 'success');
-    } else {
-      showStatus('✅ PDF 미리보기 탭이 열렸습니다. 탭에서 저장하세요. (' + selected.length + '매)', 'success');
-    }
-  } catch (e) {
-    showStatus('PDF 생성 오류: ' + e.message, 'error');
-    console.error(e);
-  }
+  await renderSujuRecordsToPdf(selected, '수주반_공개보고서_' + new Date().toISOString().slice(0, 10));
 }
 
 function _loadScript(src) {
@@ -7410,7 +7412,8 @@ window.onload = function() {
           q10: r['느낀점(10번)'] || '',
           q11: r['문제점(11번)'] || '',
           q12: r['기도제목(12번)'] || '',
-          q13: r['기타(13번)'] || ''
+          q13: r['기타(13번)'] || '',
+          q14: r['특이사항(공유)'] || ''
         };
         window._isRevision = true;
         window._origDocNumber = data.doc_number;

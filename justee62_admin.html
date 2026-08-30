@@ -1061,6 +1061,7 @@ window.TEST_DATA = {"records": [{"저장일시": "2026-03-14", "주차": 3, "전
   <div class="tab" onclick="switchTab(2)">🏃 수료조건</div>
   <div class="tab" onclick="switchTab(3)">📈 복음제시</div>
   <div class="tab" onclick="switchTab(4)">🔍 문서번호관리</div>
+  <div class="tab" onclick="switchTab(5)">🔒 특이사항</div>
 </div>
 
 <div class="week-bar">
@@ -1631,6 +1632,31 @@ window.TEST_DATA = {"records": [{"저장일시": "2026-03-14", "주차": 3, "전
         <tbody id="dup-list"></tbody>
       </table>
     </div>
+  </div>
+</div>
+
+<div class="page" id="page-5">
+  <div class="week-banner" style="background:linear-gradient(135deg,#8a5a00,#c98e00);">
+    <div class="wb-left">
+      <div class="wb-title">특이사항 공유</div>
+      <div class="wb-sub">보고서 14번 항목 — 관리자에게만 전달된 내용 (그룹장 미공유)</div>
+    </div>
+    <div class="wb-right">
+      <div class="wb-rate" id="sn-total-cnt">—</div>
+      <div class="wb-rate-label">건수</div>
+    </div>
+  </div>
+
+  <div class="tbl-wrap" style="margin-top:8px;">
+    <div class="tbl-head" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px;">
+      <span class="tbl-head-title">🔒 특이사항 목록</span>
+      <button onclick="renderTab5()" class="act-btn primary" style="font-size:11px;padding:4px 12px;">🔄 새로고침</button>
+    </div>
+    <div style="padding:8px 12px;font-size:10px;color:#888;background:#fafafa;border-bottom:1px solid #eee;">
+      ※ 이 항목은 보고서 미리보기·인쇄본에는 표시되지 않으며, 제출 시 관리자에게만 이메일로 즉시 전달됩니다.
+    </div>
+    <div id="sn-empty" style="padding:20px;text-align:center;font-size:12px;color:#aaa;display:none;">✅ 등록된 특이사항이 없습니다</div>
+    <div id="sn-list" style="display:flex;flex-direction:column;gap:8px;padding:10px;"></div>
   </div>
 </div>
 
@@ -2651,7 +2677,8 @@ function parseRecords(raw) {
       q10: g('느낀점(10번)'),
       q11: g('문제점(11번)'),
       q12: g('기도제목(12번)'),
-      q13: g('기타(13번)')
+      q13: g('기타(13번)'),
+      specialNote: g('특이사항(공유)')
     };
   });
 }
@@ -5834,6 +5861,48 @@ function renderTab4() {
   }).join('');
 }
 
+function renderTab5() {
+  if (!rawData || !rawData.length) {
+    showToast('먼저 데이터를 불러오세요.');
+    return;
+  }
+
+  var withNote = rawData.filter(function(r) {
+    return r.specialNote && String(r.specialNote).trim();
+  });
+
+  // 최신순 정렬
+  withNote.sort(function(a, b) {
+    return String(b.savedAt || '').localeCompare(String(a.savedAt || ''));
+  });
+
+  document.getElementById('sn-total-cnt').textContent = withNote.length + '건';
+
+  var empty = document.getElementById('sn-empty');
+  var list  = document.getElementById('sn-list');
+
+  if (!withNote.length) {
+    empty.style.display = 'block';
+    list.innerHTML = '';
+    return;
+  }
+  empty.style.display = 'none';
+
+  list.innerHTML = withNote.map(function(r) {
+    var esc = function(s) {
+      return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    };
+    return '<div style="background:#fffbe8;border:1px solid #ffe0a3;border-radius:10px;padding:10px 12px;">' +
+      '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">' +
+        '<span style="font-weight:700;font-size:12px;color:#8a5a00;">' + esc(r.jo) + '조 · ' + esc(r.leader) + ' 조장</span>' +
+        '<span style="font-size:10px;color:#a68a55;">' + esc((r.savedAt || '').slice(0,16)) + '</span>' +
+      '</div>' +
+      '<div style="font-size:10px;color:#999;margin-bottom:6px;">문서번호: ' + esc(r.docNumber) + ' · 전도일: ' + esc(r.date) + '</div>' +
+      '<div style="font-size:12px;color:#333;white-space:pre-wrap;word-break:break-word;">' + esc(r.specialNote) + '</div>' +
+    '</div>';
+  }).join('');
+}
+
 function switchTab(idx) {
   currentTab = idx;
   document.querySelectorAll('.tab').forEach(function(t, i) {
@@ -5843,6 +5912,7 @@ function switchTab(idx) {
     p.classList.toggle('active', i === idx);
   });
   if (idx === 4) renderTab4();
+  if (idx === 5) renderTab5();
 }
 
 // ── 유틸 ────────────────────────────────────────────────────────────────────
