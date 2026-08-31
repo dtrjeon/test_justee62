@@ -1805,7 +1805,7 @@ pre.code-block {
 <!-- FORM PAGE -->
 <div id="form-page" class="page active">
 <div class="hd" style="position:relative;">
-<div style="position:absolute;top:10px;left:14px;font-size:10px;font-weight:400;color:rgba(40,50,80,0.4);letter-spacing:.2px;z-index:10;pointer-events:none;">v2026.08.31-6</div>
+<div style="position:absolute;top:10px;left:14px;font-size:10px;font-weight:400;color:rgba(40,50,80,0.4);letter-spacing:.2px;z-index:10;pointer-events:none;">v2026.08.31-7</div>
 <div class="server-connected-badge" id="server-connected-badge">
     <span class="scb-label">연결됨</span>
     <span class="scb-dot"></span>
@@ -5244,7 +5244,7 @@ async function handleSubmit() {
   var personalWarn = checkPersonalActionWarning();
   if (personalWarn) {
     // 오류 데이터 저장 방지 — confirm 없이 무조건 차단
-    showStatus('⚠️ 개인/관계 전도의 조원 행동을 확인해 주세요. 전도자만 [하였고], 나머지는 [불참하였고]로 설정 후 다시 제출하세요.', 'warn');
+    showStatus(personalWarn.split('\n')[0] + ' 설정 후 다시 제출하세요.', 'warn');
     return;
   }
   // ── 통계 수치 2 이상 경고 (접촉횟수 제외) — 강제 차단 ───────────────────────
@@ -5295,27 +5295,40 @@ function checkStatsOverflow() {
     '\n\n(한 번에 복음을 제시한 경우 맞다면 무시하세요)';
 }
 
-// 개인전도 유형인데 참관하였고로 선택된 조원 검사
+// 개인/관계전도 유형인데 조원 행동 설정이 잘못된 경우 검사
 function checkPersonalActionWarning() {
   var type = (document.getElementById('evang_type') || {}).value || '';
-  // QQ는 조장만 [하였고], 나머지는 [참관하였고]가 정상 동작이므로 이 검증 대상에서 제외
-  var isPersonal = (type === '개인' || type === '관계');
-  if (!isPersonal) return '';
+  var isPersonal = (type === '개인');
+  var isRelation = (type === '관계');
+  if (!isPersonal && !isRelation) return '';
 
+  var nameMap = { leader: v('q2_leader'), trainer: v('q2_trainer'), trainee: v('q2_trainee1') };
   var problems = [];
   // MEMBERS 배열에서 현재 조 멤버 확인
   if (typeof MEMBERS !== 'undefined') {
     MEMBERS.forEach(function(m) {
       var actionEl = document.querySelector('input[name="' + m.id + '_action"]:checked');
       var action = actionEl ? actionEl.value : '';
-      if (action === '참관하였고') {
-        problems.push(m.name + '(' + m.label + ')');
+      var mName = nameMap[m.id] || m.label;
+      if (isRelation) {
+        // 관계전도: 훈련생만 [불참하였고]로 선택되면 되고, 훈련자(조장)/훈련자는 제한 없음
+        if (m.id === 'trainee' && action !== '불참하였고') {
+          problems.push(mName + '(' + m.label + ')');
+        }
+      } else {
+        // 개인전도: 전도자 1명만 [하였고], 나머지가 [참관하였고]로 선택되면 안됨
+        if (action === '참관하였고') {
+          problems.push(mName + '(' + m.label + ')');
+        }
       }
     });
   }
 
   if (!problems.length) return '';
-  return '⚠️ 개인/관계 전도는 전도자 1명만 [하였고], 나머지는 [불참하였고]로 선택해야 합니다.\n\n현재 [참관하였고]로 선택된 조원:\n• ' + problems.join('\n• ');
+  if (isRelation) {
+    return '⚠️ 관계전도는 훈련생이 [불참하였고]로 선택되어야 합니다.\n\n현재 다르게 선택된 조원:\n• ' + problems.join('\n• ');
+  }
+  return '⚠️ 개인전도는 전도자 1명만 [하였고], 나머지는 [불참하였고]로 선택해야 합니다.\n\n현재 [참관하였고]로 선택된 조원:\n• ' + problems.join('\n• ');
 }
 
 async function submitServer() {
