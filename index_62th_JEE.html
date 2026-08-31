@@ -1805,7 +1805,7 @@ pre.code-block {
 <!-- FORM PAGE -->
 <div id="form-page" class="page active">
 <div class="hd" style="position:relative;">
-<div style="position:absolute;top:10px;left:14px;font-size:10px;font-weight:400;color:rgba(40,50,80,0.4);letter-spacing:.2px;z-index:10;pointer-events:none;">v2026.08.31-4</div>
+<div style="position:absolute;top:10px;left:14px;font-size:10px;font-weight:400;color:rgba(40,50,80,0.4);letter-spacing:.2px;z-index:10;pointer-events:none;">v2026.08.31-5</div>
 <div class="server-connected-badge" id="server-connected-badge">
     <span class="scb-label">연결됨</span>
     <span class="scb-dot"></span>
@@ -2109,7 +2109,7 @@ pre.code-block {
         <div class="ms-trigger" onclick="toggleDropdown('followup',event)"><span class="ms-display" id="followup-ms-display">선택하세요</span><span class="ms-arrow">▾</span></div>
         <div class="ms-dropdown" id="followup-ms-dropdown">
           <label class="ms-item"><input type="radio" name="followup" value="하지 못함" onchange="updateFollowup();syncPreview()"> 하지 못함</label>
-          <label class="ms-item"><input type="radio" name="followup" value="24시간 이내 전화" onchange="updateFollowup();syncPreview()"> 24시간 이내 전화</label>
+          <label class="ms-item"><input type="radio" name="followup" value="24시간 내외 전화" onchange="updateFollowup();syncPreview()"> 24시간 내외 전화</label>
 
           <label class="ms-item"><input type="radio" name="followup" value="예배 참석 약속" onchange="updateFollowup();syncPreview()"> 예배 참석 약속</label>
           <label class="ms-item"><input type="radio" name="followup" value="7일 후 재 방문 약속" onchange="updateFollowup();syncPreview()"> 7일 후 재 방문 약속</label>
@@ -2368,7 +2368,7 @@ pre.code-block {
       <!-- 7번 -->
       <div style="margin-bottom:5mm;display:flex;align-items:baseline;gap:1mm;flex-wrap:wrap;line-height:1.8;">
         <span style="font-weight:700;white-space:nowrap;">7.</span>
-        <span id="sj_item7_text">즉석 양육을(<b id="sj_immed">[했고/안했고]</b>), 후속 양육을(<b id="sj_followup">7일후 재방문 약속/24시간 이내 전화 약속/예배참석 약속/새생명반 연결/목장 연결/하지 못</b>)했습니다.</span>
+        <span id="sj_item7_text">즉석 양육을(<b id="sj_immed">[했고/안했고]</b>), 후속 양육을(<b id="sj_followup">7일후 재방문 약속/24시간 내외 전화 약속/예배참석 약속/새생명반 연결/목장 연결/하지 못</b>)했습니다.</span>
         <span id="sj_reason_wrap" style="display:none;align-items:baseline;gap:1mm;flex-wrap:nowrap;">(못한 이유는 <span style="border-bottom:0.5pt solid #333;min-width:20mm;display:inline-block;font-weight:700;" id="sj_followup_reason">&nbsp;</span>)</span>
       </div>
 
@@ -2643,7 +2643,7 @@ pre.code-block {
     <!-- 9번 -->
     <div class="doc-item">
       <div class="doc-item-line">
-        <span class="doc-num">9.</span> 즉석양육을 ( <span class="dbold" id="p_immed_bold">했고&nbsp;/&nbsp;안했고</span> ), 후속양육으로는 ( <span class="dbold" id="p_followup_bold">24시간 이내 전화&nbsp;/&nbsp;예배 참석 약속&nbsp;/&nbsp;7일 후 재 방문 약속&nbsp;/&nbsp;새가족반 연결</span> ) 했습니다.
+        <span class="doc-num">9.</span> 즉석양육을 ( <span class="dbold" id="p_immed_bold">했고&nbsp;/&nbsp;안했고</span> ), 후속양육으로는 ( <span class="dbold" id="p_followup_bold">24시간 내외 전화&nbsp;/&nbsp;예배 참석 약속&nbsp;/&nbsp;7일 후 재 방문 약속&nbsp;/&nbsp;새가족반 연결</span> ) 했습니다.
         <span id="p_followup_reason_wrap" style="display:none;"> (사유: <span id="p_followup_reason"></span>)</span>
       </div>
     </div>
@@ -6195,7 +6195,7 @@ function syncSuju() {
     if (frEl) frEl.textContent = '';
     if (rwEl) rwEl.style.display = 'none';
   } else {
-    if (fuEl) fuEl.textContent = '7일후 재방문 약속/24시간 이내 전화 약속/예배참석 약속/새생명반 연결/목장 연결/하지 못';
+    if (fuEl) fuEl.textContent = '7일후 재방문 약속/24시간 내외 전화 약속/예배참석 약속/새생명반 연결/목장 연결/하지 못';
     if (frEl) frEl.textContent = '';
     if (rwEl) rwEl.style.display = 'none';
   }
@@ -7320,7 +7320,7 @@ window.onload = function() {
       trainee_action: '참관하였고',
       result: '결신',
       immed_nurture: '했고',
-      followup: '24시간 이내 전화',
+      followup: '24시간 내외 전화',
       followup_reason: '',
       q10: '성령께서 강하게 역사하셔서 대상자가 스스로 마음을 열었습니다.',
       q11: '복음제시 중 주변 소음이 심해 집중하기 어려웠습니다.',
