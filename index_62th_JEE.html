@@ -1805,7 +1805,7 @@ pre.code-block {
 <!-- FORM PAGE -->
 <div id="form-page" class="page active">
 <div class="hd" style="position:relative;">
-<div style="position:absolute;top:10px;left:14px;font-size:10px;font-weight:400;color:rgba(40,50,80,0.4);letter-spacing:.2px;z-index:10;pointer-events:none;">v2026.08.31-3</div>
+<div style="position:absolute;top:10px;left:14px;font-size:10px;font-weight:400;color:rgba(40,50,80,0.4);letter-spacing:.2px;z-index:10;pointer-events:none;">v2026.08.31-4</div>
 <div class="server-connected-badge" id="server-connected-badge">
     <span class="scb-label">연결됨</span>
     <span class="scb-dot"></span>
@@ -6337,9 +6337,15 @@ function printImSang() {
     styleTag.textContent = '@page{size:A4 portrait;margin:0;}';
     document.head.appendChild(styleTag);
   }
+  // 인쇄창의 "PDF로 저장" 시 제안되는 파일명은 대부분 브라우저에서 문서 title을
+  // 그대로 사용하므로, 인쇄 직전에만 문서번호로 바꿔뒀다가 끝나면 원복
+  var docNo = (document.getElementById('doc_number') || {}).value || '';
+  var prevTitle = document.title;
+  if (docNo) document.title = docNo;
   document.body.classList.add('print-imsang');
   window.print();
   document.body.classList.remove('print-imsang');
+  document.title = prevTitle;
   if (styleTag) styleTag.remove();
   setTimeout(scalePreviewPaper, 50);
 }
@@ -6350,12 +6356,15 @@ function printImSang() {
 async function printSuju() {
   syncSuju();
   var r = collectFormData();
-  await renderSujuRecordsToPdf([r], '수주반_공개보고서_' + (r.doc_number || new Date().toISOString().slice(0, 10)));
+  var fname = r.doc_number ? r.doc_number : ('수주반_공개보고서_' + new Date().toISOString().slice(0, 10));
+  await renderSujuRecordsToPdf([r], fname);
 }
 
 // ── 수주반 A5 PDF 생성 공통 로직 (단건/다중 공용) ──────────
 // html2canvas 렌더 해상도를 scale 4로 올리고, 컨테이너 실제 렌더 높이를
 // 그대로 캡처해 내용이 짧아도 빈 페이지 여백만 커지지 않도록 함.
+// 파일명은 항상 filenamePrefix(주로 문서번호) 그대로 저장되도록 pdf.save()로
+// 직접 다운로드한다 — 새 탭 미리보기 경로는 파일명을 지정할 수 없어서 제외.
 async function renderSujuRecordsToPdf(records, filenamePrefix) {
   if (!records || !records.length) return;
 
@@ -6376,6 +6385,8 @@ async function renderSujuRecordsToPdf(records, filenamePrefix) {
     var A5_W = 148, A5_H = 210;
     var PX_PER_MM = 3.7795;
     var SCALE = 4; // 인쇄 해상도(≈362dpi) — 작은 글씨도 선명하게
+    var fname = (filenamePrefix || '수주반_공개보고서') + '.pdf';
+    pdf.setProperties({ title: filenamePrefix || '수주반_공개보고서' });
 
     // 임시 렌더링 컨테이너 (모바일 뷰포트 폭과 무관하게 A5 실제 크기로 고정)
     var container = document.createElement('div');
@@ -6406,16 +6417,9 @@ async function renderSujuRecordsToPdf(records, filenamePrefix) {
 
     document.body.removeChild(container);
 
-    var blob = pdf.output('blob');
-    var blobUrl = URL.createObjectURL(blob);
-    var previewWin = window.open(blobUrl, '_blank');
-    if (!previewWin) {
-      var fname = (filenamePrefix || '수주반_공개보고서') + '.pdf';
-      pdf.save(fname);
-      showStatus('✅ PDF 저장 완료! (' + records.length + '매)', 'success');
-    } else {
-      showStatus('✅ PDF 미리보기 탭이 열렸습니다. 탭에서 저장하세요. (' + records.length + '매)', 'success');
-    }
+    // 파일명을 확실히 지정하기 위해 새 탭 미리보기 대신 바로 다운로드
+    pdf.save(fname);
+    showStatus('✅ "' + fname + '" 저장 완료! (' + records.length + '매)', 'success');
   } catch (e) {
     showStatus('PDF 생성 오류: ' + e.message, 'error');
     console.error(e);
