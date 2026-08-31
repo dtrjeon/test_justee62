@@ -1026,7 +1026,7 @@ tr:last-child td {
 </style>
 </head>
 <body>
-<div style="position:fixed;top:2px;left:4px;font-size:9px;color:rgba(255,255,255,0.35);z-index:99999;pointer-events:none;font-family:monospace;letter-spacing:.3px;">v2026.08.31-1</div>
+<div style="position:fixed;top:2px;left:4px;font-size:9px;color:rgba(255,255,255,0.35);z-index:99999;pointer-events:none;font-family:monospace;letter-spacing:.3px;">v2026.08.31-2</div>
 <script>
 // ── 테스트 모드 데이터 ──────────────────────────────────────────────────────
 // 테스트 모드 ON: window.TEST_MODE = true
@@ -2859,10 +2859,12 @@ var _mismatches = [];
 
 function checkMismatch(data) {
   var TYPE_MAP = {
-    '관': '관계(팀)', '관계': '관계(팀)',
+    '관': '관계(팀)',
+    '관계': '관계',
     '질': '질문지(팀)', '질문지': '질문지(팀)',
     '7일후': '7일후(팀)',
-    '개인': '개인'
+    '개인': '개인',
+    'QQ': 'QQ'
   };
   _mismatches = [];
   data.forEach(function(r) {
