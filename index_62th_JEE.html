@@ -3221,8 +3221,8 @@ function _openPresetModalNow() {
       { id: 'E', name: 'E그룹', leader: 'E그룹장명' }
     ];
   })();
-  // 관리그룹(E그룹) — 실제 데이터 출처와 무관하게 항상 표시. 대표명 '관리자' 고정.
-  if (!grpLeaders.some(function(g) { return g.id === 'E'; })) {
+  // 관리그룹(E그룹) — admin(7463) 인증된 사용자에게만 노출. 대표명 '관리자' 고정.
+  if (isAdminUser() && !grpLeaders.some(function(g) { return g.id === 'E'; })) {
     grpLeaders.push({ id: 'E', name: 'E그룹(관리그룹)', leader: '관리자' });
   }
   if (grpLeaders.length) {
@@ -3490,11 +3490,11 @@ const DEFAULT_JO = [{
   ban: '수지주일반'
 }, {
   jo: '12',
-  leader: 'TEST1',
+  leader: 'test1',
   leaderStep: '',
-  trainer: 'TEST2',
+  trainer: 'test2',
   trainerStep: '',
-  trainee: 'TEST3',
+  trainee: 'test3',
   traineeStep: '',
   group: 'E',
   ban: '수지주일반'
@@ -3503,9 +3503,9 @@ const DEFAULT_JO = [{
 function getJoData() {
   try {
     var d = JSON.parse(localStorage.getItem(LS_JO));
-    if (!d || !d.length) return DEFAULT_JO;
+    if (!d || !d.length) return filterJo12(DEFAULT_JO);
     // 단계 정보 없는 경우 DEFAULT_JO에서 보완
-    return d.map(function(j) {
+    var result = d.map(function(j) {
       if (!j.leaderStep && !j.trainerStep && !j.traineeStep) {
         var def = DEFAULT_JO.find(function(dj) {
           return String(dj.jo) === String(j.jo);
@@ -3518,9 +3518,21 @@ function getJoData() {
       }
       return j;
     });
+    // 서버 조정보에 12조가 없으면 admin(7463) 인증된 경우에만 12조(test1/2/3)를 보강
+    if (isAdminUser() && !result.some(function(j) { return String(j.jo) === '12'; })) {
+      var jo12 = DEFAULT_JO.find(function(dj) { return String(dj.jo) === '12'; });
+      if (jo12) result.push(jo12);
+    }
+    return filterJo12(result);
   } catch {
-    return DEFAULT_JO;
+    return filterJo12(DEFAULT_JO);
   }
+}
+
+// 12조(로직 점검용 테스트 조)는 admin(7463) 인증된 사용자에게만 노출
+function filterJo12(arr) {
+  if (isAdminUser()) return arr;
+  return arr.filter(function(j) { return String(j.jo) !== '12'; });
 }
 
 function saveJoDataLS(arr) {

@@ -2348,16 +2348,39 @@ let suryoChartData = []; // 수료조건 차트용 — 주차 필터 적용된 �
 
 // ── 비밀번호 ─────────────────────────────────────────────────────────────────
 // ⚠️ 보안을 위해 배포 전 반드시 변경하세요
-const ADMIN_PW = '9191';
+// 9191 = 모니터링(열람 전용) / 7463 = admin(전체 권한 — 문서번호 관리, 불일치 수정 포함)
+const PW_MONITOR = '9191';
+const PW_ADMIN = '7463';
 const LS_AUTH = 'admin_auth_62';
+
+// 현재 인증 레벨 ('admin' | 'monitor' | null)
+window._authLevel = null;
+
+function isAdminLevel() {
+  return window._authLevel === 'admin';
+}
+
+// admin 전용 기능 진입 전 공통 체크 — 권한 없으면 안내 후 false 반환
+function requireAdminLevel() {
+  if (isAdminLevel()) return true;
+  showToast('🔒 이 기능은 admin(7463) 권한이 필요합니다. (현재: 모니터링)');
+  return false;
+}
 
 function checkPassword() {
   var val = document.getElementById('lock-input').value;
-  if (val === ADMIN_PW) {
-    sessionStorage.setItem(LS_AUTH, '1');
-    localStorage.setItem('index_admin_verified', '1'); // 공개보고서 페이지와 인증 공유
+  if (val === PW_ADMIN) {
+    window._authLevel = 'admin';
+    sessionStorage.setItem(LS_AUTH, 'admin');
+    localStorage.setItem('index_admin_verified', '1'); // 공개보고서 페이지와 인증 공유 (admin만)
     document.getElementById('lock-screen').style.display = 'none';
     document.getElementById('lock-input').value = '';
+  } else if (val === PW_MONITOR) {
+    window._authLevel = 'monitor';
+    sessionStorage.setItem(LS_AUTH, 'monitor');
+    document.getElementById('lock-screen').style.display = 'none';
+    document.getElementById('lock-input').value = '';
+    showToast('👁️ 모니터링 권한으로 접속했습니다. (문서번호 관리·불일치 수정은 admin 전용)');
   } else {
     var err = document.getElementById('lock-error');
     err.textContent = '❌ 비밀번호가 올바르지 않습니다.';
@@ -2374,15 +2397,20 @@ function onLockInput() {
 }
 
 window.onload = function() {
-  // 세션 인증 또는 공개보고서 페이지에서의 인증(localStorage 공유)이 있으면 통과
-  var authed = sessionStorage.getItem(LS_AUTH) || localStorage.getItem('index_admin_verified');
-  if (!authed) {
+  // 세션 인증 또는 공개보고서 페이지에서의 인증(localStorage 공유, admin만 공유됨)이 있으면 통과
+  var sessLevel = sessionStorage.getItem(LS_AUTH); // 'admin' | 'monitor' | '1'(구버전) | null
+  var sharedAdmin = localStorage.getItem('index_admin_verified') === '1';
+  var level = (sessLevel === 'admin' || sessLevel === '1' || sharedAdmin) ? 'admin'
+            : (sessLevel === 'monitor') ? 'monitor'
+            : null;
+  if (!level) {
     document.getElementById('lock-screen').style.display = 'flex';
     setTimeout(function() {
       document.getElementById('lock-input').focus();
     }, 100);
   } else {
-    sessionStorage.setItem(LS_AUTH, '1'); // 세션에도 동기화
+    window._authLevel = level;
+    sessionStorage.setItem(LS_AUTH, level); // 세션에도 동기화(레벨 그대로)
     document.getElementById('lock-screen').style.display = 'none';
   }
   // 릴리즈 시각 (한국시간)
@@ -2545,7 +2573,7 @@ async function loadData() {
       if (!latestMap[key]) { latestMap[key] = r; }
       else { if ((r.savedAt||'') > (latestMap[key].savedAt||'')) latestMap[key] = r; }
     });
-    allData = Object.values(latestMap);
+    allData = Object.values(latestMap).filter(function(r) { return String(r.jo) !== '12'; }); // 12조는 로직 점검용 테스트 조 — 집계 제외
     allData.sort(function(a,b){
       if (a.week!==b.week) return a.week-b.week;
       return String(a.jo).localeCompare(String(b.jo));
@@ -2589,7 +2617,8 @@ async function loadData() {
         }
       }
     });
-    allData = Object.values(latestMap);
+    var dedupedCount = Object.keys(latestMap).length;
+    allData = Object.values(latestMap).filter(function(r) { return String(r.jo) !== '12'; }); // 12조는 로직 점검용 테스트 조 — 집계 제외
     // 주차→조 순 정렬 유지
     allData.sort(function(a, b) {
       if (a.week !== b.week) return a.week - b.week;
@@ -2597,7 +2626,7 @@ async function loadData() {
     });
 
     var totalRaw = parsed.length;
-    var totalLatest = allData.length;
+    var totalLatest = dedupedCount;
     var dupCount = totalRaw - totalLatest;
 
     updateConnBadge();
@@ -2818,6 +2847,7 @@ function showDataErrorModal() {
 }
 
 function openInIndex(docNumber) {
+  if (!requireAdminLevel()) return;
   if (!CFG.url) {
     showToast('구글 시트 URL이 설정되지 않았습니다.');
     return;
@@ -5777,9 +5807,10 @@ function renderTab4() {
     return;
   }
 
-  // 문서번호별 그룹핑 (rawData 전체 기준)
+  // 문서번호별 그룹핑 (rawData 전체 기준, 12조는 로직 점검용 테스트 조라서 제외)
+  var filteredRaw = rawData.filter(function(r) { return String(r.jo) !== '12'; });
   var groups = {};
-  rawData.forEach(function(r) {
+  filteredRaw.forEach(function(r) {
     var doc = r.docNumber || '';
     if (!doc) return;
     if (!groups[doc]) {
@@ -5795,7 +5826,7 @@ function renderTab4() {
   });
 
   var allDocs = Object.values(groups);
-  var totalRows = rawData.length;
+  var totalRows = filteredRaw.length;
   var uniqueDocs = allDocs.length;
 
   // 최신 저장일시 계산 + 중복 건수
@@ -5870,7 +5901,7 @@ function renderTab5() {
   }
 
   var withNote = rawData.filter(function(r) {
-    return r.specialNote && String(r.specialNote).trim();
+    return String(r.jo) !== '12' && r.specialNote && String(r.specialNote).trim();
   });
 
   // 최신순 정렬
@@ -5906,6 +5937,7 @@ function renderTab5() {
 }
 
 function switchTab(idx) {
+  if (idx === 4 && !requireAdminLevel()) return; // 문서번호 관리(중복행 삭제)는 admin 전용
   currentTab = idx;
   document.querySelectorAll('.tab').forEach(function(t, i) {
     t.classList.toggle('active', i === idx);
