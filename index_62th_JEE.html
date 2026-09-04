@@ -3221,6 +3221,10 @@ function _openPresetModalNow() {
       { id: 'E', name: 'E그룹', leader: 'E그룹장명' }
     ];
   })();
+  // 관리그룹(E그룹) — 실제 데이터 출처와 무관하게 항상 표시. 대표명 '관리자' 고정.
+  if (!grpLeaders.some(function(g) { return g.id === 'E'; })) {
+    grpLeaders.push({ id: 'E', name: 'E그룹(관리그룹)', leader: '관리자' });
+  }
   if (grpLeaders.length) {
     var grpLabel = document.createElement('div');
     grpLabel.style.cssText = 'font-size:10px;font-weight:700;color:rgba(32,80,200,.5);letter-spacing:2px;margin:6px 0 4px;';
