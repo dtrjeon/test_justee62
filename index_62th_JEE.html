@@ -1819,6 +1819,7 @@ pre.code-block {
 </div>
 <div class="con">
   <!-- 임시저장 배너 -->
+  <div id="draft-banner-area"></div>
 
   <div class="sec">
     <div class="sec-lbl">1. 조 선택 &amp; 팀 구성원
@@ -2141,6 +2142,12 @@ pre.code-block {
   </div>
   <div style="text-align:center;font-size:11px;color:rgba(32,80,200,0.4);letter-spacing:2px;margin-bottom:14px;">모든 영광을 하나님께 올려드립니다!</div>
 
+  <!-- 수정이력 표시 -->
+  <div id="edit-log-area" style="display:none;margin-bottom:8px;padding:9px 12px;background:rgba(32,80,200,0.04);border:1px solid rgba(32,80,200,0.15);border-radius:8px;font-size:11px;color:#334;line-height:1.7;">
+    <div style="font-weight:700;color:#1a3a9e;margin-bottom:2px;">📝 수정이력</div>
+    <div id="edit-log-text" style="white-space:pre-line;"></div>
+  </div>
+
   <!-- 문서 삭제 버튼 (프리셋 작성조 또는 관리자만 표시) -->
   <div id="delete-doc-area" style="display:none;margin-bottom:8px;">
     <button type="button" id="delete-doc-btn" onclick="handleDeleteDoc()"
@@ -2158,6 +2165,15 @@ pre.code-block {
              background:rgba(30,140,60,0.05);cursor:pointer;min-height:56px;">
       <span style="font-size:22px;line-height:1;">👁️</span>
       <span style="font-size:10px;font-weight:700;color:#1a6b3c;white-space:nowrap;">미리보기</span>
+    </button>
+
+    <!-- 💾 임시저장 -->
+    <button type="button" onclick="saveDraft()"
+      style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;
+             padding:10px 4px;border:1px solid rgba(32,80,200,0.3);border-radius:10px;
+             background:rgba(32,80,200,0.05);cursor:pointer;min-height:56px;">
+      <span style="font-size:22px;line-height:1;">💾</span>
+      <span style="font-size:10px;font-weight:700;color:#1a3a9e;white-space:nowrap;">임시저장</span>
     </button>
 
     <!-- 🔄 초기화 -->
@@ -3166,7 +3182,8 @@ function _openPresetModalNow() {
     + '<button onclick="closePresetModal()" '
     + 'style="background:none;border:none;font-size:20px;cursor:pointer;color:#aaa;line-height:1;padding:0 2px;">✕</button>';
   var p = document.createElement('p');
-  p.textContent = '본인 이름을 선택하면 매번 조·역할이 자동으로 채워집니다.';
+  p.innerHTML = '본인 이름을 선택하면 매번 조·역할이 자동으로 채워집니다.'
+    + '<br><span style="color:#c65000;font-weight:600;">⚠️ 설정해두어야 나중에 본인이 작성한 보고서를 수정·삭제할 수 있습니다.</span>';
 
   var list = document.createElement('div');
   list.className = 'preset-member-list';
@@ -4780,14 +4797,6 @@ function resetQ5() {
   syncPreview();
 }
 
-// 각 행의 결과 매핑 (yj-td-0~3 에 대응)
-var YJ_ROW_META = [
-  { hv: '있었고', rs: '믿음',  resultYes: '결신',  resColor: ['#c00','#666'],    confirmKey: 't_decision' }, // 0: 머리신자
-  { hv: '있었고', rs: '행위',  resultYes: '결신',  resColor: ['#c00','#666'],    confirmKey: 't_decision' }, // 1: 착각비신자
-  { hv: '없었고', rs: '믿음',  resultYes: '확신',  resColor: ['#1565c0','#666'], confirmKey: 't_confirm'  }, // 2: 확신부족
-  { hv: '없었고', rs: '행위',  resultYes: '결신',  resColor: ['#c00','#666'],    confirmKey: 't_decision' }, // 3: 비신자
-];
-
 function syncStatFromResult(result) {
   var fields = { t_decision: 0, t_reject: 0, t_confirm: 0, t_believer: 0 };
   if      (result === '결신')     fields.t_decision = 1;
@@ -4800,70 +4809,6 @@ function syncStatFromResult(result) {
   });
   updateQ5Steps();
   syncPreview();
-}
-
-function onYjToggle(idx, el) {
-  var isActive = el.classList.contains('active');
-  var newYj = isActive ? 'X' : '영접';
-  el.classList.toggle('active', !isActive);
-  el.classList.toggle('inactive', isActive);
-  el.textContent = isActive ? 'X' : '영접';
-
-  var meta = YJ_ROW_META[idx];
-  var result = newYj === '영접' ? meta.resultYes : '보류/거부';
-
-  var resTd = document.getElementById('res-td-' + idx);
-  if (resTd) {
-    resTd.textContent = result;
-    resTd.style.color = newYj === '영접' ? meta.resColor[0] : meta.resColor[1];
-  }
-
-  // 현재 선택된 행이면 yeopjeop radio + 통계 동기화
-  var hv = radio('heaven'), rs = radio('reason');
-  var rsNorm = (rs === '행위' || rs === '불확실' || rs === '대답안함') ? 'etc' : rs;
-  var metaRsNorm = (meta.rs === '행위' || meta.rs === '불확실' || meta.rs === '대답안함') ? 'etc' : meta.rs;
-  if (hv === meta.hv && rsNorm === metaRsNorm) {
-    var yjRadio = document.querySelector('input[name="yeopjeop"][value="' + newYj + '"]');
-    if (yjRadio) { yjRadio.checked = true; onYeopjeopChange(); }
-    syncStatFromResult(result);
-  }
-}
-
-function onDiagTableClick(tr) {
-  var hv = tr.dataset.hv;
-  var rs = tr.dataset.rs;
-  var yj = tr.dataset.yj || '영접';
-  if (!hv || !rs) return;
-
-  // 5-1 확신 radio 세팅
-  var hvRadio = document.querySelector('input[name="heaven"][value="' + hv + '"]');
-  if (hvRadio) hvRadio.checked = true;
-
-  // 5-2 이유 radio 세팅 (etc → 행위 기본값)
-  var rsVal = (rs === 'etc') ? '행위' : rs;
-  var rsRadio = document.querySelector('input[name="reason"][value="' + rsVal + '"]');
-  if (rsRadio) rsRadio.checked = true;
-
-  // 영접 radio 세팅
-  var yjRadio = document.querySelector('input[name="yeopjeop"][value="' + yj + '"]');
-  if (yjRadio) yjRadio.checked = true;
-
-  var s = window.scrollY;
-  onQ5Change();
-  // 영접 값도 반영
-  if (yjRadio) {
-    onYeopjeopChange();
-    // 진단결과 → 통계 직접 세팅
-    var yjVal = tr.dataset.yj || '영접';
-    var hv2 = tr.dataset.hv, rs2 = tr.dataset.rs;
-    var rsNorm2 = (rs2 === 'etc') ? '행위' : rs2;
-    var info2 = getDiagInfo(hv2, rsNorm2);
-    if (info2) {
-      var result2 = calcResult(hv2, rsNorm2, yjVal);
-      syncStatFromResult(result2);
-    }
-  }
-  requestAnimationFrame(function() { window.scrollTo(0, s); });
 }
 
 function updateQ5Steps() {
@@ -5143,6 +5088,17 @@ function collectFormData() {
     }
   }
   return {
+    // 작성자 — 본인 이름 preset 기준. 수정/삭제 권한 판단에 사용됨.
+    writer: (function() { var p = getPreset(); return (p && p.name) || ''; })(),
+    // 수정이력 — 최초 제출 시엔 비어있고, 이후 수정제출할 때마다 "이름 (시각)"이 누적됨
+    edit_log: (function() {
+      if (!window._isRevision) return '';
+      var p = getPreset();
+      var name = (p && p.name) || '(이름 미설정)';
+      var entry = name + ' (' + fmtDraftTime(new Date().toISOString()) + ')';
+      var prev = window._currentRecordEditLog || '';
+      return prev ? (prev + ' | ' + entry) : entry;
+    })(),
     week: v('report-week'),
     date: v('report-date'),
     doc_number: v('doc_number'),
@@ -5219,6 +5175,11 @@ async function handleSubmit() {
   // 제출 잠금 체크
   if (isSubmitLocked()) {
     showStatus('⚠️ 이미 제출된 보고서입니다. 초기화 후 새 보고서를 작성해 주세요.', 'warn');
+    return;
+  }
+  // 수정 모드인데 작성인 본인이 아니면 차단 (다른 사람이 남의 보고서를 고쳐 제출하지 못하도록)
+  if (window._isRevision && !hasDocOwnership()) {
+    showStatus('🔒 본인이 작성한 보고서만 수정할 수 있습니다.', 'error');
     return;
   }
   // 영접여부 필수 체크
@@ -5357,6 +5318,10 @@ async function submitServer() {
       showSubmitDone(payload, json.savedAt || '');
       window._isRevision = false;
       window._origDocNumber = '';
+      window._currentRecordWriter = '';
+      window._currentRecordMembers = null;
+      window._currentRecordEditLog = '';
+      clearDraft(); // 정식 제출 완료 — 임시저장 내용은 더 이상 필요 없음
       var btn2 = document.getElementById('preview-submit-btn');
       if (btn2) {
         btn2.style.background = '';
@@ -5847,6 +5812,14 @@ function loadRecord(idx) {
   // 수정 모드 플래그
   window._isRevision = true;
   window._origDocNumber = data.doc_number || '';
+  // 이 문서의 작성자 — 삭제/수정 권한 판단에 사용
+  window._currentRecordWriter = r.writer || r['작성자'] || '';
+  // 이 문서의 조원(리더/훈련자/훈련생) — 셋 중 누구든 수정 가능하도록 함께 저장
+  window._currentRecordMembers = {
+    leader: data.leader || '', trainer: data.trainer || '', trainee1: data.trainee1 || ''
+  };
+  // 이 문서의 수정 이력 로그
+  window._currentRecordEditLog = r.edit_log || r['수정이력'] || '';
 
   applyFormData(data);
   switchTab('form');
@@ -5863,7 +5836,13 @@ function loadRecord(idx) {
       + '<span style="font-size:9px;font-weight:400;opacity:0.85;line-height:1.2;">(' + (data.doc_number || '') + ')</span>'
       + '</div>';
   }
-  showStatus('✅ 기록 불러옴 — 수정 후 제출하면 이력 보존 + 최신본으로 모니터링에 표시됩니다.', 'success');
+  updateEditLockState();
+  updateEditLogDisplay();
+  if (hasDocOwnership()) {
+    showStatus('✅ 기록 불러옴 — 수정 후 제출하면 이력 보존 + 최신본으로 모니터링에 표시됩니다.', 'success');
+  } else {
+    showStatus('🔒 본인이 작성한 보고서가 아니라 열람만 가능합니다. (수정/삭제 불가)', 'warn');
+  }
 }
 
 function onResetFormBtn() {
@@ -5884,6 +5863,14 @@ function resetForm() {
   _lastSavedDiagResult = '';
   // 제출 잠금 해제
   setSubmitLock(false);
+  // 수정모드/작성자 정보 초기화
+  window._isRevision = false;
+  window._origDocNumber = '';
+  window._currentRecordWriter = '';
+  window._currentRecordMembers = null;
+  window._currentRecordEditLog = '';
+  updateEditLockState();
+  updateEditLogDisplay();
   document.querySelectorAll('#form-page input[type=text],#form-page input[type=number],#form-page textarea').forEach(function(el) {
     el.value = '';
   });
@@ -7240,6 +7227,9 @@ window.onload = function() {
   // 주차 드롭다운 동적 생성 (mon_trainEnd 기준)
   buildReportWeekSelect();
 
+  // 임시저장된 내용이 있으면 배너로 안내
+  renderDraftBanner();
+
   // 서버 연결 뱃지 표시 (🔒 자물쇠 아이콘 포함)
   var scb = document.getElementById('server-connected-badge');
   if (scb) {
@@ -7457,6 +7447,11 @@ window.onload = function() {
         };
         window._isRevision = true;
         window._origDocNumber = data.doc_number;
+        window._currentRecordWriter = r['작성자'] || r.writer || '';
+        window._currentRecordMembers = {
+          leader: data.leader || '', trainer: data.trainer || '', trainee1: data.trainee1 || ''
+        };
+        window._currentRecordEditLog = r['수정이력'] || r.edit_log || '';
         applyFormData(data);
         var sbtn = document.getElementById('preview-submit-btn');
         if (sbtn) {
@@ -7469,6 +7464,8 @@ window.onload = function() {
             + '<span style="font-size:9px;font-weight:400;opacity:0.85;line-height:1.2;">(' + data.doc_number + ')</span>'
             + '</div>';
         }
+        updateEditLockState();
+        updateEditLogDisplay();
         setTimeout(function() {
           showStatus('⚠️ [' + data.doc_number + '] 불일치 수정 — 전도유형을 확인 후 제출하세요.', 'error');
         }, 500);
@@ -7520,25 +7517,60 @@ window.onload = function() {
   })();
 };
 
-// ── 문서 삭제 권한 체크 및 버튼 표시 ────────────────────────────────────────
-// 관리자 비밀번호는 서버(GAS)에서만 검증 — 클라이언트에 노출하지 않음
+// ── 문서 수정/삭제 권한 체크 및 버튼 표시 ────────────────────────────────────
 
-function checkDeletePermission() {
+// 문서 소유권(=작성 조원 본인) 확인 — 수정/삭제 공통으로 사용
+// 관리자 비밀번호는 서버(GAS)에서만 검증 — 클라이언트에 노출하지 않음
+function hasDocOwnership() {
   var docNum = (document.getElementById('doc_number') || {}).value || '';
   if (!docNum) return false;
 
   // 1) 관리자 세션 (localStorage에 admin_verified 저장)
   if (localStorage.getItem('index_admin_verified') === '1') return true;
 
-  // 2) 프리셋(작성조) — 문서번호의 조 번호와 프리셋 조 번호 일치 여부
+  // 2) 그 보고서의 조원(리더/훈련자/훈련생) 중 한 명 — 현재 preset 이름과 일치하면 허용
+  //    (완전히 관계없는 사람은 여전히 불가)
   var p = getPreset();
-  if (p && p.jo) {
-    var parts = docNum.split('-');
-    var docJo = parts[1] || '';
-    if (String(docJo) === String(p.jo)) return true;
+  if (p && p.name) {
+    var m = window._currentRecordMembers || {};
+    var names = [window._currentRecordWriter, m.leader, m.trainer, m.trainee1];
+    for (var i = 0; i < names.length; i++) {
+      if (names[i] && String(p.name) === String(names[i])) return true;
+    }
   }
 
   return false;
+}
+
+// 불러온 문서가 본인 작성이 아닐 경우, 수정제출 버튼을 잠금 처리
+function updateEditLockState() {
+  var sbtn = document.getElementById('preview-submit-btn');
+  if (!sbtn) return;
+  if (window._isRevision && !hasDocOwnership()) {
+    sbtn.disabled = true;
+    sbtn.style.opacity = '0.5';
+    sbtn.style.cursor = 'not-allowed';
+    sbtn.title = '본인이 작성한 보고서만 수정할 수 있습니다.';
+  } else {
+    sbtn.disabled = false;
+    sbtn.style.opacity = '';
+    sbtn.style.cursor = '';
+    sbtn.title = '';
+  }
+}
+
+// 불러온 문서의 수정이력("이름 (시각) | 이름 (시각) ...")을 화면에 표시
+function updateEditLogDisplay() {
+  var area = document.getElementById('edit-log-area');
+  var text = document.getElementById('edit-log-text');
+  if (!area || !text) return;
+  var log = window._currentRecordEditLog || '';
+  if (log) {
+    text.textContent = log.split(' | ').join('\n');
+    area.style.display = 'block';
+  } else {
+    area.style.display = 'none';
+  }
 }
 
 function updateDeleteBtn() {
@@ -7546,7 +7578,7 @@ function updateDeleteBtn() {
   var docNum = (document.getElementById('doc_number') || {}).value || '';
   if (!area) return;
   // 문서번호가 있고 권한이 있을 때만 표시
-  area.style.display = (docNum && checkDeletePermission()) ? 'block' : 'none';
+  area.style.display = (docNum && hasDocOwnership()) ? 'block' : 'none';
 }
 
 function handleDeleteDoc() {
@@ -7554,7 +7586,7 @@ function handleDeleteDoc() {
   if (!docNum) { showStatus('⚠️ 삭제할 문서번호가 없습니다.', 'warn'); return; }
 
   // 권한 재확인
-  if (!checkDeletePermission()) {
+  if (!hasDocOwnership()) {
     // 관리자 비번 입력 프롬프트
     promptAdminPwForDelete(docNum);
     return;
@@ -7660,7 +7692,78 @@ async function executeDeleteDoc(docNum) {
   }
 }
 
+// ── 임시저장 (브라우저 로컬 보관, 서버 제출 아님) ─────────────────────────
+var DRAFT_KEY = 'report_draft_62';
+
+function saveDraft() {
+  try {
+    var data = collectFormData();
+    var payload = { data: data, savedAt: new Date().toISOString() };
+    localStorage.setItem(DRAFT_KEY, JSON.stringify(payload));
+    showStatus('💾 임시저장 완료 — 다음에 이어서 작성할 수 있습니다.', 'success');
+    renderDraftBanner(); // 배너 갱신(저장 시각 표시)
+  } catch (e) {
+    showStatus('❌ 임시저장 실패: ' + e.message, 'error');
+  }
+}
+
+function getDraft() {
+  try {
+    return JSON.parse(localStorage.getItem(DRAFT_KEY) || 'null');
+  } catch (e) {
+    return null;
+  }
+}
+
+function clearDraft() {
+  localStorage.removeItem(DRAFT_KEY);
+  var area = document.getElementById('draft-banner-area');
+  if (area) area.innerHTML = '';
+}
+
+function fmtDraftTime(iso) {
+  try {
+    var d = new Date(iso);
+    var pad = function(n) { return String(n).padStart(2, '0'); };
+    return (d.getMonth() + 1) + '/' + d.getDate() + ' ' + pad(d.getHours()) + ':' + pad(d.getMinutes());
+  } catch (e) { return ''; }
+}
+
+function renderDraftBanner() {
+  var area = document.getElementById('draft-banner-area');
+  if (!area) return;
+  var draft = getDraft();
+  if (!draft) { area.innerHTML = ''; return; }
+  area.innerHTML =
+    '<div style="display:flex;align-items:center;gap:8px;background:#eef2ff;border:1px solid rgba(32,80,200,0.25);' +
+    'border-radius:10px;padding:10px 12px;margin-bottom:12px;flex-wrap:wrap;">' +
+    '<span style="font-size:18px;line-height:1;">💾</span>' +
+    '<span style="flex:1;min-width:120px;font-size:12px;color:#1a3a9e;font-weight:600;">' +
+    '임시저장된 내용이 있습니다 (' + fmtDraftTime(draft.savedAt) + ')</span>' +
+    '<button type="button" onclick="restoreDraft()" ' +
+    'style="padding:7px 12px;border:none;border-radius:7px;background:#2050c8;color:#fff;font-size:12px;font-weight:700;cursor:pointer;">이어서 작성</button>' +
+    '<button type="button" onclick="confirmDiscardDraft()" ' +
+    'style="padding:7px 12px;border:1px solid rgba(180,0,0,0.3);border-radius:7px;background:#fff;color:#b00;font-size:12px;font-weight:700;cursor:pointer;">삭제</button>' +
+    '</div>';
+}
+
+function restoreDraft() {
+  var draft = getDraft();
+  if (!draft || !draft.data) { showStatus('⚠️ 불러올 임시저장 내용이 없습니다.', 'warn'); return; }
+  applyFormData(draft.data);
+  switchTab('form');
+  showStatus('✅ 임시저장된 내용을 불러왔습니다.', 'success');
+}
+
+function confirmDiscardDraft() {
+  if (confirm('임시저장된 내용을 삭제하시겠습니까?')) {
+    clearDraft();
+    showStatus('🗑️ 임시저장 내용을 삭제했습니다.', 'info');
+  }
+}
+
 function showStatus(msg, type) {
+
   var bar = document.getElementById('status-bar');
   bar.textContent = msg;
   bar.className = 'status-bar' + (type ? ' ' + type : '');
