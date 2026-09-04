@@ -3179,8 +3179,14 @@ function _openPresetModalNow() {
   var h3 = document.createElement('h3');
   h3.style.cssText = 'margin:0 0 4px;font-size:16px;font-weight:800;color:#1a3ab0;display:flex;justify-content:space-between;align-items:center;';
   h3.innerHTML = '👤 내 조 설정'
+    + '<span style="display:flex;align-items:center;gap:10px;">'
+    + '<button onclick="event.stopPropagation();openPresetAdminAuth()" '
+    + 'style="background:none;border:none;font-size:17px;cursor:pointer;line-height:1;padding:0 2px;'
+    + 'color:' + (isAdminUser() ? '#2e7d32' : '#aaa') + ';" '
+    + 'title="' + (isAdminUser() ? 'admin 인증됨' : 'admin 인증') + '">🔒</button>'
     + '<button onclick="closePresetModal()" '
-    + 'style="background:none;border:none;font-size:20px;cursor:pointer;color:#aaa;line-height:1;padding:0 2px;">✕</button>';
+    + 'style="background:none;border:none;font-size:20px;cursor:pointer;color:#aaa;line-height:1;padding:0 2px;">✕</button>'
+    + '</span>';
   var p = document.createElement('p');
   p.innerHTML = '본인 이름을 선택하면 매번 조·역할이 자동으로 채워집니다.'
     + '<br><span style="color:#c65000;font-weight:600;">⚠️ 설정해두어야 나중에 본인이 작성한 보고서를 수정·삭제할 수 있습니다.</span>';
@@ -5537,6 +5543,36 @@ function clearSearch() {
 
 function isAdminUser() {
   return localStorage.getItem('index_admin_verified') === '1';
+}
+
+// "내 조 설정" 모달의 🔒 아이콘 — 새 탭으로 이동하지 않고 그 자리에서 admin 인증만 수행
+// (인증되면 관리그룹/12조가 즉시 목록에 나타나도록 모달을 새로고침)
+function openPresetAdminAuth() {
+  if (isAdminUser()) {
+    showStatus('✅ 이미 admin 인증 상태입니다.', 'info');
+    return;
+  }
+  var pw = window.prompt('admin 비밀번호를 입력하세요');
+  if (!pw) return;
+  if (!scriptUrl) { showStatus('⚠️ 구글 시트가 연결되지 않았습니다.', 'warn'); return; }
+  fetch(scriptUrl, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain' },
+    body: JSON.stringify({ action: 'verify_admin', password: pw })
+  })
+    .then(function(r) { return r.json(); })
+    .then(function(json) {
+      if (json.status === 'ok') {
+        localStorage.setItem('index_admin_verified', '1');
+        showStatus('✅ admin 인증 완료 — 관리그룹/12조가 표시됩니다.', 'success');
+        _openPresetModalNow(); // 목록 새로고침 (E그룹/12조 반영)
+      } else {
+        showStatus('❌ 비밀번호가 올바르지 않습니다.', 'error');
+      }
+    })
+    .catch(function() {
+      showStatus('❌ 서버 인증 실패. 다시 시도하세요.', 'error');
+    });
 }
 
 // 특이사항 공유(14번) 입력창 높이 조절 — 모바일은 textarea 드래그 리사이즈가
