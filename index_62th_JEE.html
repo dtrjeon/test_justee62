@@ -5728,6 +5728,7 @@ async function loadServerHistory() {
     if (json.status !== 'ok') throw new Error(json.message);
     var records = (json.records || []).map(function(r) {
       return {
+        rowIndex: r.rowIndex || null,
         _savedAt: r['저장일시'] || '',
         _source: 'server',
         week: String(r['주차'] || ''),
@@ -7094,47 +7095,67 @@ async function deleteSelectedRecords() {
     showStatus('🔒 삭제는 admin 권한이 필요합니다.', 'warn');
     return;
   }
-  var docNumbers = [];
   var selectedRecords = [];
   document.querySelectorAll('.multi-check input:checked').forEach(function(cb) {
     var idx = parseInt(cb.id.replace('cb-', ''));
     var r = window._historyRecords && window._historyRecords[idx];
-    if (r && r.doc_number) {
-      docNumbers.push(r.doc_number);
-      selectedRecords.push(r);
-    }
+    if (r && r.doc_number) selectedRecords.push(r);
   });
-  if (!docNumbers.length) {
+  if (!selectedRecords.length) {
     showStatus('삭제할 보고서를 선택해주세요.', 'warn');
     return;
   }
   if (!scriptUrl) { showStatus('⚠️ 구글 시트가 연결되지 않았습니다.', 'warn'); return; }
 
-  // 삭제 전, 선택된 보고서 목록을 하나하나 나열해서 실수로 다른 걸 지우지 않도록 확인
-  // (확인창이 너무 길어지지 않도록 최대 15건까지만 나열)
+  // ── 문서번호별로 그룹핑 ──────────────────────────────────────
+  var groups = {};
+  selectedRecords.forEach(function(r) {
+    (groups[r.doc_number] = groups[r.doc_number] || []).push(r);
+  });
+
+  // ── 그룹 내 2개 이상 선택된 경우, 가장 최신(_savedAt) 1건은 자동 보존하고 나머지만 삭제 ──
+  var toDelete = [];
+  var kept = [];
+  Object.keys(groups).forEach(function(doc) {
+    var list = groups[doc];
+    if (list.length > 1) {
+      list.sort(function(a, b) {
+        var ta = a._savedAt ? new Date(a._savedAt).getTime() : 0;
+        var tb = b._savedAt ? new Date(b._savedAt).getTime() : 0;
+        return tb - ta; // 최신순
+      });
+      kept.push(list[0]);
+      toDelete = toDelete.concat(list.slice(1));
+    } else {
+      toDelete.push(list[0]);
+    }
+  });
+
+  if (!toDelete.length) {
+    showStatus('삭제할 항목이 없습니다 (선택한 항목이 모두 최신본으로 보존됩니다).', 'warn');
+    return;
+  }
+
+  // 행 번호(rowIndex)가 없는 항목은 안전하게 행 단위 삭제를 할 수 없으므로 제외하고 안내
+  var noRowIndex = toDelete.filter(function(r) { return !r.rowIndex; });
+  toDelete = toDelete.filter(function(r) { return r.rowIndex; });
+
+  // ── 확인창: 삭제될 것 / 보존될 것을 명확히 구분해서 보여줌 (최대 15건까지 나열) ──
   var LIST_CAP = 15;
-  var listText = selectedRecords.slice(0, LIST_CAP).map(function(r, i) {
+  var fmtRow = function(r, i) {
     var name = r.name ? maskName(r.name) : '';
     return (i + 1) + '. [' + (r.doc_number || '') + '] ' + (r.jo || '?') + '조 ' + (r.week || '?') + '주차 · '
-      + (r.date || r._savedAt || '').slice(0, 10) + (name ? ' · ' + name : '');
-  }).join('\n');
-  if (selectedRecords.length > LIST_CAP) {
-    listText += '\n...외 ' + (selectedRecords.length - LIST_CAP) + '건 더';
-  }
+      + (r.date || r._savedAt || '').slice(0, 10) + (name ? ' · ' + name : '')
+      + (r._savedAt ? ' (저장: ' + r._savedAt + ')' : '');
+  };
+  var delText = toDelete.slice(0, LIST_CAP).map(fmtRow).join('\n');
+  if (toDelete.length > LIST_CAP) delText += '\n...외 ' + (toDelete.length - LIST_CAP) + '건 더';
+  var keptText = kept.length ? ('\n\n🛡️ 아래 ' + kept.length + '건은 같은 문서의 최신본이라 자동으로 보존됩니다:\n'
+    + kept.slice(0, LIST_CAP).map(fmtRow).join('\n')) : '';
 
-  // ── 중복성 검토: 선택 항목이 정말 "같은 문서(중복 이력)"인지, 아니면 서로 다른 보고서가 섞여있는지 확인 ──
-  var distinctDocs = docNumbers.filter(function(d, i) { return docNumbers.indexOf(d) === i; });
-  var dupNote;
-  if (distinctDocs.length === 1) {
-    dupNote = '✅ 모두 같은 문서번호(중복 이력) — 안전한 중복 정리입니다.';
-  } else {
-    dupNote = '🚨 주의: 서로 다른 문서번호가 ' + distinctDocs.length + '개 섞여 있습니다!\n'
-      + '단순 중복 정리가 아니라 서로 다른 보고서를 삭제하는 것이니 신중하게 확인하세요.';
-  }
-
-  var confirmMsg = '⚠️ 아래 ' + docNumbers.length + '건을 구글 시트에서 삭제합니다.\n'
-    + dupNote + '\n\n'
-    + listText + '\n\n계속하시겠습니까?';
+  var confirmMsg = '⚠️ 아래 ' + toDelete.length + '건을 구글 시트에서 삭제합니다.\n'
+    + '(같은 문서번호 중 가장 최신 항목은 자동으로 보존됩니다)\n\n'
+    + delText + keptText + '\n\n계속하시겠습니까?';
   if (!confirm(confirmMsg)) return;
 
   var btn = document.getElementById('multi-delete-btn');
@@ -7144,12 +7165,12 @@ async function deleteSelectedRecords() {
   }
 
   var okCount = 0, failCount = 0;
-  for (var i = 0; i < docNumbers.length; i++) {
+  for (var i = 0; i < toDelete.length; i++) {
     try {
       var res = await fetch(scriptUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'text/plain' },
-        body: JSON.stringify({ action: 'delete_doc', docNumber: docNumbers[i] })
+        body: JSON.stringify({ action: 'delete_doc_row', rowIndex: toDelete[i].rowIndex, docNumber: toDelete[i].doc_number })
       });
       var json = await res.json();
       if (json.status === 'ok') okCount++; else failCount++;
@@ -7162,7 +7183,10 @@ async function deleteSelectedRecords() {
     btn.disabled = false;
     btn.innerHTML = '<span style="font-size:18px;line-height:1;">🗑️</span><span style="font-size:9px;font-weight:700;color:#fff;white-space:nowrap;">삭제</span>';
   }
-  showStatus('🗑️ ' + okCount + '건 삭제 완료' + (failCount ? (' · ' + failCount + '건 실패') : ''), failCount ? 'warn' : 'success');
+  var msg = '🗑️ ' + okCount + '건 삭제 완료' + (failCount ? (' · ' + failCount + '건 실패') : '')
+    + (kept.length ? (' · 🛡️ ' + kept.length + '건 최신본 보존') : '')
+    + (noRowIndex.length ? (' · ⚠️ ' + noRowIndex.length + '건은 행 정보가 없어 건너뜀(새로고침 후 다시 시도)') : '');
+  showStatus(msg, (failCount || noRowIndex.length) ? 'warn' : 'success');
   clearMultiSelect();
   loadHistory(); // 목록 새로고침
 }
