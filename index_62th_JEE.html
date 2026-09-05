@@ -5890,7 +5890,7 @@ function renderHistory(records, src) {
       '<div style="margin-top:3px;">' + docNum + dupBadge + '</div>' +
       '<div class="rc-meta">' +
       '👑 ' + (r.leader || '—') + ' &nbsp;👤 ' + (r.trainer || '—') + (r.trainee1 ? ', ' + r.trainee1 : '') +
-      '<br>📍 ' + (r.location || '—') + ' ' + (r.name ? r.name + '씨' : '') + ' ' + (r.age ? r.age + '세' : '') +
+      '<br>📍 ' + (r.location || '—') + ' ' + (r.name ? (/씨$/.test(r.name) ? r.name : r.name + '씨') : '') + ' ' + (r.age ? (/[세대]$/.test(r.age) ? r.age : r.age + '세') : '') +
       '</div>' +
       '</div>' +
       '<div class="rc-date">' + (r._savedAt || r.date || '').slice(0,10) + '</div>' +
