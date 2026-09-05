@@ -408,6 +408,30 @@ body {
   border-top: 2px solid #8fa3d0;
 }
 
+/* 개인별 복음참여현황 — "훈련자(조장)" 열(5번째 컬럼) 고정, 나머지는 좌우 슬라이드 */
+.gospel-tbl th:nth-child(5),
+.gospel-tbl td:nth-child(5) {
+  position: sticky;
+  left: 0;
+  z-index: 4;
+  background: #f0f4ff;
+  box-shadow: 2px 0 4px rgba(26, 58, 176, 0.08);
+  border-right: 1px solid #c5cde8 !important;
+}
+
+.gospel-tbl thead th:nth-child(5) {
+  background: #1a3a9e;
+  z-index: 5;
+}
+
+.gospel-tbl tbody td:nth-child(5) {
+  background: #fff;
+}
+
+.gospel-tbl tbody tr:hover td:nth-child(5) {
+  background: #f7f9ff;
+}
+
 /* 복음제시현황(weekly-acc-tbl)과 테이블 크기(폰트/여백) 통일 */
 .gospel-tbl th,
 .gospel-tbl td,
