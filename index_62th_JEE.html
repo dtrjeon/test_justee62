@@ -7095,17 +7095,47 @@ async function deleteSelectedRecords() {
     return;
   }
   var docNumbers = [];
+  var selectedRecords = [];
   document.querySelectorAll('.multi-check input:checked').forEach(function(cb) {
     var idx = parseInt(cb.id.replace('cb-', ''));
     var r = window._historyRecords && window._historyRecords[idx];
-    if (r && r.doc_number) docNumbers.push(r.doc_number);
+    if (r && r.doc_number) {
+      docNumbers.push(r.doc_number);
+      selectedRecords.push(r);
+    }
   });
   if (!docNumbers.length) {
     showStatus('삭제할 보고서를 선택해주세요.', 'warn');
     return;
   }
   if (!scriptUrl) { showStatus('⚠️ 구글 시트가 연결되지 않았습니다.', 'warn'); return; }
-  if (!confirm('⚠️ 선택한 ' + docNumbers.length + '건을 구글 시트에서 삭제합니다.\n이 작업은 되돌릴 수 없습니다.\n계속하시겠습니까?')) return;
+
+  // 삭제 전, 선택된 보고서 목록을 하나하나 나열해서 실수로 다른 걸 지우지 않도록 확인
+  // (확인창이 너무 길어지지 않도록 최대 15건까지만 나열)
+  var LIST_CAP = 15;
+  var listText = selectedRecords.slice(0, LIST_CAP).map(function(r, i) {
+    var name = r.name ? maskName(r.name) : '';
+    return (i + 1) + '. [' + (r.doc_number || '') + '] ' + (r.jo || '?') + '조 ' + (r.week || '?') + '주차 · '
+      + (r.date || r._savedAt || '').slice(0, 10) + (name ? ' · ' + name : '');
+  }).join('\n');
+  if (selectedRecords.length > LIST_CAP) {
+    listText += '\n...외 ' + (selectedRecords.length - LIST_CAP) + '건 더';
+  }
+
+  // ── 중복성 검토: 선택 항목이 정말 "같은 문서(중복 이력)"인지, 아니면 서로 다른 보고서가 섞여있는지 확인 ──
+  var distinctDocs = docNumbers.filter(function(d, i) { return docNumbers.indexOf(d) === i; });
+  var dupNote;
+  if (distinctDocs.length === 1) {
+    dupNote = '✅ 모두 같은 문서번호(중복 이력) — 안전한 중복 정리입니다.';
+  } else {
+    dupNote = '🚨 주의: 서로 다른 문서번호가 ' + distinctDocs.length + '개 섞여 있습니다!\n'
+      + '단순 중복 정리가 아니라 서로 다른 보고서를 삭제하는 것이니 신중하게 확인하세요.';
+  }
+
+  var confirmMsg = '⚠️ 아래 ' + docNumbers.length + '건을 구글 시트에서 삭제합니다.\n'
+    + dupNote + '\n\n'
+    + listText + '\n\n계속하시겠습니까?';
+  if (!confirm(confirmMsg)) return;
 
   var btn = document.getElementById('multi-delete-btn');
   if (btn) {
