@@ -408,7 +408,16 @@ body {
   border-top: 2px solid #8fa3d0;
 }
 
-/* 개인별 복음참여현황 — "이름"(4번째)·"훈련자(조장)"(5번째) 열 고정, 나머지는 좌우 슬라이드 */
+/* 개인별 복음참여현황 — 헤더 2줄 전체를 세로 스크롤에도 상단 고정 (top은 JS에서 실측하여 지정) */
+.gospel-tbl thead th {
+  position: sticky;
+  z-index: 6;
+}
+
+.gospel-tbl thead tr:first-child th {
+  top: 0;
+}
+
 .gospel-tbl th:nth-child(4),
 .gospel-tbl td:nth-child(4) {
   position: sticky;
@@ -423,7 +432,7 @@ body {
 
 .gospel-tbl thead th:nth-child(4) {
   background: #1a3a9e;
-  z-index: 5;
+  z-index: 7;
 }
 
 .gospel-tbl tbody td:nth-child(4) {
@@ -446,7 +455,7 @@ body {
 
 .gospel-tbl thead th:nth-child(5) {
   background: #1a3a9e;
-  z-index: 5;
+  z-index: 7;
 }
 
 .gospel-tbl tbody td:nth-child(5) {
@@ -4015,6 +4024,21 @@ function applyInactiveFilter() {
   });
 }
 // ── TAB 1: 복음참여현황 (누적) ───────────────────────────────────────────────
+// 개인별 복음참여현황 — 헤더 1행 실제 높이를 측정해 2행(간증~즉석양육) sticky top에 반영
+// (폰트 크기/줄바꿈에 따라 1행 높이가 달라질 수 있어 하드코딩 대신 실측)
+function alignGospelTblHeader() {
+  var table = document.querySelector('.gospel-tbl');
+  if (!table) return;
+  var rows = table.querySelectorAll('thead tr');
+  if (rows.length < 2) return;
+  var row1Height = rows[0].getBoundingClientRect().height;
+  if (!row1Height) return;
+  rows[1].querySelectorAll('th').forEach(function(th) {
+    th.style.top = row1Height + 'px';
+  });
+}
+window.addEventListener('resize', alignGospelTblHeader);
+
 function renderTab1(data, w) {
   var tb = document.getElementById('tb-gospel');
   var PARTS = ['간증', '서론', '은혜', '인간', '하나님', '그리스도', '믿음', '결신', '즉석양육'];
@@ -4179,8 +4203,9 @@ function renderTab1(data, w) {
         var nameCls = m.role === '리더' ? 'font-weight:700;color:#1a3a9e;' : m.role === '훈련자' ? 'color:#1565c0;' : 'color:#555;';
         var stepCls = m.role === '리더' ? 'font-weight:700;' : '';
 
+        var roleLabelHtml = roleLabel === '훈련자(조장)' ? '훈련자<br>(조장)' : roleLabel;
         html += '<tr>' +
-          '<td style="font-size:9px;text-align:center;color:' + col + ';">' + roleLabel + '</td>' +
+          '<td style="font-size:9px;text-align:center;color:' + col + ';">' + roleLabelHtml + '</td>' +
           '<td class="td-step" style="' + stepCls + 'text-align:center;">' + (m.step || '—') + '</td>' +
           '<td class="td-jo" style="text-align:center;">' + m.jo + '</td>' +
           '<td class="td-name" style="' + nameCls + '">' + m.name + '</td>' +
@@ -4241,6 +4266,7 @@ function renderTab1(data, w) {
   setText('acc-confirm', totals.confirm || '—');
   setText('acc-gospel', calcGospel || '—');
   setText('acc-reject', totals.reject || '—');
+  requestAnimationFrame(alignGospelTblHeader);
 }
 
 

@@ -2096,6 +2096,7 @@ pre.code-block {
     </div>
     <p class="note-small" style="color:#777;margin-top:2px;">* 접촉횟수는 현장전도시 모든 만남을 포함합니다. / 복음제시결과는 자동등록됩니다.</p>
     <div id="cond8-section" style="display:none;margin-top:14px;margin-bottom:14px;"><div class="sec-lbl">8. 역할 배분 <span style="font-weight:400;color:rgba(32,80,200,0.4);text-transform:none;letter-spacing:0;">(그 외 대답)</span></div>
+      <div id="role-debug-badge" style="font-size:9px;color:rgba(32,80,200,0.5);margin-bottom:6px;letter-spacing:0;"></div>
       <div id="role-leader" style="margin-bottom:14px;"></div>
       <div id="role-trainer" style="margin-bottom:14px;"></div>
       <div id="role-trainee" style="margin-bottom:14px;"></div>
@@ -4448,6 +4449,10 @@ function onAllGospelChange(who) {
     if (dateEl && reportDate && !dateEl.value) {
       dateEl.value = reportDate.value || new Date().toISOString().split('T')[0];
     }
+    // ✦ 전체복음을 제시했다는 것은 곧 본인이 직접 "하였고"라는 뜻 —
+    // 행동(하였고/참관하였고)이 기본값(참관하였고)에 그대로 남아 잘못 저장되는 문제 방지
+    var a1 = document.getElementById(who + '_a1');
+    if (a1) a1.checked = true;
   }
 }
 
@@ -4461,6 +4466,11 @@ function onRoleItemChange(who) {
   if (allCb) allCb.checked = allChecked;
   var wrap = document.getElementById(who + '-gospel-date-wrap');
   if (wrap) wrap.style.display = allChecked ? 'block' : 'none';
+  // ✦ 9개 항목을 하나씩 체크해서 전체복음이 완성된 경우에도 동일하게 "하였고" 자동 선택
+  if (allChecked) {
+    var a1b = document.getElementById(who + '_a1');
+    if (a1b) a1b.checked = true;
+  }
 }
 
 function updateScbState(state) {
@@ -4625,6 +4635,18 @@ function updateRoleText(who) {
   if (tags) tags.innerHTML = checked.map(function(v) {
     return '<span class="ms-tag">' + v + '<span class="ms-tag-x" onclick="removeRole(\'' + who + '\',\'' + v + '\')">✕</span></span>';
   }).join('');
+  // 🔍 진단용 — 3명의 현재 선택 개수와 갱신 시각을 배지로 표시 (역할 태그가 원인 불명으로 바뀌는 문제 추적용)
+  var badge = document.getElementById('role-debug-badge');
+  if (badge) {
+    var cnt = function(id) {
+      return document.querySelectorAll('input[name="' + id + '_role"]:checked').length;
+    };
+    var now = new Date();
+    var hh = String(now.getHours()).padStart(2, '0');
+    var mm = String(now.getMinutes()).padStart(2, '0');
+    var ss = String(now.getSeconds()).padStart(2, '0');
+    badge.textContent = '🔍 ' + hh + ':' + mm + ':' + ss + ' 갱신 — 조장 ' + cnt('leader') + '개 · 훈련자 ' + cnt('trainer') + '개 · 훈련생 ' + cnt('trainee') + '개';
+  }
   var a1 = document.getElementById(who + '_a1');
   var a2 = document.getElementById(who + '_a2');
   if (a1 && a2) {
@@ -6884,8 +6906,7 @@ function buildSujuHtml(r) {
   var q10line1 = q8combined.substring(0, 40);
   var q10line2 = q8combined.length > 40 ? q8combined.substring(40, 90) : '';
 
-  var surname = r.name || '';
-  var targetNameDisplay = surname ? surname + '**' : '';
+  var targetNameDisplay = maskName(r.name || '');
 
   return '<div class="suju-paper" style="width:148mm;min-height:210mm;background:#fff;padding:6mm 7mm 7mm;font-size:8pt;color:#111;line-height:1.55;box-sizing:border-box;font-family:\'Malgun Gothic\',\'Apple SD Gothic Neo\',sans-serif;">' +
     '<div style="display:flex;gap:3mm;margin-bottom:2.5mm;align-items:stretch;">' +
@@ -7489,6 +7510,16 @@ async function handleOcrImage(event) {
 }
 
 window.onload = function() {
+  // 🔍 진단용 — 화면이 백그라운드에서 복귀할 때 배지에 표시 (역할배분 값이 원인불명으로 바뀌는 문제 추적용)
+  document.addEventListener('visibilitychange', function() {
+    if (document.visibilityState === 'visible') {
+      var badge = document.getElementById('role-debug-badge');
+      if (badge && badge.textContent) {
+        badge.textContent += ' (화면 복귀함)';
+      }
+    }
+  });
+
   // 앱 설정 적용 (임상 탭 on/off 등)
   applyAppSettings();
 
