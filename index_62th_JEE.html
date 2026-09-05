@@ -1114,6 +1114,11 @@ select {
   color: #1a3a9e;
 }
 
+.src-badge.test {
+  background: rgba(230, 126, 0, 0.15);
+  color: #e67e00;
+}
+
 .rc-seq-badge {
   display: inline-block;
   background: #1a3a9e;
@@ -2324,7 +2329,7 @@ pre.code-block {
         <span style="border-bottom:0.5pt solid #333;min-width:24mm;display:inline-block;text-align:center;font-weight:700;" id="sj_location">&nbsp;</span>
         <span style="white-space:nowrap;">에 사시는</span>
         <span style="border-bottom:0.5pt solid #333;min-width:10mm;display:inline-block;text-align:center;font-weight:700;" id="sj_age">&nbsp;</span>
-        <span>세 되신</span>
+        <span>되신</span>
         <b id="sj_marriage">[미혼/기혼]</b>
         <span>의</span>
         <b id="sj_gender">[남자/여자]</b>
@@ -5832,7 +5837,7 @@ function renderHistory(records, src) {
         '확신': 'background:#1a3a9e;color:#fff;',
         '보류/거부': 'background:#888;color:#fff;',
       } [resultText] || 'background:#aaa;color:#fff;';
-      resultBadge = '<span style="' + rColor + 'font-size:10px;font-weight:700;border-radius:4px;padding:2px 7px;margin-left:6px;">' + resultText + '</span>';
+      resultBadge = '<span style="' + rColor + 'font-size:10px;font-weight:700;border-radius:4px;padding:2px 7px;margin-left:6px;white-space:nowrap;display:inline-block;">' + resultText + '</span>';
     }
     var docNum = r.doc_number ? '<span style="font-size:10px;color:#2050c8;font-weight:700;background:#eef2ff;border-radius:4px;padding:2px 7px;margin-left:4px;">' + r.doc_number + '</span>' : '';
     // 관리자 모드: 중복 문서번호에 수정 이력 뱃지 표시
@@ -5854,7 +5859,7 @@ function renderHistory(records, src) {
       (r.jo ? r.jo + '조 ' : '') +
       (r.week ? r.week + '주차 ' : '') +
       '<span style="font-size:0.85em;font-weight:600;">현장전도 보고서</span> ' +
-      '<span class="src-badge ' + src + '">SERVER</span>' +
+      (src === 'server' ? '' : '<span class="src-badge ' + src + '">TEST</span>') +
       resultBadge +
       '</div>' +
       '<div style="margin-top:3px;">' + docNum + dupBadge + '</div>' +
@@ -6948,7 +6953,7 @@ function buildSujuHtml(r) {
     '<span style="border-bottom:0.5pt solid #333;min-width:24mm;display:inline-block;text-align:center;font-weight:700;">' + (r.location || '') + '</span>' +
     '<span style="white-space:nowrap;">에 사시는</span>' +
     '<span style="border-bottom:0.5pt solid #333;min-width:10mm;display:inline-block;text-align:center;font-weight:700;">' + (r.age || '') + '</span>' +
-    '<span>세 되신 <b>' + (r.marriage || '[미혼/기혼]') + '</b>의 <b>' + (r.gender || '[남자/여자]') + '</b>분을</span>' +
+    '<span>되신 <b>' + (r.marriage || '[미혼/기혼]') + '</b>의 <b>' + (r.gender || '[남자/여자]') + '</b>분을</span>' +
     '<div style="width:100%;"></div>' +
     '<span style="border-bottom:0.5pt solid #333;min-width:24mm;display:inline-block;text-align:center;font-weight:700;">' + (r.meet_place || '') + '</span>' +
     '<span>에서 만났습니다.</span>' +
