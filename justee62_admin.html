@@ -578,6 +578,10 @@ body {
   border-left: none !important;
   border-top: none !important;
   font-size: 10px !important;
+  white-space: normal !important;
+  word-break: keep-all;
+  overflow-wrap: break-word;
+  overflow: hidden;
 }
 
 /* weekly-acc-tbl 전역 th border-bottom 덮어쓰기 */
@@ -1650,8 +1654,8 @@ window.TEST_DATA = {"records": [{"저장일시": "2026-03-14", "주차": 3, "전
           <tr>
             <th style="border-right:1px solid #c5cde8;">주차</th>
             <th style="border-right:none;">실시</th><th style="border-right:1px solid #c5cde8;">미실시</th>
-            <th>관계(팀)</th><th>질문지(팀)</th><th>7일후(팀)</th><th>개인</th><th>관계</th><th>QQ</th><th style="border-right:1px solid #c5cde8;">합계</th>
-            <th>지인/지인가족</th><th>가족</th><th>지구촌교인</th><th>질문지</th><th>7일후</th><th>훈련생</th><th style="border-right:1px solid #c5cde8;">합계</th>
+            <th>관계(팀)</th><th>질문지<br>(팀)</th><th>7일후<br>(팀)</th><th>개인</th><th>관계</th><th>QQ</th><th style="border-right:1px solid #c5cde8;">합계</th>
+            <th>지인/<br>지인가족</th><th>가족</th><th>지구촌<br>교인</th><th>질문지</th><th>7일후</th><th>훈련생</th><th style="border-right:1px solid #c5cde8;">합계</th>
             <th>복음제시</th><th>결신</th><th>보류/거절</th><th>확신<br>부족</th><th style="border-right:1px solid #c5cde8;">이미<br>신자</th>
             <th>접촉횟수</th>
           </tr>
