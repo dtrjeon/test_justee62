@@ -1949,7 +1949,7 @@ pre.code-block {
     </div>
     <div style="display:flex;gap:8px;margin-bottom:10px;align-items:flex-end;">
       <div class="fld" style="flex:1;margin-bottom:0;"><div class="lbl">거주 지역 <span style="font-weight:400;font-size:10px;color:rgba(0,0,0,0.4);">(예: 신봉동 등)</span></div><input type="text" id="q3_location" placeholder="지역 입력" oninput="syncPreview()" style="width:100%;box-sizing:border-box;"></div>
-      <div class="fld" style="flex:1;margin-bottom:0;"><div class="lbl">성씨 <span style="font-weight:400;font-size:10px;color:rgba(0,0,0,0.4);">(예: 전씨, 김씨)</span></div><input type="text" id="q3_name" placeholder="성씨" oninput="syncPreview()" style="width:100%;box-sizing:border-box;"></div>
+      <div class="fld" style="flex:1;margin-bottom:0;"><div class="lbl">이름 <span style="font-weight:400;font-size:10px;color:rgba(0,0,0,0.4);">(예: 홍길동)</span></div><input type="text" id="q3_name" placeholder="이름" oninput="syncPreview()" style="width:100%;box-sizing:border-box;"></div>
       <div class="fld" style="flex:1;margin-bottom:0;"><div class="lbl">나이 <span style="font-weight:400;font-size:10px;color:rgba(0,0,0,0.4);">(예: 35세, 30대)</span></div><input type="text" id="q3_age" placeholder="나이" oninput="syncPreview()" style="width:100%;box-sizing:border-box;"></div>
     </div>
     <div style="display:flex;gap:8px;margin-bottom:8px;align-items:flex-start;">
@@ -5593,6 +5593,16 @@ function updateQ12Counter() {
   updateCharCounter('q12', max);
 }
 
+// 대상자 이름 마스킹 — 첫 글자와 끝 글자만 남기고 가운데를 *로 표시 (개인정보 보호)
+// 예: 홍길동→홍*동, 남궁민수→남**수, 2자(길동)→길*, 1자는 그대로
+function maskName(name) {
+  name = (name || '').trim();
+  var len = name.length;
+  if (len <= 1) return name;
+  if (len === 2) return name.charAt(0) + '*';
+  return name.charAt(0) + '*'.repeat(len - 2) + name.charAt(len - 1);
+}
+
 function isAdminUser() {
   return localStorage.getItem('index_admin_verified') === '1';
 }
@@ -6155,9 +6165,9 @@ function syncSuju() {
     setEl2('sj_dow2', '');
   }
   setEl2('sj_doc_number', v('doc_number'));
-  // 대상자이름: 성씨 + **
-  var surname = v('q3_name') || '';
-  setEl2('sj_target_name_display', surname ? surname + '**' : '');
+  // 대상자이름 마스킹: 첫 글자 + 가운데 * + 끝 글자 (예: 홍길동 → 홍*동, 남궁민수 → 남**수)
+  var fullName = v('q3_name') || '';
+  setEl2('sj_target_name_display', maskName(fullName));
   setEl2('sj_jo', v('q1_jo'));
   // 기수: joData의 kisu 또는 localStorage mon_kisu (기본값 62)
   var _jo = v('q1_jo');
@@ -7155,9 +7165,9 @@ function parseOcrText(text) {
   if (!locMatch) locMatch = full.match(/지역[:\s]*([가-힣a-zA-Z0-9\s]{1,20})/);
   if (locMatch) p.location = locMatch[1].trim().split(/\s/)[0];
 
-  // ── 성씨 ──────────────────────────────────────────
-  var nameMatch = full.match(/성씨[:\s]*([가-힣]{1,3})/);
-  if (!nameMatch) nameMatch = full.match(/이름[:\s]*([가-힣]{1,4})/);
+  // ── 이름 ──────────────────────────────────────────
+  var nameMatch = full.match(/이름[:\s]*([가-힣]{2,5})/);
+  if (!nameMatch) nameMatch = full.match(/성씨[:\s]*([가-힣]{1,3})/);
   if (nameMatch) p.name = nameMatch[1];
 
   // ── 나이 ──────────────────────────────────────────
@@ -7457,7 +7467,7 @@ window.onload = function() {
       confirm: '0',
       believer: '0',
       location: '신봉동',
-      name: '전씨',
+      name: '전준호',
       age: '35',
       marriage: '기혼',
       gender: '남자',
@@ -7485,7 +7495,7 @@ window.onload = function() {
       followup_reason: '',
       q10: '성령께서 강하게 역사하셔서 대상자가 스스로 마음을 열었습니다.',
       q11: '복음제시 중 주변 소음이 심해 집중하기 어려웠습니다.',
-      q12: '전씨 형제의 신앙 성장과 교회 연결을 위해 기도해주세요.',
+      q12: '전준호 형제의 신앙 성장과 교회 연결을 위해 기도해주세요.',
       q13: ''
     }, {
       _seq: 1,
@@ -7508,7 +7518,7 @@ window.onload = function() {
       confirm: '1',
       believer: '0',
       location: '풍덕천동',
-      name: '김씨',
+      name: '김민석',
       age: '45',
       marriage: '기혼',
       gender: '남자',
@@ -7536,7 +7546,7 @@ window.onload = function() {
       followup_reason: '',
       q10: '오랫동안 전도 대상이었던 이웃이 드디어 복음을 받아들였습니다.',
       q11: '즉석양육 시간이 부족하여 충분히 말씀을 나누지 못했습니다.',
-      q12: '김씨 집사님이 교회까지 잘 연결되고 세례까지 받으실 수 있도록 기도해주세요.',
+      q12: '김민석 집사님이 교회까지 잘 연결되고 세례까지 받으실 수 있도록 기도해주세요.',
       q13: ''
     }];
     localStorage.setItem(KEY, JSON.stringify(samples));
