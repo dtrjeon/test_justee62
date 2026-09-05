@@ -1788,7 +1788,7 @@ pre.code-block {
   <div class="tab-btns">
     <button class="tab-btn active" onclick="switchTab('form')">✏️ 작성</button>
     <button class="tab-btn" id="tab-btn-preview" onclick="switchTab('preview')" style="display:none;">📄 임상</button>
-    <button class="tab-btn" onclick="switchTab('suju')">👁️ 미리보기</button>
+    <button class="tab-btn" onclick="goToPreview()">👁️ 미리보기</button>
     <button class="tab-btn" onclick="switchTab('history')">📁 기록</button>
   </div>
   <div class="topbar-right">
@@ -2105,7 +2105,7 @@ pre.code-block {
         <div class="rb"><input type="radio" name="immed_nurture" value="안했고" id="in2" onchange="syncPreview()"><label for="in2">안했고</label></div>
       </div>
     </div>
-    <div class="fld"><div class="lbl">후속양육 방법</div>
+    <div class="fld"><div class="lbl">후속양육 (체크해주세요)</div>
       <div class="multiselect-wrap" id="followup-ms-wrap" style="margin-top:7px;">
         <div class="ms-trigger" onclick="toggleDropdown('followup',event)"><span class="ms-display" id="followup-ms-display">선택하세요</span><span class="ms-arrow">▾</span></div>
         <div class="ms-dropdown" id="followup-ms-dropdown">
@@ -2159,7 +2159,7 @@ pre.code-block {
   <div style="display:flex;gap:6px;margin-bottom:8px;">
 
     <!-- 👁️ 미리보기 -->
-    <button type="button" onclick="switchTab('suju')"
+    <button type="button" onclick="goToPreview()"
       style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;
              padding:10px 4px;border:1px solid rgba(30,140,60,0.3);border-radius:10px;
              background:rgba(30,140,60,0.05);cursor:pointer;min-height:56px;">
@@ -5595,6 +5595,20 @@ function updateQ12Counter() {
 
 // 대상자 이름 마스킹 — 첫 글자와 끝 글자만 남기고 가운데를 *로 표시 (개인정보 보호)
 // 예: 홍길동→홍*동, 남궁민수→남**수, 2자(길동)→길*, 1자는 그대로
+// 미리보기로 이동하기 전 — 후속양육 미선택 시 팝업으로 한 번 더 확인
+function goToPreview() {
+  var checked = document.querySelector('input[name="followup"]:checked');
+  if (!checked) {
+    var proceed = confirm('⚠️ "후속양육" 항목을 아직 선택하지 않았습니다.\n선택하지 않고 미리보기로 이동하시겠습니까?');
+    if (!proceed) {
+      var el = document.getElementById('followup-ms-wrap');
+      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      return;
+    }
+  }
+  switchTab('suju');
+}
+
 function maskName(name) {
   name = (name || '').trim();
   var len = name.length;
