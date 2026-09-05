@@ -6588,19 +6588,36 @@ async function renderSujuRecordsToPdf(records, filenamePrefix) {
       container.style.minHeight = A5_H + 'mm';
       await new Promise(function(res) { setTimeout(res, 120); });
 
+      // 8번(느낀점)·9번(기도제목) 답변이 길면 내용이 210mm를 넘어갈 수 있음 —
+      // 그 실제 렌더 높이 그대로 캡처해서 맨 아래 '모든 영광을 하나님께 돌립니다!' 문구가
+      // 잘리지 않게 함 (고정 A5 높이로 캡처하면 넘치는 부분이 잘려나감).
+      var capturePx = Math.max(container.scrollHeight, Math.round(A5_H * PX_PER_MM));
       var canvas = await html2canvas(container, {
         scale: SCALE,
         useCORS: true,
         backgroundColor: '#ffffff',
         windowWidth: Math.round(A5_W * PX_PER_MM),
-        windowHeight: Math.round(A5_H * PX_PER_MM),
+        windowHeight: capturePx,
         width: Math.round(A5_W * PX_PER_MM),
-        height: Math.round(A5_H * PX_PER_MM)
+        height: capturePx
       });
       var imgData = canvas.toDataURL('image/jpeg', 0.98);
       if (i > 0) pdf.addPage('a5', 'portrait');
-      // A5 페이지 전체를 꽉 채워서 배치 (여백 없이 실제 물리 크기와 일치)
-      pdf.addImage(imgData, 'JPEG', 0, 0, A5_W, A5_H);
+
+      // PDF 파일 자체는 항상 A5(148×210mm) 한 장 그대로 유지.
+      // 내용이 210mm 안에 다 들어가면 꽉 채워 배치하고,
+      // 넘치면 가로세로 비율을 유지한 채 한 페이지 안에 들어오도록 축소해
+      // 하단 문구까지 전부 보이도록 배치(가운데 정렬).
+      var contentHmm = capturePx / PX_PER_MM;
+      var drawW = A5_W, drawH = contentHmm;
+      if (contentHmm > A5_H) {
+        var shrink = A5_H / contentHmm;
+        drawW = A5_W * shrink;
+        drawH = A5_H;
+      }
+      var offsetX = (A5_W - drawW) / 2;
+      var offsetY = (A5_H - drawH) / 2;
+      pdf.addImage(imgData, 'JPEG', offsetX, offsetY, drawW, drawH);
       showStatus('⏳ PDF 생성 중... (' + (i + 1) + '/' + records.length + '매)', 'info');
     }
 
