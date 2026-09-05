@@ -2496,6 +2496,7 @@ pre.code-block {
       <button type="button" onclick="selectAllVisible()" style="background:rgba(32,80,200,0.08);border:1px solid rgba(32,80,200,0.2);color:#1a3a9e;border-radius:5px;padding:5px 10px;font-size:11px;font-weight:700;cursor:pointer;">전체선택</button>
       <button type="button" onclick="clearMultiSelect()" style="background:#f5f5f5;border:1px solid #ddd;color:#666;border-radius:5px;padding:5px 10px;font-size:11px;font-weight:700;cursor:pointer;">선택해제</button>
       <button type="button" onclick="printMultiSuju()" style="background:linear-gradient(135deg,#2e7d32,#1b5e20);color:#fff;border:none;border-radius:5px;padding:5px 12px;font-size:11px;font-weight:700;cursor:pointer;">📄 출력(PDF)</button>
+      <button type="button" id="multi-delete-btn" onclick="deleteSelectedRecords()" style="display:none;background:linear-gradient(135deg,#c00,#900);color:#fff;border:none;border-radius:5px;padding:5px 12px;font-size:11px;font-weight:700;cursor:pointer;">🗑️ 삭제</button>
     </div>
   </div>
   <div class="search-bar" id="search-bar" style="display:none;">
@@ -6661,12 +6662,14 @@ function toggleMultiSelect() {
   window._multiSelectMode = !window._multiSelectMode;
   var btn = document.getElementById('multiprint-btn');
   var mpBar = document.getElementById('multiprint-bar');
+  var delBtn = document.getElementById('multi-delete-btn');
   var checks = document.querySelectorAll('.multi-check');
   if (window._multiSelectMode) {
     checks.forEach(function(c) {
       c.style.display = 'block';
     });
     if (mpBar) mpBar.style.display = 'flex';
+    if (delBtn) delBtn.style.display = isAdminUser() ? 'block' : 'none'; // 삭제는 admin 전용
     if (btn) {
       btn.textContent = '☑ 선택중...';
       btn.style.background = 'rgba(46,125,50,0.15)';
@@ -7030,6 +7033,49 @@ async function printMultiSuju() {
     return;
   }
   await renderSujuRecordsToPdf(selected, '수주반_공개보고서_' + new Date().toISOString().slice(0, 10));
+}
+
+// 기록 탭에서 선택한 카드들을 일괄 삭제 — admin(index_admin_verified) 전용
+async function deleteSelectedRecords() {
+  if (!isAdminUser()) {
+    showStatus('🔒 삭제는 admin 권한이 필요합니다.', 'warn');
+    return;
+  }
+  var docNumbers = [];
+  document.querySelectorAll('.multi-check input:checked').forEach(function(cb) {
+    var idx = parseInt(cb.id.replace('cb-', ''));
+    var r = window._historyRecords && window._historyRecords[idx];
+    if (r && r.doc_number) docNumbers.push(r.doc_number);
+  });
+  if (!docNumbers.length) {
+    showStatus('삭제할 보고서를 선택해주세요.', 'warn');
+    return;
+  }
+  if (!scriptUrl) { showStatus('⚠️ 구글 시트가 연결되지 않았습니다.', 'warn'); return; }
+  if (!confirm('⚠️ 선택한 ' + docNumbers.length + '건을 구글 시트에서 삭제합니다.\n이 작업은 되돌릴 수 없습니다.\n계속하시겠습니까?')) return;
+
+  var btn = document.getElementById('multi-delete-btn');
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ 삭제 중...'; }
+
+  var okCount = 0, failCount = 0;
+  for (var i = 0; i < docNumbers.length; i++) {
+    try {
+      var res = await fetch(scriptUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain' },
+        body: JSON.stringify({ action: 'delete_doc', docNumber: docNumbers[i] })
+      });
+      var json = await res.json();
+      if (json.status === 'ok') okCount++; else failCount++;
+    } catch (e) {
+      failCount++;
+    }
+  }
+
+  if (btn) { btn.disabled = false; btn.innerHTML = '🗑️ 삭제'; }
+  showStatus('🗑️ ' + okCount + '건 삭제 완료' + (failCount ? (' · ' + failCount + '건 실패') : ''), failCount ? 'warn' : 'success');
+  clearMultiSelect();
+  loadHistory(); // 목록 새로고침
 }
 
 function _loadScript(src) {
