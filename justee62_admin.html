@@ -2490,7 +2490,11 @@ function requireAdminLevel() {
 }
 
 function checkPassword() {
-  var val = document.getElementById('lock-input').value;
+  var raw = document.getElementById('lock-input').value;
+  // 앞뒤 공백 제거 + 모바일 IME가 간혹 넣는 전각(全角) 숫자를 반각으로 변환
+  var val = raw.trim().replace(/[０-９]/g, function(ch) {
+    return String.fromCharCode(ch.charCodeAt(0) - 0xFEE0);
+  });
   if (val === PW_ADMIN) {
     window._authLevel = 'admin';
     sessionStorage.setItem(LS_AUTH, 'admin');
