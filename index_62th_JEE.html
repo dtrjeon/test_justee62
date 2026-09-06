@@ -5915,7 +5915,11 @@ function renderHistory(records, src) {
       '<br>📍 ' + (r.location || '—') + ' ' + (r.name ? (/씨$/.test(r.name) ? r.name : r.name + '씨') : '') + ' ' + (r.age ? (/[세대]$/.test(r.age) ? r.age : r.age + '세') : '') +
       '</div>' +
       '</div>' +
-      '<div class="rc-date">' + (r._savedAt || r.date || '').slice(0,10) + '</div>' +
+      '<div class="rc-date">' + (function(){
+        var raw = r._savedAt || r.date || '';
+        var f = fmtDraftTime(raw);
+        return f || raw.slice(0,10);
+      })() + '</div>' +
       '</div>' +
       '<div class="rc-stats">' +
       '<span class="stat-chip neutral">접촉 ' + (r.contact || 0) + '회</span>' +
