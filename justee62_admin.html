@@ -2504,6 +2504,7 @@ function checkPassword() {
   } else if (val === PW_MONITOR) {
     window._authLevel = 'monitor';
     sessionStorage.setItem(LS_AUTH, 'monitor');
+    localStorage.setItem('index_monitor_verified', '1'); // 공개보고서 페이지와 열람 권한 공유
     document.getElementById('lock-screen').style.display = 'none';
     document.getElementById('lock-input').value = '';
     showToast('👁️ 모니터링 권한으로 접속했습니다. (문서번호 관리·불일치 수정은 admin 전용)');

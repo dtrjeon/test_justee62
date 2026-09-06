@@ -2492,6 +2492,7 @@ pre.code-block {
         <button type="button" class="h-btn outline server" id="refresh-btn" onclick="loadHistory()">🔄 새로고침</button>
         <button type="button" class="h-btn outline server" id="search-btn" onclick="toggleSearch()">🔍 검색</button>
         <button type="button" class="h-btn outline server" id="multiprint-btn" onclick="toggleMultiSelect()" style="display:none;">☑ 선택출력</button>
+        <button type="button" class="h-btn outline server" id="sort-btn" onclick="toggleSortMode()" title="정렬 방식 변경(클릭할 때마다 순환)">🔃 최신순</button>
         <button type="button" class="h-btn primary server" id="new-btn" onclick="switchTab('form')">+ 새 보고서</button>
       </div>
     </div>
@@ -5436,6 +5437,26 @@ function togglePresetFilter() {
   filterHistory();
 }
 
+// 🔃 정렬 아이콘 — 클릭할 때마다 최신순 → 조 내림차순 → 주차순(조 내림차순) 순으로 순환
+var SORT_MODE_LABELS = {
+  latest:       '🔃 최신순',
+  jo_desc:      '🔃 조 내림차순',
+  week_jo_desc: '🔃 주차·조 내림차순'
+};
+function toggleSortMode() {
+  var modes = ['latest', 'jo_desc', 'week_jo_desc'];
+  var cur = window._historySortMode || 'latest';
+  var next = modes[(modes.indexOf(cur) + 1) % modes.length];
+  window._historySortMode = next;
+  updateSortBtnLabel();
+  if (window._historyRawRecords) renderHistory(window._historyRawRecords, window._historySrc || 'server');
+}
+function updateSortBtnLabel() {
+  var btn = document.getElementById('sort-btn');
+  if (!btn) return;
+  btn.textContent = SORT_MODE_LABELS[window._historySortMode || 'latest'];
+}
+
 function toggleSearch() {
   var bar = document.getElementById('search-bar');
   var btn = document.getElementById('search-btn');
@@ -5672,6 +5693,13 @@ function isAdminUser() {
   return localStorage.getItem('index_admin_verified') === '1';
 }
 
+// admin(전체 권한) 또는 monitor(열람 전용) 중 하나라도 인증되었는지 —
+// "보기"만 필요한 곳(기록 전체 목록 등)에 쓴다. 삭제/수정/신분사용 등은
+// 반드시 isAdminUser()(admin 전용)로 따로 체크할 것.
+function isVerifiedUser() {
+  return isAdminUser() || localStorage.getItem('index_monitor_verified') === '1';
+}
+
 // "내 조 설정" 모달의 🔒 아이콘 — 새 탭으로 이동하지 않고 그 자리에서 admin 인증만 수행
 // (인증되면 관리그룹/12조가 즉시 목록에 나타나도록 모달을 새로고침)
 function openPresetAdminAuth() {
@@ -5689,10 +5717,12 @@ function openPresetAdminAuth() {
   })
     .then(function(r) { return r.json(); })
     .then(function(json) {
-      if (json.status === 'ok') {
+      if (json.status === 'ok' && json.level === 'admin') {
         localStorage.setItem('index_admin_verified', '1');
         showStatus('✅ admin 인증 완료 — 관리그룹/12조가 표시됩니다.', 'success');
         _openPresetModalNow(); // 목록 새로고침 (E그룹/12조 반영)
+      } else if (json.status === 'ok' && json.level === 'monitor') {
+        showStatus('🔒 이 기능(관리그룹/12조 신분 사용)은 admin 전용입니다. 열람 전용 비밀번호로는 사용할 수 없습니다.', 'warn');
       } else {
         showStatus('❌ 비밀번호가 올바르지 않습니다.', 'error');
       }
@@ -5834,6 +5864,10 @@ async function loadServerHistory() {
 }
 
 function renderHistory(records, src) {
+  // 정렬 토글(toggleSortMode)이 재조회 없이 다시 그릴 수 있도록 원본 보관
+  window._historyRawRecords = records;
+  window._historySrc = src;
+
   var bar = document.getElementById('search-bar');
   if (bar && records && records.length > 0) bar.style.display = 'grid';
   else if (bar) bar.style.display = 'none';
@@ -5854,7 +5888,9 @@ function renderHistory(records, src) {
   });
 
   // ── 관리자 여부 판단 ────────────────────────────────────────
-  var isAdmin = localStorage.getItem('index_admin_verified') === '1';
+  // 전체 기록 열람(중복 문서 포함 전부 보기)은 admin·monitor 둘 다 허용 —
+  // 순수 "보기" 기능이라 열람 전용(9191) 사용자도 볼 수 있어야 함.
+  var isAdmin = isVerifiedUser();
 
   // ── 일반 사용자: 문서번호 기준 최신 1건만 ──────────────────
   var displayRecords;
@@ -5868,6 +5904,22 @@ function renderHistory(records, src) {
       if (seen[key]) return false;
       seen[key] = true;
       return true;
+    });
+  }
+
+  // ── 정렬 모드 적용(🔃 버튼으로 순환) ──────────────────────
+  // latest(기본, 위에서 이미 최신순 정렬됨) / jo_desc(조 내림차순) /
+  // week_jo_desc(주차 오름차순 + 같은 주차 안에서는 조 내림차순)
+  var sortMode = window._historySortMode || 'latest';
+  if (sortMode === 'jo_desc') {
+    displayRecords = displayRecords.slice().sort(function(a, b) {
+      return (parseInt(b.jo, 10) || 0) - (parseInt(a.jo, 10) || 0);
+    });
+  } else if (sortMode === 'week_jo_desc') {
+    displayRecords = displayRecords.slice().sort(function(a, b) {
+      var wa = parseInt(a.week, 10) || 0, wb = parseInt(b.week, 10) || 0;
+      if (wa !== wb) return wa - wb;
+      return (parseInt(b.jo, 10) || 0) - (parseInt(a.jo, 10) || 0);
     });
   }
 
@@ -6710,10 +6762,14 @@ function confirmAdminAuth() {
     .then(function(r) { return r.json(); })
     .then(function(json) {
       if (json.status === 'ok') {
-        localStorage.setItem('index_admin_verified', '1');
+        if (json.level === 'admin') {
+          localStorage.setItem('index_admin_verified', '1');
+        } else {
+          localStorage.setItem('index_monitor_verified', '1');
+        }
         closeAdminAuth();
         openAdminPage();
-        // 관리자 인증 후 기록탭 새로고침 (전체 목록 재표시)
+        // 인증 후 기록탭 새로고침 (전체 목록 재표시)
         if (window._historyRecords && window._historyRecords.length) loadHistory();
       } else {
         inp.disabled = false;
@@ -7963,7 +8019,7 @@ function confirmAdminPwDelete(docNum) {
   })
     .then(function(r) { return r.json(); })
     .then(function(json) {
-      if (json.status === 'ok') {
+      if (json.status === 'ok' && json.level === 'admin') {
         localStorage.setItem('index_admin_verified', '1');
         cancelDeletePw();
         if (!confirm('⚠️ [' + docNum + '] 문서를 구글 시트에서 삭제합니다.\n이 작업은 되돌릴 수 없습니다.\n계속하시겠습니까?')) {
@@ -7972,6 +8028,11 @@ function confirmAdminPwDelete(docNum) {
           return;
         }
         executeDeleteDoc(docNum);
+      } else if (json.status === 'ok' && json.level === 'monitor') {
+        inp.disabled = false;
+        inp.style.borderColor = '#c00';
+        inp.value = '';
+        inp.placeholder = '열람 전용 비밀번호로는 삭제 불가';
       } else {
         inp.disabled = false;
         inp.style.borderColor = '#c00';
