@@ -917,10 +917,11 @@ select {
 }
 
 .h-btn.icon-only {
-  padding: 0 8px;
-  min-width: 38px;
-  min-height: 38px;
-  height: 38px;
+  padding: 0;
+  width: 40px;
+  height: 40px;
+  min-width: 40px;
+  min-height: 40px;
   font-size: 16px;
   display: flex;
   align-items: center;
@@ -928,6 +929,7 @@ select {
   flex-shrink: 0;
   line-height: 1;
   white-space: nowrap;
+  overflow: hidden;
 }
 
 .h-btn.primary.server {
@@ -5454,9 +5456,9 @@ function togglePresetFilter() {
 // 🔃 정렬 아이콘 — 클릭할 때마다 최신순 → 조 내림차순 → 조 오름차순 → 주차·조 내림차순 순으로 순환
 var SORT_MODE_ICONS = {
   latest:       { icon: '🕒', title: '정렬: 최신순' },
-  jo_desc:      { icon: '🔽조', title: '정렬: 조 내림차순' },
-  jo_asc:       { icon: '🔼조', title: '정렬: 조 오름차순' },
-  week_jo_desc: { icon: '🔽주', title: '정렬: 주차순(조 내림차순)' }
+  jo_desc:      { icon: '🔽', title: '정렬: 조 내림차순' },
+  jo_asc:       { icon: '🔼', title: '정렬: 조 오름차순' },
+  week_jo_desc: { icon: '🗓️', title: '정렬: 주차순(조 내림차순)' }
 };
 function toggleSortMode() {
   var modes = ['latest', 'jo_desc', 'jo_asc', 'week_jo_desc'];
