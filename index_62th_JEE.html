@@ -916,6 +916,20 @@ select {
   min-height: 34px;
 }
 
+.h-btn.icon-only {
+  padding: 0 8px;
+  min-width: 38px;
+  min-height: 38px;
+  height: 38px;
+  font-size: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  line-height: 1;
+  white-space: nowrap;
+}
+
 .h-btn.primary.server {
   background: linear-gradient(135deg, #2a5cd8, #1a3ab0);
   color: #fff;
@@ -2489,11 +2503,11 @@ pre.code-block {
         <span id="history-conn-label" style="color:rgba(140,90,20,0.8);">미연결</span>
       </div>
       <div class="history-actions">
-        <button type="button" class="h-btn outline server" id="refresh-btn" onclick="loadHistory()">🔄 새로고침</button>
-        <button type="button" class="h-btn outline server" id="search-btn" onclick="toggleSearch()">🔍 검색</button>
-        <button type="button" class="h-btn outline server" id="multiprint-btn" onclick="toggleMultiSelect()" style="display:none;">☑ 선택출력</button>
-        <button type="button" class="h-btn outline server" id="sort-btn" onclick="toggleSortMode()" title="정렬 방식 변경(클릭할 때마다 순환)">🔃 최신순</button>
-        <button type="button" class="h-btn primary server" id="new-btn" onclick="switchTab('form')">+ 새 보고서</button>
+        <button type="button" class="h-btn icon-only outline server" id="refresh-btn" onclick="loadHistory()" title="새로고침">🔄</button>
+        <button type="button" class="h-btn icon-only outline server" id="search-btn" onclick="toggleSearch()" title="검색">🔍</button>
+        <button type="button" class="h-btn icon-only outline server" id="multiprint-btn" onclick="toggleMultiSelect()" title="선택출력" style="display:none;">☑️</button>
+        <button type="button" class="h-btn icon-only outline server" id="sort-btn" onclick="toggleSortMode()" title="정렬: 최신순">🕒</button>
+        <button type="button" class="h-btn icon-only primary server" id="new-btn" onclick="switchTab('form')" title="새 보고서">➕</button>
       </div>
     </div>
   </div>
@@ -5437,14 +5451,15 @@ function togglePresetFilter() {
   filterHistory();
 }
 
-// 🔃 정렬 아이콘 — 클릭할 때마다 최신순 → 조 내림차순 → 주차순(조 내림차순) 순으로 순환
-var SORT_MODE_LABELS = {
-  latest:       '🔃 최신순',
-  jo_desc:      '🔃 조 내림차순',
-  week_jo_desc: '🔃 주차·조 내림차순'
+// 🔃 정렬 아이콘 — 클릭할 때마다 최신순 → 조 내림차순 → 조 오름차순 → 주차·조 내림차순 순으로 순환
+var SORT_MODE_ICONS = {
+  latest:       { icon: '🕒', title: '정렬: 최신순' },
+  jo_desc:      { icon: '🔽조', title: '정렬: 조 내림차순' },
+  jo_asc:       { icon: '🔼조', title: '정렬: 조 오름차순' },
+  week_jo_desc: { icon: '🔽주', title: '정렬: 주차순(조 내림차순)' }
 };
 function toggleSortMode() {
-  var modes = ['latest', 'jo_desc', 'week_jo_desc'];
+  var modes = ['latest', 'jo_desc', 'jo_asc', 'week_jo_desc'];
   var cur = window._historySortMode || 'latest';
   var next = modes[(modes.indexOf(cur) + 1) % modes.length];
   window._historySortMode = next;
@@ -5454,7 +5469,9 @@ function toggleSortMode() {
 function updateSortBtnLabel() {
   var btn = document.getElementById('sort-btn');
   if (!btn) return;
-  btn.textContent = SORT_MODE_LABELS[window._historySortMode || 'latest'];
+  var info = SORT_MODE_ICONS[window._historySortMode || 'latest'];
+  btn.textContent = info.icon;
+  btn.title = info.title;
 }
 
 function toggleSearch() {
@@ -5914,6 +5931,10 @@ function renderHistory(records, src) {
   if (sortMode === 'jo_desc') {
     displayRecords = displayRecords.slice().sort(function(a, b) {
       return (parseInt(b.jo, 10) || 0) - (parseInt(a.jo, 10) || 0);
+    });
+  } else if (sortMode === 'jo_asc') {
+    displayRecords = displayRecords.slice().sort(function(a, b) {
+      return (parseInt(a.jo, 10) || 0) - (parseInt(b.jo, 10) || 0);
     });
   } else if (sortMode === 'week_jo_desc') {
     displayRecords = displayRecords.slice().sort(function(a, b) {
@@ -6824,7 +6845,8 @@ function toggleMultiSelect() {
     if (mpBar) mpBar.style.display = 'flex';
     if (delBtn) delBtn.style.display = isAdminUser() ? 'flex' : 'none'; // 삭제는 admin 전용
     if (btn) {
-      btn.textContent = '☑ 선택중...';
+      btn.textContent = '✅';
+      btn.title = '선택취소';
       btn.style.background = 'rgba(46,125,50,0.15)';
     }
   } else {
@@ -6833,7 +6855,8 @@ function toggleMultiSelect() {
     });
     if (mpBar) mpBar.style.display = 'none';
     if (btn) {
-      btn.textContent = '☑ 선택출력';
+      btn.textContent = '☑️';
+      btn.title = '선택출력';
       btn.style.background = '';
     }
     clearMultiSelect();
