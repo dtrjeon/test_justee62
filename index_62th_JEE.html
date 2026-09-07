@@ -1125,7 +1125,7 @@ select {
   background: #f0f4ff;
   color: #1a3a9e;
   cursor: pointer;
-  white-space: pre-line;
+  white-space: nowrap;
   line-height: 1.3;
   text-align: center;
 }
@@ -5410,7 +5410,7 @@ function presetFilterLabel(p) {
 // admin/monitor 인증 시 표시할 필터 버튼 라벨 — 둘 다 조/그룹 제한 없이 전체를 보므로
 // 어떤 권한으로 전체보기 중인지 라벨에 정확히 반영한다
 function verifiedFilterLabel() {
-  return isAdminUser() ? '👤 전체보기\n(관리자)' : '👤 전체보기\n(열람전용)';
+  return isAdminUser() ? '👤 전체보기(관리자)' : '👤 전체보기(열람전용)';
 }
 
 function togglePresetFilter() {
