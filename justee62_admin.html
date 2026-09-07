@@ -4005,8 +4005,9 @@ function renderWeekly2Html(data, w) {
       var day71 = day7Cnt >= 1 ? '✔' : '—';
       var complete = isSuryoComplete(relCnt, quesCnt, day7Cnt) ? '<span style="color:var(--green);font-weight:700;">✔</span>' : '—';
 
-      // 복음참여 파트 (관계팀 레코드 기준)
+      // 복음참여 파트 (관계팀 레코드만 반영 — 질문지/7일후/개인전도 제외)
       var actRecs = myRecs.filter(function(r){
+        if (r.evangType !== '관계(팀)') return false;
         var act = m.role==='리더' ? r.leaderAction : m.role==='훈련자' ? r.trainerAction : r.traineeAction;
         return act==='하였고';
       });
@@ -4219,6 +4220,7 @@ function renderTab1(data, w) {
           return String(r.jo) === String(m.jo);
         });
         var actRecs = allRecs.filter(function(r) {
+          if (r.evangType !== '관계(팀)') return false; // 관계전도(팀) 파트 집계 — 관계(팀) 레코드만 반영
           var act = m.role === '리더' ? r.leaderAction : m.role === '훈련자' ? r.trainerAction : r.traineeAction;
           return act === '하였고';
         });
@@ -4651,6 +4653,7 @@ function printTab2Pdf() {
       members.forEach(function(m, mi) {
         var roleLabel = m.role==='리더'?'조장':m.role==='훈련자'?'훈련자':'훈련생';
         var mRecs = joRecs.filter(function(r){
+          if (r.evangType !== '관계(팀)') return false; // 복음참여 파트 집계 — 관계(팀) 레코드만 반영
           var act = m.role==='리더' ? r.leaderAction : m.role==='훈련자' ? r.trainerAction : r.traineeAction;
           return act==='하였고' || act==='참관하였고';
         });
