@@ -904,6 +904,7 @@ select {
 .history-actions {
   display: flex;
   gap: 6px;
+  width: 100%;
 }
 
 .h-btn {
@@ -918,15 +919,15 @@ select {
 
 .h-btn.icon-only {
   padding: 0;
-  width: 40px;
+  flex: 1 1 0;
+  width: auto;
   height: 40px;
-  min-width: 40px;
+  min-width: 0;
   min-height: 40px;
   font-size: 16px;
   display: flex;
   align-items: center;
   justify-content: center;
-  flex-shrink: 0;
   line-height: 1;
   white-space: nowrap;
   overflow: hidden;
@@ -2509,7 +2510,6 @@ pre.code-block {
         <button type="button" class="h-btn icon-only outline server" id="search-btn" onclick="toggleSearch()" title="검색">🔍</button>
         <button type="button" class="h-btn icon-only outline server" id="multiprint-btn" onclick="toggleMultiSelect()" title="선택출력" style="display:none;">☑️</button>
         <button type="button" class="h-btn icon-only outline server" id="sort-btn" onclick="toggleSortMode()" title="정렬: 최신순">🕒</button>
-        <button type="button" class="h-btn icon-only primary server" id="new-btn" onclick="switchTab('form')" title="새 보고서">➕</button>
       </div>
     </div>
   </div>
@@ -3457,117 +3457,11 @@ function applyPreset() {
   if (currentTab === 'history') loadHistory();
 }
 
+// 12조는 실제 조가 아니라 admin QA용 테스트 조라서 하드코딩을 유지함.
+// 1~11조(실제 조원 명단)는 반드시 서버(구글시트 "인원" 시트)에서만 가져오도록 하고,
+// 여기에는 절대 하드코딩하지 않는다 — 예전엔 서버 연결 전/실패 시 이 값이 폴백으로 쓰이면서
+// 마치 실제 현재 조 편성인 것처럼 오인되는 혼선이 있었음.
 const DEFAULT_JO = [{
-  jo: '1',
-  leader: '김혁주',
-  leaderStep: '5',
-  trainer: '이지영',
-  trainerStep: '3',
-  trainee: '송유미',
-  traineeStep: '1',
-  group: 'A',
-  ban: '수지주일반'
-}, {
-  jo: '2',
-  leader: '신명순',
-  leaderStep: '4',
-  trainer: '신대용',
-  trainerStep: '2',
-  trainee: '신유경',
-  traineeStep: '1',
-  group: 'A',
-  ban: '수지주일반'
-}, {
-  jo: '3',
-  leader: '이미경',
-  leaderStep: '4',
-  trainer: '배현주',
-  trainerStep: '2',
-  trainee: '강동우',
-  traineeStep: '1',
-  group: 'A',
-  ban: '수지주일반'
-}, {
-  jo: '4',
-  leader: '임원기',
-  leaderStep: '3',
-  trainer: '이나경',
-  trainerStep: '2',
-  trainee: '이지연',
-  traineeStep: '1',
-  group: 'B',
-  ban: '수지주일반'
-}, {
-  jo: '5',
-  leader: '윤성원',
-  leaderStep: '3',
-  trainer: '박길순',
-  trainerStep: '2',
-  trainee: '강영미',
-  traineeStep: '1',
-  group: 'B',
-  ban: '수지주일반'
-}, {
-  jo: '6',
-  leader: '성기현',
-  leaderStep: '4',
-  trainer: '안희정',
-  trainerStep: '2',
-  trainee: '조은진',
-  traineeStep: '1',
-  group: 'B',
-  ban: '수지주일반'
-}, {
-  jo: '7',
-  leader: '안현주',
-  leaderStep: '5',
-  trainer: '김용대',
-  trainerStep: '2',
-  trainee: '이희자',
-  traineeStep: '1',
-  group: 'C',
-  ban: '수지주일반'
-}, {
-  jo: '8',
-  leader: '김성현',
-  leaderStep: '3',
-  trainer: '김희정',
-  trainerStep: '2',
-  trainee: '정현주',
-  traineeStep: '1',
-  group: 'C',
-  ban: '수지주일반'
-}, {
-  jo: '9',
-  leader: '박선영',
-  leaderStep: '5',
-  trainer: '임주현',
-  trainerStep: '3',
-  trainee: '김진우',
-  traineeStep: '1',
-  group: 'D',
-  ban: '수지주일반'
-}, {
-  jo: '10',
-  leader: '정은진',
-  leaderStep: 'H',
-  trainer: '이선영',
-  trainerStep: '2',
-  trainee: '김정옥',
-  traineeStep: '1',
-  group: 'D',
-  ban: '수지주일반'
-}, {
-  jo: '11',
-  leader: '김윤희',
-  leaderStep: '3',
-  trainer: '박희철',
-  trainerStep: '2',
-  trainee: '최정화',
-  traineeStep: '1',
-  group: 'D',
-  ban: '수지주일반'
-}, {
   jo: '12',
   leader: 'test1',
   leaderStep: '',
@@ -5292,9 +5186,9 @@ async function handleSubmit() {
     showStatus('⚠️ 이미 제출된 보고서입니다. 초기화 후 새 보고서를 작성해 주세요.', 'warn');
     return;
   }
-  // 수정 모드인데 작성인 본인이 아니면 차단 (다른 사람이 남의 보고서를 고쳐 제출하지 못하도록)
+  // 수정 모드인데 권한이 없으면 차단 (본인 작성분 또는 그룹장의 관할 그룹 소속 조가 아니면 차단)
   if (window._isRevision && !hasDocOwnership()) {
-    showStatus('🔒 본인이 작성한 보고서만 수정할 수 있습니다.', 'error');
+    showStatus('🔒 본인이 작성했거나 관할 그룹 소속 조의 보고서만 수정할 수 있습니다.', 'error');
     return;
   }
   // 영접여부 필수 체크
@@ -6144,6 +6038,8 @@ function loadRecord(idx) {
   window._currentRecordMembers = {
     leader: data.leader || '', trainer: data.trainer || '', trainee1: data.trainee1 || ''
   };
+  // 이 문서가 속한 조 번호 — 그룹장 수정권한 판단에 사용
+  window._currentRecordJo = data.jo || '';
   // 이 문서의 수정 이력 로그
   window._currentRecordEditLog = r.edit_log || r['수정이력'] || '';
 
@@ -7929,6 +7825,7 @@ window.onload = function() {
         window._currentRecordMembers = {
           leader: data.leader || '', trainer: data.trainer || '', trainee1: data.trainee1 || ''
         };
+        window._currentRecordJo = data.jo || '';
         window._currentRecordEditLog = r['수정이력'] || r.edit_log || '';
         applyFormData(data);
         var sbtn = document.getElementById('preview-submit-btn');
@@ -8006,9 +7903,20 @@ function hasDocOwnership() {
   // 1) 관리자 세션 (localStorage에 admin_verified 저장)
   if (localStorage.getItem('index_admin_verified') === '1') return true;
 
-  // 2) 그 보고서의 조원(리더/훈련자/훈련생) 중 한 명 — 현재 preset 이름과 일치하면 허용
-  //    (완전히 관계없는 사람은 여전히 불가)
   var p = getPreset();
+
+  // 2) 그룹장(scope: 'group') — 관할 그룹에 속한 조의 보고서면 이름 일치 없이도 수정 허용
+  //    (삭제는 여전히 admin 전용이라 그룹장은 삭제 불가, 수정만 가능)
+  if (p && p.name && p.scope === 'group' && p.group) {
+    var jd = getJoData();
+    var joGroupMap = {};
+    jd.forEach(function(j) { if (j.group) joGroupMap[String(j.jo)] = j.group; });
+    var rJo = String(window._currentRecordJo || '');
+    if (rJo && joGroupMap[rJo] === p.group) return true;
+  }
+
+  // 3) 그 보고서의 조원(리더/훈련자/훈련생) 중 한 명 — 현재 preset 이름과 일치하면 허용
+  //    (완전히 관계없는 사람은 여전히 불가)
   if (p && p.name) {
     var m = window._currentRecordMembers || {};
     var names = [window._currentRecordWriter, m.leader, m.trainer, m.trainee1];
@@ -8028,7 +7936,7 @@ function updateEditLockState() {
     sbtn.disabled = true;
     sbtn.style.opacity = '0.5';
     sbtn.style.cursor = 'not-allowed';
-    sbtn.title = '본인이 작성한 보고서만 수정할 수 있습니다.';
+    sbtn.title = '본인이 작성했거나 관할 그룹 소속 조의 보고서만 수정할 수 있습니다.';
   } else {
     sbtn.disabled = false;
     sbtn.style.opacity = '';
