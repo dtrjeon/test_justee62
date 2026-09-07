@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
 <meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="icons/icon-180.png">
@@ -2816,7 +2816,7 @@ pre.code-block {
   });
 })();
 
-const APP_VERSION  = 'index v2026.09.05';
+const APP_VERSION  = 'index v2026.09.07';
 const LS_SEQ       = 'report_seq_counter';
 const LS_JO        = 'report_jo_data';
 const LS_SUBMITTED = 'report_submitted';
@@ -3232,6 +3232,11 @@ function _openPresetModalNow() {
   h3.style.cssText = 'margin:0 0 4px;font-size:16px;font-weight:800;color:#1a3ab0;display:flex;justify-content:space-between;align-items:center;';
   h3.innerHTML = '👤 내 조 설정'
     + '<span style="display:flex;align-items:center;gap:10px;">'
+    + (isAdminUser()
+      ? '<button onclick="event.stopPropagation();onAdminLogout()" '
+        + 'style="background:none;border:1px solid rgba(200,0,0,0.3);border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;line-height:1;padding:4px 8px;color:#c00;" '
+        + 'title="관리자 인증 해제">🔓 관리자 해제</button>'
+      : '')
     + '<button onclick="event.stopPropagation();openPresetAdminAuth()" '
     + 'style="background:none;border:none;font-size:17px;cursor:pointer;line-height:1;padding:0 2px;'
     + 'color:' + (isAdminUser() ? '#2e7d32' : '#aaa') + ';" '
@@ -5777,6 +5782,23 @@ function openPresetAdminAuth() {
     .catch(function() {
       showStatus('❌ 서버 인증 실패. 다시 시도하세요.', 'error');
     });
+}
+
+// 관리자 인증 해제 — 일반 조원/그룹장 화면(본인 조·그룹만 조회)으로 되돌아감
+function onAdminLogout() {
+  if (!isAdminUser()) return;
+  if (!window.confirm('관리자 인증을 해제하시겠습니까?\n해제하면 본인 조/그룹만 조회할 수 있는 일반 화면으로 전환됩니다.')) return;
+  localStorage.removeItem('index_admin_verified');
+  showStatus('🔓 관리자 인증이 해제되었습니다.', 'info');
+  _openPresetModalNow(); // 모달 새로고침 (관리그룹/12조 항목 제거)
+  if (currentTab === 'history') {
+    var p = getPreset();
+    if (!p || !p.name) {
+      renderPresetRequiredEmptyState();
+    } else {
+      loadHistory();
+    }
+  }
 }
 
 // 특이사항 공유(14번) 입력창 높이 조절 — 모바일은 textarea 드래그 리사이즈가
