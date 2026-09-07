@@ -1029,11 +1029,53 @@ select {
 }
 
 .search-bar {
-  display: grid;
-  grid-template-columns: 1fr 2fr auto;
-  gap: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
   margin-bottom: 12px;
+}
+
+.search-bar-row1 {
+  display: flex;
   align-items: center;
+  gap: 8px;
+}
+
+.search-bar-row1 .search-preset-btn {
+  flex: 1;
+}
+
+.search-bar-row2 {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+
+.search-bar-row2 #search-type {
+  flex: 1 1 92px;
+  min-width: 84px;
+}
+
+.search-bar-row2 #search-input,
+.search-bar-row2 select:not(#search-type) {
+  flex: 2 1 130px;
+  min-width: 110px;
+}
+
+.search-bar-row2 .search-go-btn {
+  flex: 1 1 100%;
+  order: 99;
+  background: #2050c8;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  padding: 9px 14px;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+  text-align: center;
 }
 
 .search-bar input {
@@ -2548,9 +2590,12 @@ pre.code-block {
     </div>
   </div>
   <div class="search-bar" id="search-bar" style="display:none;">
-    <button type="button" class="search-preset-btn" id="preset-filter-btn" onclick="togglePresetFilter()" title="내 조 설정 기준으로 필터">👤 내 조</button>
-    <div style="display:flex;gap:6px;align-items:center;">
-      <select id="search-type" onchange="onSearchTypeChange()" style="flex:1;">
+    <div class="search-bar-row1">
+      <button type="button" class="search-preset-btn" id="preset-filter-btn" onclick="togglePresetFilter()" title="내 조 설정 기준으로 필터">👤 내 조</button>
+      <button class="search-clear" onclick="clearSearch()" title="초기화">↺</button>
+    </div>
+    <div class="search-bar-row2">
+      <select id="search-type" onchange="onSearchTypeChange()">
         <option value="doc_number">문서번호</option>
         <option value="jo">조</option>
         <option value="week" selected>주차</option>
@@ -2559,8 +2604,8 @@ pre.code-block {
         <option value="trainer">훈련자</option>
         <option value="trainee1">훈련생</option>
       </select>
-      <input type="text" id="search-input" placeholder="검색어 입력..." onkeydown="if(event.key==='Enter')filterHistory()" style="flex:2;">
-      <select id="search-evang-type" onchange="filterHistory()" style="flex:2;display:none;border:1px solid rgba(32,80,200,0.2);border-radius:7px;padding:8px 10px;font-size:14px;outline:none;background:#fff;color:#333;">
+      <input type="text" id="search-input" placeholder="검색어 입력..." onkeydown="if(event.key==='Enter')filterHistory()">
+      <select id="search-evang-type" onchange="filterHistory()" style="display:none;">
         <option value="">전체</option>
         <option value="관계(팀)">관계(팀)</option>
         <option value="질문지(팀)">질문지(팀)</option>
@@ -2569,18 +2614,17 @@ pre.code-block {
         <option value="관계">관계</option>
         <option value="QQ">QQ</option>
       </select>
-      <select id="search-jo-sel" onchange="filterHistory()" style="flex:2;display:none;border:1px solid rgba(32,80,200,0.2);border-radius:7px;padding:8px 10px;font-size:14px;outline:none;background:#fff;color:#333;">
+      <select id="search-jo-sel" onchange="filterHistory()" style="display:none;">
         <option value="">전체</option>
       </select>
-      <select id="search-week-sel" onchange="filterHistory()" style="flex:2;display:none;border:1px solid rgba(32,80,200,0.2);border-radius:7px;padding:8px 10px;font-size:14px;outline:none;background:#fff;color:#333;">
+      <select id="search-week-sel" onchange="filterHistory()" style="display:none;">
         <option value="">전체</option>
       </select>
-      <select id="search-member-sel" onchange="filterHistory()" style="flex:2;display:none;border:1px solid rgba(32,80,200,0.2);border-radius:7px;padding:8px 10px;font-size:14px;outline:none;background:#fff;color:#333;">
+      <select id="search-member-sel" onchange="filterHistory()" style="display:none;">
         <option value="">전체</option>
       </select>
-      <button type="button" onclick="filterHistory()" style="background:#2050c8;color:#fff;border:none;border-radius:6px;padding:6px 14px;font-size:14px;font-weight:700;cursor:pointer;white-space:nowrap;">🔍 조회</button>
+      <button type="button" class="search-go-btn" onclick="filterHistory()">🔍 조회</button>
     </div>
-    <button class="search-clear" onclick="clearSearch()" title="초기화">↺</button>
   </div>
   <div id="history-list"><div class="empty-state"><span class="es-icon">📄</span><p>아직 제출된 보고서가 없습니다.</p></div></div>
 </div>
