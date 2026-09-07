@@ -1028,21 +1028,22 @@ select {
   border: 1px solid rgba(200, 32, 32, 0.14);
 }
 
+.history-toolbar-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.history-toolbar-row .search-preset-btn {
+  flex: 1;
+}
+
 .search-bar {
   display: flex;
   flex-direction: column;
   gap: 8px;
   margin-bottom: 12px;
-}
-
-.search-bar-row1 {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.search-bar-row1 .search-preset-btn {
-  flex: 1;
 }
 
 .search-bar-row2 {
@@ -1064,7 +1065,7 @@ select {
 }
 
 .search-bar-row2 .search-go-btn {
-  flex: 1 1 100%;
+  flex: 1 1 auto;
   order: 99;
   background: #2050c8;
   color: #fff;
@@ -1076,6 +1077,14 @@ select {
   cursor: pointer;
   white-space: nowrap;
   text-align: center;
+}
+
+.search-bar-row2 .search-clear {
+  flex: 0 0 40px;
+  order: 100;
+  height: 40px;
+  border: 1px solid rgba(32, 80, 200, 0.2);
+  border-radius: 6px;
 }
 
 .search-bar input {
@@ -2543,17 +2552,18 @@ pre.code-block {
 <div class="history-container">
   <div class="history-header">
     <h2 class="server" id="history-title">전도보고서 기록</h2>
-    <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;">
-      <div id="history-conn-badge" style="display:flex;align-items:center;gap:5px;padding:3px 9px;border-radius:6px;border:1px solid rgba(32,80,200,0.18);background:rgba(32,80,200,0.04);font-size:11px;font-weight:600;">
-        <span id="history-conn-dot" style="width:7px;height:7px;border-radius:50%;background:#e6b84a;flex-shrink:0;transition:background .3s;"></span>
-        <span id="history-conn-label" style="color:rgba(140,90,20,0.8);">미연결</span>
-      </div>
-      <div class="history-actions">
-        <button type="button" class="h-btn icon-only outline server" id="refresh-btn" onclick="loadHistory()" title="새로고침">🔄</button>
-        <button type="button" class="h-btn icon-only outline server" id="search-btn" onclick="toggleSearch()" title="검색">🔍</button>
-        <button type="button" class="h-btn icon-only outline server" id="multiprint-btn" onclick="toggleMultiSelect()" title="선택출력" style="display:none;">☑️</button>
-        <button type="button" class="h-btn icon-only outline server" id="sort-btn" onclick="toggleSortMode()" title="정렬: 최신순">🕒</button>
-      </div>
+    <div id="history-conn-badge" style="display:flex;align-items:center;gap:5px;padding:3px 9px;border-radius:6px;border:1px solid rgba(32,80,200,0.18);background:rgba(32,80,200,0.04);font-size:11px;font-weight:600;">
+      <span id="history-conn-dot" style="width:7px;height:7px;border-radius:50%;background:#e6b84a;flex-shrink:0;transition:background .3s;"></span>
+      <span id="history-conn-label" style="color:rgba(140,90,20,0.8);">미연결</span>
+    </div>
+  </div>
+  <div class="history-toolbar-row">
+    <button type="button" class="search-preset-btn" id="preset-filter-btn" onclick="togglePresetFilter()" title="내 조 설정 기준으로 필터">👤 내 조</button>
+    <div class="history-actions">
+      <button type="button" class="h-btn icon-only outline server" id="refresh-btn" onclick="loadHistory()" title="새로고침">🔄</button>
+      <button type="button" class="h-btn icon-only outline server" id="search-btn" onclick="toggleSearch()" title="검색">🔍</button>
+      <button type="button" class="h-btn icon-only outline server" id="multiprint-btn" onclick="toggleMultiSelect()" title="선택출력" style="display:none;">☑️</button>
+      <button type="button" class="h-btn icon-only outline server" id="sort-btn" onclick="toggleSortMode()" title="정렬: 최신순">🕒</button>
     </div>
   </div>
   <div id="multiprint-bar" style="display:none;background:#f0f4ff;border:1.5px solid rgba(32,80,200,0.2);border-radius:8px;padding:8px 10px;margin-bottom:10px;flex-direction:column;gap:8px;">
@@ -2590,10 +2600,6 @@ pre.code-block {
     </div>
   </div>
   <div class="search-bar" id="search-bar" style="display:none;">
-    <div class="search-bar-row1">
-      <button type="button" class="search-preset-btn" id="preset-filter-btn" onclick="togglePresetFilter()" title="내 조 설정 기준으로 필터">👤 내 조</button>
-      <button class="search-clear" onclick="clearSearch()" title="초기화">↺</button>
-    </div>
     <div class="search-bar-row2">
       <select id="search-type" onchange="onSearchTypeChange()">
         <option value="doc_number">문서번호</option>
@@ -2624,6 +2630,7 @@ pre.code-block {
         <option value="">전체</option>
       </select>
       <button type="button" class="search-go-btn" onclick="filterHistory()">🔍 조회</button>
+      <button type="button" class="search-clear" onclick="clearSearch()" title="초기화">↺</button>
     </div>
   </div>
   <div id="history-list"><div class="empty-state"><span class="es-icon">📄</span><p>아직 제출된 보고서가 없습니다.</p></div></div>
@@ -5904,7 +5911,7 @@ function renderHistory(records, src) {
   window._historySrc = src;
 
   var bar = document.getElementById('search-bar');
-  if (bar && records && records.length > 0) bar.style.display = 'grid';
+  if (bar && records && records.length > 0) bar.style.display = 'flex';
   else if (bar) bar.style.display = 'none';
   clearSearch();
   var mpBtn = document.getElementById('multiprint-btn');
