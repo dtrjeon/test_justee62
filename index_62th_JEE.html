@@ -1074,7 +1074,9 @@ select {
   background: #f0f4ff;
   color: #1a3a9e;
   cursor: pointer;
-  white-space: nowrap;
+  white-space: pre-line;
+  line-height: 1.3;
+  text-align: center;
 }
 
 .search-preset-btn.active {
@@ -1087,7 +1089,7 @@ select {
   background: none;
   border: none;
   color: rgba(32, 80, 200, 0.5);
-  font-size: 14px;
+  font-size: 18px;
   cursor: pointer;
   padding: 0 4px;
   line-height: 1;
@@ -2578,7 +2580,7 @@ pre.code-block {
       </select>
       <button type="button" onclick="filterHistory()" style="background:#2050c8;color:#fff;border:none;border-radius:6px;padding:6px 14px;font-size:14px;font-weight:700;cursor:pointer;white-space:nowrap;">🔍 조회</button>
     </div>
-    <button class="search-clear" onclick="clearSearch()" title="초기화">✕</button>
+    <button class="search-clear" onclick="clearSearch()" title="초기화">↺</button>
   </div>
   <div id="history-list"><div class="empty-state"><span class="es-icon">📄</span><p>아직 제출된 보고서가 없습니다.</p></div></div>
 </div>
@@ -5357,7 +5359,7 @@ function presetFilterLabel(p) {
 // admin/monitor 인증 시 표시할 필터 버튼 라벨 — 둘 다 조/그룹 제한 없이 전체를 보므로
 // 어떤 권한으로 전체보기 중인지 라벨에 정확히 반영한다
 function verifiedFilterLabel() {
-  return isAdminUser() ? '👤 전체보기(관리자)' : '👤 전체보기(열람전용)';
+  return isAdminUser() ? '👤 전체보기\n(관리자)' : '👤 전체보기\n(열람전용)';
 }
 
 function togglePresetFilter() {
