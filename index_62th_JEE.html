@@ -6070,6 +6070,7 @@ function renderHistory(records, src) {
       '<button class="load-btn ' + src + '" onclick="event.stopPropagation();loadRecord(' + i + ')">불러오기 →</button>' +
       '</div>';
   }).join('');
+  filterHistory();
 }
 
 function loadRecord(idx) {
