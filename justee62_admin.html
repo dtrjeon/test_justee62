@@ -2536,7 +2536,7 @@ async function checkPassword() {
       sessionStorage.setItem(LS_AUTH, json.level);
       localStorage.setItem('index_admin_token', json.token || '');
       if (json.level === 'admin') {
-        localStorage.setItem('index_admin_verified', '1'); // 공개보고서 페이지와 인증 공유 (admin만)
+        localStorage.setItem('index_admin_verified', '1'); // 공개보고서 페이지와 인증 공유
         localStorage.removeItem('index_monitor_verified');
       } else {
         localStorage.setItem('index_monitor_verified', '1'); // 공개보고서 페이지와 열람 권한 공유
@@ -2567,11 +2567,12 @@ function onLockInput() {
 }
 
 window.onload = function() {
-  // 세션 인증 또는 공개보고서 페이지에서의 인증(localStorage 공유, admin만 공유됨)이 있으면 통과
+  // 세션 인증 또는 공개보고서 페이지에서의 인증(localStorage 공유, admin/monitor 모두 공유됨)이 있으면 통과
   var sessLevel = sessionStorage.getItem(LS_AUTH); // 'admin' | 'monitor' | '1'(구버전) | null
-  var sharedAdmin = localStorage.getItem('index_admin_verified') === '1';
+  var sharedAdmin   = localStorage.getItem('index_admin_verified') === '1';
+  var sharedMonitor = localStorage.getItem('index_monitor_verified') === '1';
   var level = (sessLevel === 'admin' || sessLevel === '1' || sharedAdmin) ? 'admin'
-            : (sessLevel === 'monitor') ? 'monitor'
+            : (sessLevel === 'monitor' || sharedMonitor) ? 'monitor'
             : null;
   if (!level) {
     document.getElementById('lock-screen').style.display = 'flex';
