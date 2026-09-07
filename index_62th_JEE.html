@@ -5467,11 +5467,20 @@ function togglePresetFilter() {
     showStatus('⚠️ 내 조 설정을 먼저 해주세요.', 'warn');
     return;
   }
-  // 관리자(admin) 외에는 항상 본인 조/그룹 기록만 조회 가능 — 전체보기로 전환 불가 (12조는 예외로 항상 전체)
+  var btn = document.getElementById('preset-filter-btn');
+  // 관리자는 내 조/그룹 설정과 무관하게 항상 전체 기록을 조회 — 버튼 라벨도 이를 정확히 반영
+  if (isAdminUser()) {
+    showStatus('🔓 관리자는 항상 전체 기록을 조회합니다.', 'info');
+    if (btn) {
+      btn.classList.add('active');
+      btn.textContent = '👤 전체보기(관리자)';
+    }
+    return;
+  }
+  // 관리자 외에는 항상 본인 조/그룹 기록만 조회 가능 — 전체보기로 전환 불가 (12조는 예외로 항상 전체)
   if (!(p.jo && p.jo.toString() === '12')) {
     showStatus(p.scope === 'group' ? '본인 그룹의 기록만 조회할 수 있습니다.' : '본인 조의 기록만 조회할 수 있습니다.', 'warn');
   }
-  var btn = document.getElementById('preset-filter-btn');
   if (btn) {
     btn.classList.add('active');
     btn.textContent = presetFilterLabel(p);
@@ -5657,7 +5666,11 @@ function clearSearch() {
   var btn = document.getElementById('preset-filter-btn');
   var p = getPreset();
   if (btn) {
-    if (p && p.name && !isAdminUser()) {
+    if (p && p.name && isAdminUser()) {
+      // 관리자는 검색초기화 후에도 항상 전체보기 상태를 정확히 표시
+      btn.classList.add('active');
+      btn.textContent = '👤 전체보기(관리자)';
+    } else if (p && p.name) {
       // 관리자가 아니면 검색초기화 후에도 항상 본인 조/그룹 필터가 유지됨
       btn.classList.add('active');
       btn.textContent = presetFilterLabel(p);
@@ -5819,12 +5832,12 @@ function resizeQ14(delta) {
 async function loadHistory() {
   // 프리셋 필터 자동 활성화 — 관리자는 내 조/그룹장 범위로 제한하지 않고 전체를 봄
   var p = getPreset();
-  if (p && p.name && !_presetFilterActive && !isAdminUser()) {
+  if (p && p.name && !_presetFilterActive) {
     _presetFilterActive = true;
     var btn = document.getElementById('preset-filter-btn');
     if (btn) {
       btn.classList.add('active');
-      btn.textContent = presetFilterLabel(p);
+      btn.textContent = isAdminUser() ? '👤 전체보기(관리자)' : presetFilterLabel(p);
     }
   }
   await loadServerHistory();
