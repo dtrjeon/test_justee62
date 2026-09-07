@@ -5764,6 +5764,7 @@ function onAdminLogout() {
   if (!window.confirm('관리자 인증을 해제하시겠습니까?\n해제하면 본인 조/그룹만 조회할 수 있는 일반 화면으로 전환됩니다.')) return;
   localStorage.removeItem('index_admin_verified');
   localStorage.removeItem('index_admin_token');
+  localStorage.removeItem('index_monitor_verified');
   showStatus('🔓 관리자 인증이 해제되었습니다.', 'info');
   _openPresetModalNow(); // 모달 새로고침 (관리그룹/12조 항목 제거)
   if (currentTab === 'history') {
@@ -8100,6 +8101,7 @@ function confirmAdminPwDelete(docNum) {
       if (json.status === 'ok' && json.level === 'admin') {
         localStorage.setItem('index_admin_verified', '1');
         localStorage.setItem('index_admin_token', json.token || '');
+        localStorage.removeItem('index_monitor_verified');
         cancelDeletePw();
         if (!confirm('⚠️ [' + docNum + '] 문서를 구글 시트에서 삭제합니다.\n이 작업은 되돌릴 수 없습니다.\n계속하시겠습니까?')) {
           // 확인 취소해도 관리자 세션 유지, 기록 새로고침
