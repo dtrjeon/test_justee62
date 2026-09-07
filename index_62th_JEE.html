@@ -3421,7 +3421,7 @@ function onClearPreset() {
   closePresetModal();
   showStatus('내 조 설정이 해제되었습니다.', 'info');
   // 기록 탭을 보고 있던 경우, 남아있던 목록을 즉시 안내 화면으로 교체
-  if (currentTab === 'history' && !isAdminUser()) {
+  if (currentTab === 'history' && !isVerifiedUser()) {
     renderPresetRequiredEmptyState();
   }
 }
@@ -4476,7 +4476,7 @@ function switchTab(tab) {
   }
   if (tab === 'history') {
     var p = getPreset();
-    if ((!p || !p.name) && !isAdminUser()) {
+    if ((!p || !p.name) && !isVerifiedUser()) {
       renderPresetRequiredEmptyState();
       return;
     }
@@ -5355,6 +5355,12 @@ function presetFilterLabel(p) {
   return '👤 ' + p.jo + '조 ✓';
 }
 
+// admin/monitor 인증 시 표시할 필터 버튼 라벨 — 둘 다 조/그룹 제한 없이 전체를 보므로
+// 어떤 권한으로 전체보기 중인지 라벨에 정확히 반영한다
+function verifiedFilterLabel() {
+  return isAdminUser() ? '👤 전체보기(관리자)' : '👤 전체보기(열람전용)';
+}
+
 function togglePresetFilter() {
   var p = getPreset();
   if (!p || !p.name) {
@@ -5362,12 +5368,12 @@ function togglePresetFilter() {
     return;
   }
   var btn = document.getElementById('preset-filter-btn');
-  // 관리자는 내 조/그룹 설정과 무관하게 항상 전체 기록을 조회 — 버튼 라벨도 이를 정확히 반영
-  if (isAdminUser()) {
-    showStatus('🔓 관리자는 항상 전체 기록을 조회합니다.', 'info');
+  // admin·monitor(열람전용) 모두 내 조/그룹 설정과 무관하게 항상 전체 기록을 조회 — 버튼 라벨도 이를 정확히 반영
+  if (isVerifiedUser()) {
+    showStatus(isAdminUser() ? '🔓 관리자는 항상 전체 기록을 조회합니다.' : '🔓 열람전용 인증 상태 — 항상 전체 기록을 조회합니다.', 'info');
     if (btn) {
       btn.classList.add('active');
-      btn.textContent = '👤 전체보기(관리자)';
+      btn.textContent = verifiedFilterLabel();
     }
     return;
   }
@@ -5501,8 +5507,9 @@ function filterHistory() {
       return;
     }
     // 프리셋 필터: 조/그룹 설정이 있으면 토글로도 해제되지 않고 항상 본인 조/그룹만 조회 가능
-    // (관리자는 항상 전체 검색 — 내 조/그룹장 범위 제한 없음)
-    if (p && p.name && !isAdminUser()) {
+    // (admin·monitor는 항상 전체 검색 — 내 조/그룹장 범위 제한 없음. monitor는 열람만 허용되고
+    //  수정/삭제는 별도로 계속 admin 전용이므로 여기서 함께 풀어줘도 안전함)
+    if (p && p.name && !isVerifiedUser()) {
       if (p.scope === 'group') {
         // 그룹장: joData에서 조→그룹 매핑 구성 — 항상 본인 그룹만 (해제 불가)
         var jd = getJoData();
@@ -5560,12 +5567,12 @@ function clearSearch() {
   var btn = document.getElementById('preset-filter-btn');
   var p = getPreset();
   if (btn) {
-    if (p && p.name && isAdminUser()) {
-      // 관리자는 검색초기화 후에도 항상 전체보기 상태를 정확히 표시
+    if (p && p.name && isVerifiedUser()) {
+      // admin·monitor는 검색초기화 후에도 항상 전체보기 상태를 정확히 표시
       btn.classList.add('active');
-      btn.textContent = '👤 전체보기(관리자)';
+      btn.textContent = verifiedFilterLabel();
     } else if (p && p.name) {
-      // 관리자가 아니면 검색초기화 후에도 항상 본인 조/그룹 필터가 유지됨
+      // admin·monitor가 아니면 검색초기화 후에도 항상 본인 조/그룹 필터가 유지됨
       btn.classList.add('active');
       btn.textContent = presetFilterLabel(p);
     } else {
@@ -5659,6 +5666,13 @@ function isVerifiedUser() {
   return isAdminUser() || localStorage.getItem('index_monitor_verified') === '1';
 }
 
+// 서버(Code.gs)가 verify_admin 성공 시 발급한 세션 토큰 — 삭제 등 admin 전용
+// 서버 요청에 동봉해야 서버가 실제로 권한을 재검증한다(로컬 플래그만으론 서버가
+// 아무것도 검증하지 않음). justee62_admin.html과 동일한 키를 공유한다.
+function getAdminToken() {
+  return localStorage.getItem('index_admin_token') || '';
+}
+
 // "내 조 설정" 모달의 🔒 아이콘 — 새 탭으로 이동하지 않고 그 자리에서 admin 인증만 수행
 // (인증되면 관리그룹/12조가 즉시 목록에 나타나도록 모달을 새로고침)
 function openPresetAdminAuth() {
@@ -5678,6 +5692,7 @@ function openPresetAdminAuth() {
     .then(function(json) {
       if (json.status === 'ok' && json.level === 'admin') {
         localStorage.setItem('index_admin_verified', '1');
+        localStorage.setItem('index_admin_token', json.token || '');
         showStatus('✅ admin 인증 완료 — 관리그룹/12조가 표시됩니다.', 'success');
         _openPresetModalNow(); // 목록 새로고침 (E그룹/12조 반영)
       } else if (json.status === 'ok' && json.level === 'monitor') {
@@ -5696,6 +5711,7 @@ function onAdminLogout() {
   if (!isAdminUser()) return;
   if (!window.confirm('관리자 인증을 해제하시겠습니까?\n해제하면 본인 조/그룹만 조회할 수 있는 일반 화면으로 전환됩니다.')) return;
   localStorage.removeItem('index_admin_verified');
+  localStorage.removeItem('index_admin_token');
   showStatus('🔓 관리자 인증이 해제되었습니다.', 'info');
   _openPresetModalNow(); // 모달 새로고침 (관리그룹/12조 항목 제거)
   if (currentTab === 'history') {
@@ -5731,7 +5747,7 @@ async function loadHistory() {
     var btn = document.getElementById('preset-filter-btn');
     if (btn) {
       btn.classList.add('active');
-      btn.textContent = isAdminUser() ? '👤 전체보기(관리자)' : presetFilterLabel(p);
+      btn.textContent = isVerifiedUser() ? verifiedFilterLabel() : presetFilterLabel(p);
     }
   }
   await loadServerHistory();
@@ -6749,10 +6765,13 @@ function confirmAdminAuth() {
     .then(function(r) { return r.json(); })
     .then(function(json) {
       if (json.status === 'ok') {
+        localStorage.setItem('index_admin_token', json.token || '');
         if (json.level === 'admin') {
           localStorage.setItem('index_admin_verified', '1');
+          localStorage.removeItem('index_monitor_verified');
         } else {
           localStorage.setItem('index_monitor_verified', '1');
+          localStorage.removeItem('index_admin_verified');
         }
         closeAdminAuth();
         openAdminPage();
@@ -7257,7 +7276,7 @@ async function deleteSelectedRecords() {
       var res = await fetch(scriptUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'text/plain' },
-        body: JSON.stringify({ action: 'delete_doc_row', rowIndex: toDelete[i].rowIndex, docNumber: toDelete[i].doc_number })
+        body: JSON.stringify({ action: 'delete_doc_row', rowIndex: toDelete[i].rowIndex, docNumber: toDelete[i].doc_number, adminToken: getAdminToken() })
       });
       var json = await res.json();
       if (json.status === 'ok') okCount++; else failCount++;
@@ -8028,6 +8047,7 @@ function confirmAdminPwDelete(docNum) {
     .then(function(json) {
       if (json.status === 'ok' && json.level === 'admin') {
         localStorage.setItem('index_admin_verified', '1');
+        localStorage.setItem('index_admin_token', json.token || '');
         cancelDeletePw();
         if (!confirm('⚠️ [' + docNum + '] 문서를 구글 시트에서 삭제합니다.\n이 작업은 되돌릴 수 없습니다.\n계속하시겠습니까?')) {
           // 확인 취소해도 관리자 세션 유지, 기록 새로고침
@@ -8069,7 +8089,7 @@ async function executeDeleteDoc(docNum) {
     var res = await fetch(scriptUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'text/plain' },
-      body: JSON.stringify({ action: 'delete_doc', docNumber: docNum })
+      body: JSON.stringify({ action: 'delete_doc', docNumber: docNum, adminToken: getAdminToken() })
     });
     var json = await res.json();
     if (json.status === 'ok') {
