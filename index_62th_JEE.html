@@ -3182,9 +3182,10 @@ function applyFormData(r) {
     }
 
     if (selMember) {
-      // 전도자 → 하였고, 나머지 → 불참하였고 (저장값 없을 때만)
+      // 전도자 → 하였고, 나머지 → 불참하였고
+      // 개인전도는 제출 시 checkPersonalActionWarning()이 이 규칙을 강제하므로,
+      // 저장값이 남아있어도(과거 오류로 '참관하였고' 등 저장된 경우 포함) 항상 규칙대로 재설정한다.
       MEMBERS.forEach(function(m) {
-        if (radio(m.id + '_action')) return;
         var memberName = Object.keys(nameToId).find(function(n) { return nameToId[n] === m.id; });
         var isEvangelist = (memberName === selMember);
         var radioEl = document.querySelector('input[name="' + m.id + '_action"][value="' + (isEvangelist ? '하였고' : '불참하였고') + '"]');
