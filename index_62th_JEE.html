@@ -3341,6 +3341,8 @@ function _openPresetModalNow() {
   if (isAdminUser() && !grpLeaders.some(function(g) { return g.id === 'E'; })) {
     grpLeaders.push({ id: 'E', name: 'E그룹(관리그룹)', leader: '관리자' });
   }
+  // 부그룹장 — 그룹설정 데이터(g.deputy, 구글시트 연동)에서 읽음. 없으면 폴백 매핑 사용.
+  var DEPUTY_FALLBACK = { A: '박선영', B: '안현주', C: '차복심', D: '장유미' };
   if (grpLeaders.length) {
     var grpLabel = document.createElement('div');
     grpLabel.style.cssText = 'font-size:10px;font-weight:700;color:rgba(32,80,200,.5);letter-spacing:2px;margin:6px 0 4px;';
@@ -3359,6 +3361,21 @@ function _openPresetModalNow() {
         showStatus('✅ ' + g.leader + '님 (그룹장) 내 조 설정 저장!', 'success');
       };
       list.appendChild(btn);
+
+      var deputyName = g.deputy || DEPUTY_FALLBACK[g.id];
+      if (deputyName) {
+        var dbtn = document.createElement('button');
+        dbtn.type = 'button';
+        dbtn.className = 'preset-member-btn' + (saved && saved.name === deputyName && saved.scope === 'group' ? ' selected' : '');
+        dbtn.innerHTML = '<span class="pm-jo">' + g.id + '그룹</span><span class="pm-name">' + deputyName + '</span><span class="pm-role">부그룹장</span>';
+        dbtn.onclick = function() {
+          savePreset({ name: deputyName, scope: 'group', group: g.id, role: '부그룹장' });
+          closePresetModal();
+          applyPreset();
+          showStatus('✅ ' + deputyName + '님 (부그룹장) 내 조 설정 저장!', 'success');
+        };
+        list.appendChild(dbtn);
+      }
     });
 
     var memLabel = document.createElement('div');

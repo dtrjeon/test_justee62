@@ -1856,27 +1856,31 @@ window.TEST_DATA = {"records": [{"저장일시": "2026-03-14", "주차": 3, "전
     <div style="display:flex;align-items:center;gap:6px;margin-bottom:10px;">
       <span style="background:#1a3ab0;color:#fff;border-radius:50%;width:18px;height:18px;display:inline-flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;flex-shrink:0;">1</span>
       <div style="font-size:11px;font-weight:700;color:var(--primary);">그룹 편성 설정
-        <span style="font-size:9px;font-weight:400;color:var(--text3);">그룹명 · 그룹장 · 이메일 입력 후 서버 동기화</span>
+        <span style="font-size:9px;font-weight:400;color:var(--text3);">그룹명 · 그룹장 · 부그룹장 · 이메일 입력 후 서버 동기화</span>
       </div>
     </div>
 
     <!-- 관리자 이메일 고정 행 -->
-    <div style="display:grid;grid-template-columns:24px 1fr 1fr 2fr 32px;gap:4px;align-items:center;
+    <div style="display:grid;grid-template-columns:24px 1fr 1fr 1fr 1.6fr 1.6fr 32px;gap:4px;align-items:center;
       padding:0 4px 4px;border-bottom:1px solid rgba(26,58,176,0.12);margin-bottom:4px;">
       <span style="font-size:9px;font-weight:700;color:var(--text3);text-align:center;">구분</span>
       <span style="font-size:9px;font-weight:700;color:var(--text3);">그룹명</span>
       <span style="font-size:9px;font-weight:700;color:var(--text3);">그룹장</span>
-      <span style="font-size:9px;font-weight:700;color:var(--text3);">이메일 <span style="font-weight:400;opacity:.6;">(쉼표로 여러 개)</span></span>
+      <span style="font-size:9px;font-weight:700;color:var(--text3);">부그룹장</span>
+      <span style="font-size:9px;font-weight:700;color:var(--text3);">그룹장 이메일 <span style="font-weight:400;opacity:.6;">(쉼표구분)</span></span>
+      <span style="font-size:9px;font-weight:700;color:var(--text3);">부그룹장 이메일</span>
       <span></span>
     </div>
-    <div style="display:grid;grid-template-columns:24px 1fr 1fr 2fr 32px;gap:4px;align-items:center;
+    <div style="display:grid;grid-template-columns:24px 1fr 1fr 1fr 1.6fr 1.6fr 32px;gap:4px;align-items:center;
       margin-bottom:4px;padding:4px;background:#fff8e1;border:1px solid rgba(245,127,23,0.25);border-radius:6px;">
       <span style="font-size:10px;font-weight:800;color:#e65100;text-align:center;">👑</span>
       <span style="font-size:11px;font-weight:700;color:#e65100;padding:5px 4px;">관리자</span>
       <span style="font-size:10px;color:var(--text3);padding:5px 4px;"><span style="color:#c8ccd6;">-</span></span>
+      <span style="font-size:10px;color:var(--text3);padding:5px 4px;"><span style="color:#c8ccd6;">-</span></span>
       <input type="email" multiple id="set-admin-email"
         placeholder="admin@gmail.com"
         style="width:100%;padding:5px 7px;border:1px solid rgba(245,127,23,0.4);border-radius:5px;font-size:11px;font-family:'Noto Sans KR',sans-serif;outline:none;background:#fffde7;">
+      <span style="font-size:10px;color:var(--text3);padding:5px 4px;"><span style="color:#c8ccd6;">-</span></span>
       <span style="font-size:9px;color:#e65100;text-align:center;" title="관리자는 삭제할 수 없습니다">🔒</span>
     </div>
 
@@ -2396,22 +2400,30 @@ let CFG = {
     id: 'A',
     name: 'A그룹',
     leader: '',
-    email: ''
+    deputy: '',
+    email: '',
+    deputyEmail: ''
   }, {
     id: 'B',
     name: 'B그룹',
     leader: '',
-    email: ''
+    deputy: '',
+    email: '',
+    deputyEmail: ''
   }, {
     id: 'C',
     name: 'C그룹',
     leader: '',
-    email: ''
+    deputy: '',
+    email: '',
+    deputyEmail: ''
   }, {
     id: 'D',
     name: 'D그룹',
     leader: '',
-    email: ''
+    deputy: '',
+    email: '',
+    deputyEmail: ''
   }, ],
   joGroup: JSON.parse(localStorage.getItem('mon_joGroup') || 'null') || (function() {
     // MEMBERS에서 조 목록 자동 생성 (없으면 1~11 기본값)
@@ -5670,11 +5682,13 @@ function buildGroupSettings() {
   var iS = 'width:100%;padding:5px 7px;border:1px solid rgba(0,0,20,0.15);border-radius:5px;font-size:11px;font-family:"Noto Sans KR",sans-serif;outline:none;';
   var rows = CFG.groups.map(function(g, i) {
     return '<div class="group-row-setting" data-grp-idx="' + i + '" ' +
-      'style="display:grid;grid-template-columns:24px 1fr 1fr 2fr 32px;gap:4px;align-items:center;">' +
+      'style="display:grid;grid-template-columns:24px 1fr 1fr 1fr 1.6fr 1.6fr 32px;gap:4px;align-items:center;">' +
       '<span style="font-weight:800;color:#1a3a9e;text-align:center;font-size:13px;">' + g.id + '</span>' +
       '<input type="text" value="' + (g.name || '') + '" placeholder="' + g.id + '그룹" id="grp-name-' + i + '" style="' + iS + '">' +
-      '<input type="text" value="' + (g.leader || '') + '" placeholder="이름" id="grp-leader-' + i + '" style="' + iS + '">' +
-      '<input type="email" multiple value="' + (g.email || '') + '" placeholder="example@gmail.com" id="grp-email-' + i + '" style="' + iS + '">' +
+      '<input type="text" value="' + (g.leader || '') + '" placeholder="그룹장" id="grp-leader-' + i + '" style="' + iS + '">' +
+      '<input type="text" value="' + (g.deputy || '') + '" placeholder="부그룹장" id="grp-deputy-' + i + '" style="' + iS + '">' +
+      '<input type="email" multiple value="' + (g.email || '') + '" placeholder="그룹장 email" id="grp-email-' + i + '" style="' + iS + '">' +
+      '<input type="email" multiple value="' + (g.deputyEmail || '') + '" placeholder="부그룹장 email" id="grp-deputy-email-' + i + '" style="' + iS + '">' +
       '<button onclick="removeGroup(' + i + ')" style="background:#fdecea;border:none;border-radius:5px;color:#c00;font-size:12px;cursor:pointer;padding:3px;width:28px;height:28px;display:flex;align-items:center;justify-content:center;" title="그룹 삭제">🗑</button>' +
       '</div>';
   }).join('');
@@ -5693,7 +5707,7 @@ function addGroup() {
     if (used.indexOf(letters[i]) === -1) { nextId = letters[i]; break; }
   }
   if (!nextId) { showToast('⚠️ 더 이상 그룹을 추가할 수 없습니다.'); return; }
-  CFG.groups.push({ id: nextId, name: nextId + '그룹', leader: '', email: '' });
+  CFG.groups.push({ id: nextId, name: nextId + '그룹', leader: '', deputy: '', email: '', deputyEmail: '' });
   buildGroupSettings();
   buildJoAssign();
 }
@@ -5785,7 +5799,9 @@ function saveSettings() {
       id: g.id,
       name: document.getElementById('grp-name-' + i) ? document.getElementById('grp-name-' + i).value || g.name : g.name,
       leader: document.getElementById('grp-leader-' + i) ? document.getElementById('grp-leader-' + i).value || g.leader : g.leader,
-      email: document.getElementById('grp-email-' + i) ? document.getElementById('grp-email-' + i).value || g.email || '' : g.email || ''
+      deputy: document.getElementById('grp-deputy-' + i) ? document.getElementById('grp-deputy-' + i).value || g.deputy || '' : g.deputy || '',
+      email: document.getElementById('grp-email-' + i) ? document.getElementById('grp-email-' + i).value || g.email || '' : g.email || '',
+      deputyEmail: document.getElementById('grp-deputy-email-' + i) ? document.getElementById('grp-deputy-email-' + i).value || g.deputyEmail || '' : g.deputyEmail || ''
     };
   });
   // 관리자 이메일 저장
@@ -5832,7 +5848,9 @@ async function saveGroupSettings() {
       id: g.id,
       name: (document.getElementById('grp-name-' + i) || {}).value || g.name,
       leader: (document.getElementById('grp-leader-' + i) || {}).value || g.leader || '',
-      email: (document.getElementById('grp-email-' + i) || {}).value || g.email || ''
+      deputy: (document.getElementById('grp-deputy-' + i) || {}).value || g.deputy || '',
+      email: (document.getElementById('grp-email-' + i) || {}).value || g.email || '',
+      deputyEmail: (document.getElementById('grp-deputy-email-' + i) || {}).value || g.deputyEmail || ''
     };
   });
   localStorage.setItem('mon_groups', JSON.stringify(CFG.groups));
@@ -5852,7 +5870,7 @@ async function saveGroupSettings() {
       trainStart: CFG.trainStart || '',
       trainEnd: CFG.trainEnd || '',
       groups: CFG.groups.map(function(g) {
-        return { id: g.id, name: g.name, leader: g.leader, email: g.email };
+        return { id: g.id, name: g.name, leader: g.leader, deputy: g.deputy || '', email: g.email, deputyEmail: g.deputyEmail || '' };
       }),
       adminToken: getAdminToken()
     };
@@ -5906,9 +5924,11 @@ async function loadGroupSettings() {
         if (found) {
           found.name = sg.name || found.name;
           found.leader = sg.leader || found.leader;
+          found.deputy = sg.deputy || found.deputy || '';
           found.email = sg.email || found.email || '';
+          found.deputyEmail = sg.deputyEmail || found.deputyEmail || '';
         } else {
-          CFG.groups.push({ id: sg.id, name: sg.name, leader: sg.leader || '', email: sg.email || '' });
+          CFG.groups.push({ id: sg.id, name: sg.name, leader: sg.leader || '', deputy: sg.deputy || '', email: sg.email || '', deputyEmail: sg.deputyEmail || '' });
         }
       });
       // 관리자 이메일 복원
