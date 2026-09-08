@@ -780,7 +780,7 @@ tr:last-child td {
   font-weight: 700;
   color: #1a2a6c;
   font-size: 11px;
-  border-top: 2.0px solid #8fa3d0;
+  border-top: 1.5px solid #8fa3d0;
 }
 
 /* BADGES */
@@ -3740,7 +3740,7 @@ function renderTab0(data, w) {
         '</td></tr>';
     }
     // 조 경계선: 이전 조가 있고 그룹 행이 바로 앞에 없는 경우만
-    var joBorderStyle = (prevJo !== null && !newGroupRendered) ? 'border-top:2px solid #8fa3d0;' : '';
+    var joBorderStyle = (prevJo !== null && !newGroupRendered) ? 'border-top:1.5px solid #8fa3d0;' : '';
     newGroupRendered = false;
     prevJo = jo;
 
@@ -3808,7 +3808,7 @@ function renderTab0(data, w) {
         var isRecFirst = (mi === 0);
         // 2건째 이상 첫 조원행: 구분선 추가
         // 같은 조 내 레코드 경계: 이름~불참자 열에 파란선 (조 열 제외)
-        var extraBorderStyle = (ri > 0 && mi === 0) ? 'border-top:2px solid #8fa3d0;' : '';
+        var extraBorderStyle = (ri > 0 && mi === 0) ? 'border-top:1.5px solid #8fa3d0;' : '';
         // 다른 조 경계: 조~불참자 전 열에 검정선
         var joBorderFull   = (ri === 0 && mi === 0) ? joBorderStyle : '';   // 조 열 (다른 조만)
         // 이름~불참자 열: 다른 조 경계 OR 같은 조 레코드 경계
