@@ -3570,8 +3570,8 @@ function renderTab0(data, w) {
     else if (et === '개인') totalPersonal++;
     else if (et === '관계') totalRel++;
     else if (et === 'QQ') totalQQ++;
-    // 결과 집계: 7일후(팀) 및 대상자구분 7일후 제외
-    if (!is7ilhu(r)) {
+    // 결과 집계: 결신율 계산 포함 전도유형 설정(CFG.gospelTypes)만 반영
+    if (inGospelRateTypes(r)) {
       totalDecision += Number(r.decision || 0);
       totalBeliever += Number(r.believer || 0);
       totalConfirm  += Number(r.confirm  || 0);
@@ -3648,7 +3648,7 @@ function renderTab0(data, w) {
   var inactive = totalJo - activeJo.size;
 
   setText('wb-title', w === 0 ? CFG.title + ' [전체 현황]' : CFG.title + ' [주간현황:' + w + '주]');
-  setText('wb-rate', rate > 0 ? rate + '%' : '-');
+  setText('wb-rate', rateDenom > 0 ? rate + '%' : '-');
   setText('s-decision-cnt', totalDecision);
   setText('s-rate-denom', rateDenom);
   setText('s-gospel-team', totalGospelTeam || '-');
@@ -4253,7 +4253,7 @@ function renderTab1(data, w) {
           return String(r.jo) === String(m.jo);
         });
         var actRecs = allRecs.filter(function(r) {
-          if (r.evangType !== '관계(팀)') return false; // 관계전도(팀) 파트 집계 <span style="color:#c8ccd6;">-</span> 관계(팀) 레코드만 반영
+          if (r.evangType !== '관계(팀)') return false; // 관계전도(팀) 파트 집계 — 관계(팀) 레코드만 반영
           var act = m.role === '리더' ? r.leaderAction : m.role === '훈련자' ? r.trainerAction : r.traineeAction;
           return act === '하였고';
         });
@@ -4274,14 +4274,15 @@ function renderTab1(data, w) {
           partTotals[p] += partCounts[p];
         });
 
-        // 통계: 표시용으로 조 레코드 합산 (합계는 leaderRole만 1회)
-        var g  = sum(allRecs, 'gospel');
-        var c  = sum(allRecs, 'contact');
-        var t  = sum(allRecs, 'target');
-        var d  = sum(allRecs, 'decision');
-        var b  = sum(allRecs, 'believer');
-        var cf = sum(allRecs, 'confirm');
-        var rj = sum(allRecs, 'reject');
+        // 통계: 표시용으로 조 레코드 합산 — 결신율 계산 포함 전도유형 설정(CFG.gospelTypes)만 반영
+        var gospelRecs = allRecs.filter(inGospelRateTypes);
+        var g  = sum(gospelRecs, 'gospel');
+        var c  = sum(gospelRecs, 'contact');
+        var t  = sum(gospelRecs, 'target');
+        var d  = sum(gospelRecs, 'decision');
+        var b  = sum(gospelRecs, 'believer');
+        var cf = sum(gospelRecs, 'confirm');
+        var rj = sum(gospelRecs, 'reject');
 
         // 합계는 리더 행에서만 1회 더함 (중복 방지)
         if (m.role === '리더') {
@@ -4366,10 +4367,10 @@ function renderTab1(data, w) {
     '<td colspan="2"></td>';
 
   // 결신율: data에서 직접 계산 (totals는 멤버별 중복 집계로 결신율에 사용 불가)
-  // 7일후(팀) 제외
+  // 결신율 계산 포함 전도유형 설정(CFG.gospelTypes)만 반영
   var rDecision = 0, rReject = 0, rConfirm = 0, rBeliever = 0;
   data.forEach(function(r) {
-    if (is7ilhu(r)) return;
+    if (!inGospelRateTypes(r)) return;
     rDecision += Number(r.decision || 0);
     rReject   += Number(r.reject   || 0);
     rConfirm  += Number(r.confirm  || 0);
@@ -4379,7 +4380,7 @@ function renderTab1(data, w) {
   // 결신율 = 결신 ÷ (결신 + 보류/거절)
   var rateDenom = rDecision + rReject;
   var rate = rateDenom > 0 ? Math.round((rDecision / rateDenom) * 1000) / 10 : 0;
-  setText('wb-rate-1', rate > 0 ? rate.toFixed(1) + '%' : '-');
+  setText('wb-rate-1', rateDenom > 0 ? rate.toFixed(1) + '%' : '-');
   setText('wb-sub-1', '1주 ~ ' + w + '주 누적');
   setText('week-label-1', '1주~' + w + '주 누적');
   setText('acc-contact', totals.contact || '-');
@@ -4540,10 +4541,10 @@ function renderTab2(data, w) {
   });
 
   if (tb) tb.innerHTML = html || '<tr><td colspan="18" class="empty"><span class="empty-icon">📭</span><p>데이터가 없습니다.</p></td></tr>';
-  // 결신율: data에서 직접 계산 — 7일후(팀) 제외
+  // 결신율: data에서 직접 계산 — 결신율 계산 포함 전도유형 설정(CFG.gospelTypes)만 반영
   var r2Decision = 0, r2Reject = 0, r2Confirm = 0, r2Believer = 0;
   data.forEach(function(r) {
-    if (is7ilhu(r)) return;
+    if (!inGospelRateTypes(r)) return;
     r2Decision += Number(r.decision || 0);
     r2Reject   += Number(r.reject   || 0);
     r2Confirm  += Number(r.confirm  || 0);
@@ -4552,7 +4553,7 @@ function renderTab2(data, w) {
   // 결신율 = 결신 ÷ (결신 + 보류/거절)
   var rateDenom2 = r2Decision + r2Reject;
   var rate = rateDenom2 > 0 ? Math.round((r2Decision / rateDenom2) * 1000) / 10 : 0;
-  setText('wb-rate-2', rate > 0 ? rate.toFixed(1) + '%' : '-');
+  setText('wb-rate-2', rateDenom2 > 0 ? rate.toFixed(1) + '%' : '-');
   setText('wb-sub-2', '1주 ~ ' + w + '주 누적');
   setText('week-label-2b', w);
   // 차트 패널이 열려 있으면 즉시 갱신
@@ -4743,7 +4744,7 @@ function printTab2Pdf() {
     '<div class="meta">' +
     '<div><h2>■ ' + title + '</h2>' +
     '<div class="sub">【누적집계기준: ' + period + '】</div></div>' +
-    '<div class="rate-box"><div class="rl">결신율</div><div class="rv">' + (rate>0?rate.toFixed(1)+'%':DASH) + '</div></div>' +
+    '<div class="rate-box"><div class="rl">결신율</div><div class="rv">' + (rateDenom>0?rate.toFixed(1)+'%':DASH) + '</div></div>' +
     '</div>' +
     '<div class="suryo">※ ' + suryoTxt + '</div>' +
     '<table>' +
