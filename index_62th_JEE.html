@@ -4838,6 +4838,18 @@ function updateDiagFromSubResult() {
       return;
     }
   }
+  // 있었고+믿음(머리신자/이미신자 결합 라벨)도 6번이 이미 선택돼 있으면
+  // 그 구체적인 값만 진단명으로 표시 (복원 시 onQ5Change가 결합 라벨로
+  // 되돌리던 문제 방지 — onTestimony6Change와 동일한 규칙 적용)
+  if (hv === '있었고' && rs === '믿음') {
+    var t6 = radio('testimony6');
+    if (t6 === '이미신자' || t6 === '머리신자') {
+      nameEl.textContent = t6;
+      nameEl.className = 'diag-name orange';
+      badgeEl.innerHTML = '<span class="diag-badge orange">' + t6 + '</span>';
+      return;
+    }
+  }
   nameEl.textContent = info.diag;
   nameEl.className = diagNameClass(info);
   badgeEl.innerHTML = diagBadgeHtml(info);
