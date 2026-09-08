@@ -5096,7 +5096,7 @@ function renderTab3(selectedWeek) {
       '<td>' + (confirm || DASH3) + '</td>' +
       '<td>' + (believer || DASH3) + '</td>' +
       '<td>' + (rel || DASH3) + '</td>' +
-      '<td style="border-right:1px solid #c5cde8 !important;">' + (rate > 0 ? '<b style="color:var(--red)">' + rate.toFixed(1) + '%</b>' : DASH3) + '</td>' +
+      '<td style="border-right:1px solid #c5cde8 !important;">' + (rateDenom > 0 ? '<b style="color:var(--red)">' + rate.toFixed(1) + '%</b>' : DASH3) + '</td>' +
       '</tr>';
   }
 
@@ -5129,9 +5129,9 @@ function renderTab3(selectedWeek) {
     '<td>' + totals.confirm + '</td>' +
     '<td>' + totals.imisinja + '</td>' +
     '<td>' + totals.rel + '</td>' +
-    '<td style="border-right:1px solid #c5cde8 !important;"><b style="color:var(--red)">' + (totalRate > 0 ? totalRate.toFixed(1) + '%' : DASH) + '</b></td>';
+    '<td style="border-right:1px solid #c5cde8 !important;"><b style="color:var(--red)">' + (totalRateDenom > 0 ? totalRate.toFixed(1) + '%' : DASH) + '</b></td>';
 
-  setText('wb-rate-3', totalRate > 0 ? totalRate.toFixed(1) + '%' : '-');
+  setText('wb-rate-3', totalRateDenom > 0 ? totalRate.toFixed(1) + '%' : '-');
   setText('wb-sub-3', '1주 ~ ' + selectedWeek + '주 누적');
 }
 
