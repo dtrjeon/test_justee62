@@ -4987,19 +4987,21 @@ function renderTab3(selectedWeek) {
     }).length;
     var evangAll = evangRel + evangQues + evang7day + evangPer + evangRel2 + evangQQ;
 
-    var gospel = sum(wData, 'gospel');
-    var rel = sum(wData, 'contact');
-    var ques = sum(wData, 'target');
-    var decision = sum(wData, 'decision');
-    var believer = sum(wData, 'believer');
-    var confirm = sum(wData, 'confirm');
-    var reject = sum(wData, 'reject');
+    // "관계/질문지 결과" 열 — 설정(CFG.gospelTypes)에 포함된 전도유형만 반영 (기본값: 관계(팀)/질문지(팀))
+    var wDataGospel = wData.filter(inGospelRateTypes);
+    var gospel = sum(wDataGospel, 'gospel');
+    var rel = sum(wDataGospel, 'contact');
+    var ques = sum(wDataGospel, 'target');
+    var decision = sum(wDataGospel, 'decision');
+    var believer = sum(wDataGospel, 'believer');
+    var confirm = sum(wDataGospel, 'confirm');
+    var reject = sum(wDataGospel, 'reject');
     // 복음제시 = 결신 + 보류/거절 + 확신 + 이미신자
     var gospelCalc = decision + reject + confirm + believer;
     var gospelAll = gospel + rel;
     var rTotal = believer + decision + confirm + reject;
-    // 결신율: 설정(CFG.gospelTypes)에 포함된 전도유형만 반영 (기본값: 관계(팀)/질문지(팀))
-    var wData7x = wData.filter(inGospelRateTypes);
+    // 결신율도 같은 필터 대상 사용
+    var wData7x = wDataGospel;
     var rD7x = 0, rR7x = 0, rC7x = 0, rB7x = 0;
     wData7x.forEach(function(r) {
       rD7x += Number(r.decision || 0);
