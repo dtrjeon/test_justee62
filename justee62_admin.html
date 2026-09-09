@@ -4888,23 +4888,24 @@ async function exportPdf(tbodyId, filename, summaryId) {
 
       // 안전한 절단 지점: 그룹 시작행(group-row) 또는 각 "조"의 첫 행(jo-row-first) 위치.
       // 즉, 조원(같은 조의 여러 행)이 페이지 사이에서 잘리지 않도록 이 지점에서만 나눈다.
-      // 각 절단 지점에 그 시점에 "현재 진행 중인 그룹" 행(group-row)도 함께 기록해 둔다.
-      var breakPointsCss = []; // {top, groupTr, groupTop}
-      var currentGroupTr = null;
+      var breakPointsCss = [];
+      var groupRowTopsCss = []; // 각 "그룹행"(예: C그룹·최현미)의 위치만 별도로 기록
       bodyTrs.forEach(function(tr) {
-        if (tr.classList.contains('group-row')) currentGroupTr = tr;
-        if (tr.classList.contains('group-row') || tr.classList.contains('jo-row-first')) {
-          breakPointsCss.push({ top: relTop(tr), groupTr: currentGroupTr, groupTop: currentGroupTr ? relTop(currentGroupTr) : null });
+        if (tr.classList.contains('group-row')) {
+          groupRowTopsCss.push(relTop(tr));
+          breakPointsCss.push(relTop(tr));
+        } else if (tr.classList.contains('jo-row-first')) {
+          breakPointsCss.push(relTop(tr));
         }
       });
       // 표 전체의 마지막 지점(끝) — wrap이 DOM에서 제거되기 전에 미리 측정해 둔다 (제거 후 측정하면 0이 되는 버그 방지)
       var lastTr = bodyTrs.length ? bodyTrs[bodyTrs.length - 1] : null;
       var lastTrBottomCss = lastTr ? relBottom(lastTr) : null;
 
-      // 그룹 밴드(예: "C그룹 · 최현미") 좌표도 DOM 제거 전에 미리 측정
+      // 그룹 밴드 높이 계산용(모든 그룹행 높이는 동일한 스타일이라고 가정) — DOM 제거 전에 미리 측정
       var groupRowSample = bodyTrs.find(function(tr) { return tr.classList.contains('group-row'); });
-      var groupBandTopCss = groupRowSample ? relTop(groupRowSample) : 0;
       var groupBandBottomCss = groupRowSample ? relBottom(groupRowSample) : 0;
+      var groupBandSampleTopCss = groupRowSample ? relTop(groupRowSample) : 0;
 
       var SCALE = 2;
       var canvas = await html2canvas(wrap, {
@@ -4926,18 +4927,26 @@ async function exportPdf(tbodyId, filename, summaryId) {
       var headerHeightPx = headerBottomPx - headerTopPx;
 
       // px 단위로 변환 + 마지막(끝) 지점 추가, px 오름차순 정렬
-      var breakPointsPx = breakPointsCss.map(function(b) {
-        return { px: b.top * SCALE, groupTr: b.groupTr, groupTopPx: b.groupTop !== null ? b.groupTop * SCALE : null };
-      });
-      if (lastTrBottomCss !== null) breakPointsPx.push({ px: lastTrBottomCss * SCALE, groupTr: null, groupTopPx: null });
-      breakPointsPx.sort(function(a, b) { return a.px - b.px; });
+      var breakPointsPx = breakPointsCss.map(function(v) { return v * SCALE; });
+      if (lastTrBottomCss !== null) breakPointsPx.push(lastTrBottomCss * SCALE);
+      breakPointsPx.sort(function(a, b) { return a - b; });
+
+      // 그룹행 위치들(오름차순) — 특정 y 지점에서 "그 시점에 진행 중이던 그룹"이 어느 그룹행인지 직접 조회하기 위함
+      var groupRowTopsPx = groupRowTopsCss.map(function(v) { return v * SCALE; }).sort(function(a, b) { return a - b; });
+      function activeGroupTopAt(y) {
+        var found = null;
+        for (var i = 0; i < groupRowTopsPx.length; i++) {
+          if (groupRowTopsPx[i] <= y + 0.5) found = groupRowTopsPx[i]; else break;
+        }
+        return found; // 해당 y 시점에 적용되는 그룹행의 캔버스 y좌표 (없으면 null)
+      }
 
       function findBreak(afterY, limit) {
         var chosen = null;
         for (var i = 0; i < breakPointsPx.length; i++) {
           var bp = breakPointsPx[i];
-          if (bp.px > afterY + 0.5 && bp.px <= limit) chosen = bp;
-          if (bp.px > limit) break;
+          if (bp > afterY + 0.5 && bp <= limit) chosen = bp;
+          if (bp > limit) break;
         }
         return chosen;
       }
@@ -4949,17 +4958,16 @@ async function exportPdf(tbodyId, filename, summaryId) {
       function nextBreak(afterY, capacity) {
         var normal = findBreak(afterY, afterY + capacity);
         var extended = findBreak(afterY, afterY + capacity * ORPHAN_TOLERANCE);
-        if (extended && extended.px >= imgH - 0.5 && (!normal || extended.px > normal.px)) {
-          return { chosen: extended, overflow: true };
+        if (extended !== null && extended >= imgH - 0.5 && (normal === null || extended > normal)) {
+          return extended;
         }
-        var chosen = normal || { px: Math.min(afterY + capacity, imgH), groupTr: null, groupTopPx: null }; // 부득이한 경우(단일 조가 한 페이지보다 큰 경우)만 강제 절단
-        return { chosen: chosen, overflow: false };
+        return normal !== null ? normal : Math.min(afterY + capacity, imgH); // 부득이한 경우(단일 조가 한 페이지보다 큰 경우)만 강제 절단
       }
 
-      // 그룹 밴드(예: "C그룹 · 최현미") 하나를 헤더 아래에 다시 그리기 위한 높이/캔버스 좌표
-      var groupBandTopPx = groupBandTopCss * SCALE;
+      // 그룹 밴드(예: "C그룹 · 최현미") 하나를 헤더 아래에 다시 그리기 위한 높이
       var groupBandBottomPx = groupBandBottomCss * SCALE;
-      var groupBandHeightPx = groupRowSample ? (groupBandBottomPx - groupBandTopPx) : 0;
+      var groupBandSampleTopPx = groupBandSampleTopCss * SCALE;
+      var groupBandHeightPx = groupRowSample ? (groupBandBottomPx - groupBandSampleTopPx) : 0;
 
       var TOP_MARGIN_CSS_PAGE2 = 24; // 2페이지 이후 상단 여백(px)
       var topMarginPx = TOP_MARGIN_CSS_PAGE2 * SCALE;
@@ -4968,18 +4976,17 @@ async function exportPdf(tbodyId, filename, summaryId) {
 
       var pageNum = 0;
       var curY = 0;
-      var curYGroup = null; // 이번 페이지 시작 지점에서 이어지고 있는 그룹 정보 {groupTr, groupTopPx}
       while (curY < imgH - 0.5) {
         var isFirst = (pageNum === 0);
 
-        // 이 페이지 시작 시점에 진행 중인 그룹이, 이전 페이지에서 이미 밴드가 표시된 "이어지는 그룹"인지 판단
-        var needContinuationBand = (!isFirst && curYGroup && curYGroup.groupTr && curYGroup.groupTopPx < curY - 0.5);
+        // 이 페이지가 "시작되는 지점"(curY)에서 실제로 진행 중이던 그룹을 매번 직접 조회한다.
+        // (이전 페이지에서 이미 표시된 그룹이면 = 그 그룹행 위치가 curY보다 앞선 경우 = 이어지는 그룹)
+        var activeGroupTop = (!isFirst) ? activeGroupTopAt(curY) : null;
+        var needContinuationBand = (activeGroupTop !== null && activeGroupTop < curY - 0.5);
         var bandExtra = needContinuationBand ? groupBandHeightPx : 0;
 
         var capacity = isFirst ? pageCapacityPx : (pageCapacityPx - headerHeightPx - topMarginPx - bottomMarginPx - bandExtra);
-        var result = nextBreak(curY, capacity);
-        var chosen = result.chosen;
-        var cutY = chosen.px;
+        var cutY = nextBreak(curY, capacity);
         if (cutY <= curY) cutY = Math.min(curY + capacity, imgH);
 
         var sliceCanvas = document.createElement('canvas');
@@ -4996,8 +5003,7 @@ async function exportPdf(tbodyId, filename, summaryId) {
           var bodyY = topMarginPx + headerHeightPx;
           if (needContinuationBand) {
             // 페이지 경계에서 그룹이 끊긴 경우, 이어지는 "그 그룹"의 밴드(예: "C그룹 · 최현미")를 헤더 바로 아래 반복 표시
-            // (항상 첫 그룹 위치가 아니라, curYGroup에 저장된 실제로 이어지는 그룹의 캔버스 위치를 사용해야 한다)
-            ctx.drawImage(canvas, 0, curYGroup.groupTopPx, imgW, groupBandHeightPx, 0, bodyY, imgW, groupBandHeightPx);
+            ctx.drawImage(canvas, 0, activeGroupTop, imgW, groupBandHeightPx, 0, bodyY, imgW, groupBandHeightPx);
             bodyY += groupBandHeightPx;
           }
           ctx.drawImage(canvas, 0, curY, imgW, bodyH, 0, bodyY, imgW, bodyH);
@@ -5018,7 +5024,6 @@ async function exportPdf(tbodyId, filename, summaryId) {
 
         pageNum++;
         curY = cutY;
-        curYGroup = { groupTr: chosen.groupTr, groupTopPx: chosen.groupTopPx };
       }
 
       // "N주차 주간현황.pdf" 형식으로 바로 저장
