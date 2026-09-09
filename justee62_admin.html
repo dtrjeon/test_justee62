@@ -4794,26 +4794,9 @@ async function exportPdf(tbodyId, filename, summaryId) {
     await _loadAdminScript('https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js');
   } catch(e) { alert('라이브러리 로드 실패: ' + e.message); return; }
 
-  try {
-    var container = document.createElement('div');
-    container.style.cssText = 'position:fixed;left:-9999px;top:0;background:#fff;padding:12px;z-index:-1;width:1400px;';
-    var title = document.createElement('div');
-    title.style.cssText = 'font-weight:900;font-size:13px;margin-bottom:8px;color:#1a3a9e;';
-    title.textContent = filename.replace(/^tab\d+_/, '').replace(/_/g,' ');
-    container.appendChild(title);
-
-    // 주간현황 요약(카드) 블록을 표 위에 포함
-    var summaryEl = summaryId ? document.getElementById(summaryId) : null;
-    if (summaryEl) {
-      var clonedSummary = summaryEl.cloneNode(true);
-      clonedSummary.style.cssText = 'margin-bottom:16px;';
-      clonedSummary.querySelectorAll('[onclick]').forEach(function(el){ el.removeAttribute('onclick'); el.style.cursor = 'default'; });
-      container.appendChild(clonedSummary);
-    }
-
-    var cloned = tbl.cloneNode(true);
-    cloned.style.cssText = 'border-collapse:collapse;font-size:8px;width:100%;';
-    cloned.querySelectorAll('th,td').forEach(function(el) {
+  function styleClonedTable(t) {
+    t.style.cssText = 'border-collapse:collapse;font-size:8px;width:100%;';
+    t.querySelectorAll('th,td').forEach(function(el) {
       el.style.border = '1px solid #ccc';
       el.style.padding = '3px 4px';
       el.style.whiteSpace = 'normal';
@@ -4825,35 +4808,169 @@ async function exportPdf(tbodyId, filename, summaryId) {
       el.style.zIndex = 'auto';
       el.style.boxShadow = 'none';
     });
-    container.appendChild(cloned);
-    document.body.appendChild(container);
-    await new Promise(function(res) { setTimeout(res, 200); });
+    return t;
+  }
 
-    var canvas = await html2canvas(container, {
-      scale: 2, useCORS: true, backgroundColor: '#ffffff',
-      width: container.scrollWidth, height: container.scrollHeight
-    });
-    document.body.removeChild(container);
-
-    var imgW = canvas.width, imgH = canvas.height;
-    var pdfW = 297, pdfH = 210; // A4 가로 기본
-    if (imgH > imgW * 1.2) { pdfW = 210; pdfH = 297; } // 세로 전환
-
+  try {
+    var summaryEl = summaryId ? document.getElementById(summaryId) : null;
     var { jsPDF } = window.jspdf;
-    var pdf = new jsPDF({ orientation: pdfW > pdfH ? 'landscape' : 'portrait', unit: 'mm', format: 'a4' });
+    var pdf = null;
+    var pageIdx = 0;
 
-    var ratio = imgW / pdfW;
-    var pageHeightPx = pdfH * ratio;
-    var pages = Math.ceil(imgH / pageHeightPx);
+    async function renderBlockToPdf(blockEl) {
+      var wrap = document.createElement('div');
+      wrap.style.cssText = 'position:fixed;left:-9999px;top:0;background:#fff;padding:12px;z-index:-1;width:1400px;';
+      wrap.appendChild(blockEl);
+      document.body.appendChild(wrap);
+      await new Promise(function(res) { setTimeout(res, 150); });
 
-    for (var p = 0; p < pages; p++) {
-      if (p > 0) pdf.addPage();
-      var srcY = p * pageHeightPx;
-      var sliceH = Math.min(pageHeightPx, imgH - srcY);
-      var pc = document.createElement('canvas');
-      pc.width = imgW; pc.height = sliceH;
-      pc.getContext('2d').drawImage(canvas, 0, srcY, imgW, sliceH, 0, 0, imgW, sliceH);
-      pdf.addImage(pc.toDataURL('image/jpeg', 0.95), 'JPEG', 0, 0, pdfW, sliceH / ratio);
+      var canvas = await html2canvas(wrap, {
+        scale: 2, useCORS: true, backgroundColor: '#ffffff',
+        width: wrap.scrollWidth, height: wrap.scrollHeight
+      });
+      document.body.removeChild(wrap);
+
+      var imgW = canvas.width, imgH = canvas.height;
+      var pdfW = 297, pdfH = 210; // A4 가로 기본
+      if (imgH > imgW * 1.2) { pdfW = 210; pdfH = 297; } // 세로 전환
+      if (!pdf) {
+        pdf = new jsPDF({ orientation: pdfW > pdfH ? 'landscape' : 'portrait', unit: 'mm', format: 'a4' });
+      }
+
+      var ratio = imgW / pdfW;
+      var pageHeightPx = pdfH * ratio;
+      var slices = Math.ceil(imgH / pageHeightPx);
+
+      for (var p = 0; p < slices; p++) {
+        if (pageIdx > 0) pdf.addPage();
+        pageIdx++;
+        var srcY = p * pageHeightPx;
+        var sliceH = Math.min(pageHeightPx, imgH - srcY);
+        var pc = document.createElement('canvas');
+        pc.width = imgW; pc.height = sliceH;
+        pc.getContext('2d').drawImage(canvas, 0, srcY, imgW, sliceH, 0, 0, imgW, sliceH);
+        pdf.addImage(pc.toDataURL('image/jpeg', 0.95), 'JPEG', 0, 0, pdfW, sliceH / ratio);
+      }
+    }
+
+    if (summaryEl) {
+      // 주간현황(요약+조별상세) PDF: "조" 단위 경계에서만 페이지를 나누고(조원 행이 잘리지 않도록),
+      // 실제 렌더링 좌표를 측정해 페이지 용량에 맞춰 채운다. 2페이지부터는 표 헤더를 반복 포함.
+      var wrap = document.createElement('div');
+      wrap.style.cssText = 'position:fixed;left:-9999px;top:0;background:#fff;padding:12px;z-index:-1;width:1400px;';
+
+      var titleDiv = document.createElement('div');
+      titleDiv.style.cssText = 'font-weight:900;font-size:13px;margin-bottom:8px;color:#1a3a9e;';
+      titleDiv.textContent = filename.replace(/^tab\d+_/, '').replace(/_/g,' ');
+      wrap.appendChild(titleDiv);
+
+      var clonedSummary = summaryEl.cloneNode(true);
+      clonedSummary.style.cssText = 'margin-bottom:16px;';
+      clonedSummary.querySelectorAll('[onclick]').forEach(function(el){ el.removeAttribute('onclick'); el.style.cursor = 'default'; });
+      wrap.appendChild(clonedSummary);
+
+      var clonedTable = styleClonedTable(tbl.cloneNode(true));
+      wrap.appendChild(clonedTable);
+
+      document.body.appendChild(wrap);
+      await new Promise(function(res) { setTimeout(res, 150); });
+
+      var clonedThead = clonedTable.querySelector('thead');
+      var clonedTbody = clonedTable.querySelector('tbody');
+      var bodyTrs = Array.prototype.slice.call(clonedTbody.querySelectorAll('tr'));
+
+      var wrapRect = wrap.getBoundingClientRect();
+      function relTop(el) { return el.getBoundingClientRect().top - wrapRect.top; }
+      function relBottom(el) { return el.getBoundingClientRect().bottom - wrapRect.top; }
+
+      var headerTopCss = relTop(clonedThead);
+      var headerBottomCss = relBottom(clonedThead);
+
+      // 안전한 절단 지점: 그룹 시작행(group-row) 또는 각 "조"의 첫 행(jo-row-first) 위치.
+      // 즉, 조원(같은 조의 여러 행)이 페이지 사이에서 잘리지 않도록 이 지점에서만 나눈다.
+      var breakPointsCss = [];
+      bodyTrs.forEach(function(tr) {
+        if (tr.classList.contains('group-row') || tr.classList.contains('jo-row-first')) {
+          breakPointsCss.push(relTop(tr));
+        }
+      });
+      if (bodyTrs.length) breakPointsCss.push(relBottom(bodyTrs[bodyTrs.length - 1]));
+
+      var SCALE = 2;
+      var canvas = await html2canvas(wrap, {
+        scale: SCALE, useCORS: true, backgroundColor: '#ffffff',
+        width: wrap.scrollWidth, height: wrap.scrollHeight
+      });
+      document.body.removeChild(wrap);
+
+      var imgW = canvas.width, imgH = canvas.height;
+      var pdfW = 297, pdfH = 210; // A4 가로 기본
+      if (imgH > imgW * 1.2) { pdfW = 210; pdfH = 297; } // 세로 전환
+      pdf = new jsPDF({ orientation: pdfW > pdfH ? 'landscape' : 'portrait', unit: 'mm', format: 'a4' });
+
+      var ratio = imgW / pdfW; // canvas px per mm
+      var pageCapacityPx = pdfH * ratio; // 한 페이지에 담을 수 있는 canvas px 높이
+
+      var headerTopPx = headerTopCss * SCALE;
+      var headerBottomPx = headerBottomCss * SCALE;
+      var headerHeightPx = headerBottomPx - headerTopPx;
+
+      var breakPointsPx = breakPointsCss.map(function(v) { return v * SCALE; }).sort(function(a, b) { return a - b; });
+
+      function nextBreak(afterY, capacity) {
+        var limit = afterY + capacity;
+        var chosen = null;
+        for (var i = 0; i < breakPointsPx.length; i++) {
+          var bp = breakPointsPx[i];
+          if (bp > afterY + 0.5 && bp <= limit) chosen = bp;
+          if (bp > limit) break;
+        }
+        if (chosen === null) chosen = Math.min(limit, imgH); // 부득이한 경우(단일 조가 한 페이지보다 큰 경우)만 강제 절단
+        return chosen;
+      }
+
+      var pageNum = 0;
+      var curY = 0;
+      while (curY < imgH - 0.5) {
+        var isFirst = (pageNum === 0);
+        var capacity = isFirst ? pageCapacityPx : (pageCapacityPx - headerHeightPx);
+        var cutY = nextBreak(curY, capacity);
+        if (cutY <= curY) cutY = Math.min(curY + capacity, imgH);
+
+        var sliceCanvas = document.createElement('canvas');
+        if (isFirst) {
+          sliceCanvas.width = imgW; sliceCanvas.height = cutY - curY;
+          sliceCanvas.getContext('2d').drawImage(canvas, 0, curY, imgW, cutY - curY, 0, 0, imgW, cutY - curY);
+        } else {
+          var bodyH = cutY - curY;
+          sliceCanvas.width = imgW; sliceCanvas.height = headerHeightPx + bodyH;
+          var ctx = sliceCanvas.getContext('2d');
+          ctx.drawImage(canvas, 0, headerTopPx, imgW, headerHeightPx, 0, 0, imgW, headerHeightPx); // A그룹 위 헤더와 동일한 헤더 반복
+          ctx.drawImage(canvas, 0, curY, imgW, bodyH, 0, headerHeightPx, imgW, bodyH);
+        }
+
+        if (pageNum > 0) pdf.addPage();
+        pdf.addImage(sliceCanvas.toDataURL('image/jpeg', 0.95), 'JPEG', 0, 0, pdfW, sliceCanvas.height / ratio);
+
+        pageNum++;
+        curY = cutY;
+      }
+
+      // "N주차 주간현황.pdf" 형식으로 바로 저장
+      var wk = (typeof currentWeek !== 'undefined') ? currentWeek : null;
+      var wkName = (wk === 0 || wk === null || isNaN(wk)) ? '전체 주간현황' : (wk + '주차 주간현황');
+      pdf.save(wkName + '.pdf');
+      showToast('✅ ' + wkName + '.pdf 저장 완료');
+      return;
+    } else {
+      var container = document.createElement('div');
+      var title = document.createElement('div');
+      title.style.cssText = 'font-weight:900;font-size:13px;margin-bottom:8px;color:#1a3a9e;';
+      title.textContent = filename.replace(/^tab\d+_/, '').replace(/_/g,' ');
+      container.appendChild(title);
+      var cloned = styleClonedTable(tbl.cloneNode(true));
+      container.appendChild(cloned);
+      await renderBlockToPdf(container);
     }
 
     var blob = pdf.output('blob');
