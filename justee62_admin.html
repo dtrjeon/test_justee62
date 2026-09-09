@@ -4929,11 +4929,14 @@ async function exportPdf(tbodyId, filename, summaryId) {
         return chosen;
       }
 
+      var TOP_MARGIN_CSS_PAGE2 = 24; // 2페이지 이후 상단 여백(px)
+      var topMarginPx = TOP_MARGIN_CSS_PAGE2 * SCALE;
+
       var pageNum = 0;
       var curY = 0;
       while (curY < imgH - 0.5) {
         var isFirst = (pageNum === 0);
-        var capacity = isFirst ? pageCapacityPx : (pageCapacityPx - headerHeightPx);
+        var capacity = isFirst ? pageCapacityPx : (pageCapacityPx - headerHeightPx - topMarginPx);
         var cutY = nextBreak(curY, capacity);
         if (cutY <= curY) cutY = Math.min(curY + capacity, imgH);
 
@@ -4943,10 +4946,12 @@ async function exportPdf(tbodyId, filename, summaryId) {
           sliceCanvas.getContext('2d').drawImage(canvas, 0, curY, imgW, cutY - curY, 0, 0, imgW, cutY - curY);
         } else {
           var bodyH = cutY - curY;
-          sliceCanvas.width = imgW; sliceCanvas.height = headerHeightPx + bodyH;
+          sliceCanvas.width = imgW; sliceCanvas.height = topMarginPx + headerHeightPx + bodyH;
           var ctx = sliceCanvas.getContext('2d');
-          ctx.drawImage(canvas, 0, headerTopPx, imgW, headerHeightPx, 0, 0, imgW, headerHeightPx); // A그룹 위 헤더와 동일한 헤더 반복
-          ctx.drawImage(canvas, 0, curY, imgW, bodyH, 0, headerHeightPx, imgW, bodyH);
+          ctx.fillStyle = '#ffffff';
+          ctx.fillRect(0, 0, sliceCanvas.width, sliceCanvas.height); // 상단 여백 영역을 흰색으로 채움
+          ctx.drawImage(canvas, 0, headerTopPx, imgW, headerHeightPx, 0, topMarginPx, imgW, headerHeightPx); // A그룹 위 헤더와 동일한 헤더 반복
+          ctx.drawImage(canvas, 0, curY, imgW, bodyH, 0, topMarginPx + headerHeightPx, imgW, bodyH);
         }
 
         if (pageNum > 0) pdf.addPage();
