@@ -4890,12 +4890,18 @@ async function exportPdf(tbodyId, filename, summaryId) {
       // 즉, 조원(같은 조의 여러 행)이 페이지 사이에서 잘리지 않도록 이 지점에서만 나눈다.
       var breakPointsCss = [];
       var groupRowTopsCss = []; // 각 "그룹행"(예: C그룹·최현미)의 위치만 별도로 기록
+      var debugMarksCss = []; // {top, label} — 콘솔 디버그 로그용(페이지 분할에는 영향 없음)
       bodyTrs.forEach(function(tr) {
         if (tr.classList.contains('group-row')) {
-          groupRowTopsCss.push(relTop(tr));
-          breakPointsCss.push(relTop(tr));
+          var t = relTop(tr);
+          groupRowTopsCss.push(t);
+          breakPointsCss.push(t);
+          debugMarksCss.push({ top: t, label: '[' + tr.textContent.trim() + ']' });
         } else if (tr.classList.contains('jo-row-first')) {
-          breakPointsCss.push(relTop(tr));
+          var t2 = relTop(tr);
+          breakPointsCss.push(t2);
+          var joCell = tr.querySelector('.td-jo');
+          debugMarksCss.push({ top: t2, label: (joCell ? joCell.textContent.trim() : '?') + '조' });
         }
       });
       // 표 전체의 마지막 지점(끝) — wrap이 DOM에서 제거되기 전에 미리 측정해 둔다 (제거 후 측정하면 0이 되는 버그 방지)
@@ -4939,6 +4945,12 @@ async function exportPdf(tbodyId, filename, summaryId) {
           if (groupRowTopsPx[i] <= y + 0.5) found = groupRowTopsPx[i]; else break;
         }
         return found; // 해당 y 시점에 적용되는 그룹행의 캔버스 y좌표 (없으면 null)
+      }
+
+      // 디버그 로그용: px 좌표로 변환 + 정렬 (페이지 분할 로직에는 관여하지 않음)
+      var debugMarksPx = debugMarksCss.map(function(m) { return { px: m.top * SCALE, label: m.label }; }).sort(function(a, b) { return a.px - b.px; });
+      function labelsInRange(fromY, toY) {
+        return debugMarksPx.filter(function(m) { return m.px > fromY - 0.5 && m.px < toY + 0.5; }).map(function(m) { return m.label; });
       }
 
       function findBreak(afterY, limit) {
@@ -4988,6 +5000,16 @@ async function exportPdf(tbodyId, filename, summaryId) {
         var capacity = isFirst ? pageCapacityPx : (pageCapacityPx - headerHeightPx - topMarginPx - bottomMarginPx - bandExtra);
         var cutY = nextBreak(curY, capacity);
         if (cutY <= curY) cutY = Math.min(curY + capacity, imgH);
+
+        // 디버그 로그: 이 페이지에 실제로 포함된 조/그룹행과, 이어지는 그룹 밴드 여부를 콘솔에 출력
+        var contLabel = null;
+        if (needContinuationBand) {
+          var contMark = debugMarksPx.find(function(m) { return Math.abs(m.px - activeGroupTop) < 1; });
+          contLabel = contMark ? contMark.label : '(알 수 없음)';
+        }
+        console.log('[주간현황 PDF] 페이지 ' + (pageNum + 1) + ': ' +
+          (labelsInRange(curY, cutY).join(', ') || '(내용 없음)') +
+          (needContinuationBand ? '  |  이어지는 그룹 밴드: ' + contLabel : ''));
 
         var sliceCanvas = document.createElement('canvas');
         if (isFirst) {
