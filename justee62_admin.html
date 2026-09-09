@@ -1207,6 +1207,7 @@ window.TEST_DATA = {"records": [{"저장일시": "2026-03-14", "주차": 3, "전
 <!-- TAB 0: 주간현황 -->
 <div class="page active" id="page-0">
 
+  <div id="wb-summary-block">
   <!-- 타이틀 + 결신율 -->
   <div style="background:#1a3ab0;border-radius:10px;padding:12px 16px;margin-bottom:12px;display:flex;align-items:center;justify-content:space-between;">
     <div style="color:#fff;font-size:14px;font-weight:900;letter-spacing:1px;" id="wb-title">62기 수주반</div>
@@ -1314,6 +1315,7 @@ window.TEST_DATA = {"records": [{"저장일시": "2026-03-14", "주차": 3, "전
       </div>
     </div>
 
+  </div>
   </div>
 
   <!-- 미실시 조 명단 모달 -->
@@ -1431,7 +1433,7 @@ window.TEST_DATA = {"records": [{"저장일시": "2026-03-14", "주차": 3, "전
       <div style="display:flex;align-items:flex-end;gap:8px;">
         <button onclick="showRenumberPanel()" style="background:#fff8e1;border:1px solid #f57f17;color:#f57f17;border-radius:10px;padding:6px 8px;font-size:9px;font-weight:700;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:2px;min-width:40px;"><span style="font-size:16px;line-height:1;">🔢</span>Re-No</button>
         <button onclick="exportCsv('tb-weekly','tab0_주간현황')" style="background:#f5f5f5;border:1px solid #ddd;color:#555;border-radius:10px;padding:6px 8px;font-size:9px;font-weight:700;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:2px;min-width:40px;"><span style="font-size:16px;line-height:1;">⬇</span>CSV</button>
-        <button onclick="exportPdf('tb-weekly','tab0_주간현황')" style="background:#2050c8;border:none;color:#fff;border-radius:10px;padding:6px 8px;font-size:9px;font-weight:700;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:2px;min-width:40px;"><span style="font-size:16px;line-height:1;">⬇</span>PDF</button>
+        <button onclick="exportPdf('tb-weekly','tab0_주간현황','wb-summary-block')" style="background:#2050c8;border:none;color:#fff;border-radius:10px;padding:6px 8px;font-size:9px;font-weight:700;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:2px;min-width:40px;"><span style="font-size:16px;line-height:1;">⬇</span>PDF</button>
         <label style="display:flex;flex-direction:column;align-items:center;gap:2px;cursor:pointer;font-size:10px;" onclick="toggleInactiveRows()">
           <div style="position:relative;width:34px;height:18px;">
             <div id="toggle-track-0" style="position:absolute;top:0;left:0;width:34px;height:18px;background:#4caf50;border-radius:9px;transition:background .2s;"></div>
@@ -4779,7 +4781,7 @@ function printTab2Pdf() {
   setTimeout(function(){ win.print(); }, 600);
 }
 
-async function exportPdf(tbodyId, filename) {
+async function exportPdf(tbodyId, filename, summaryId) {
   var table = document.getElementById(tbodyId);
   if (!table) { alert('테이블을 찾을 수 없습니다.'); return; }
   var tbl = table.closest('table');
@@ -4794,11 +4796,21 @@ async function exportPdf(tbodyId, filename) {
 
   try {
     var container = document.createElement('div');
-    container.style.cssText = 'position:fixed;left:-9999px;top:0;background:#fff;padding:12px;z-index:-1;';
+    container.style.cssText = 'position:fixed;left:-9999px;top:0;background:#fff;padding:12px;z-index:-1;width:1400px;';
     var title = document.createElement('div');
     title.style.cssText = 'font-weight:900;font-size:13px;margin-bottom:8px;color:#1a3a9e;';
     title.textContent = filename.replace(/^tab\d+_/, '').replace(/_/g,' ');
     container.appendChild(title);
+
+    // 주간현황 요약(카드) 블록을 표 위에 포함
+    var summaryEl = summaryId ? document.getElementById(summaryId) : null;
+    if (summaryEl) {
+      var clonedSummary = summaryEl.cloneNode(true);
+      clonedSummary.style.cssText = 'margin-bottom:16px;';
+      clonedSummary.querySelectorAll('[onclick]').forEach(function(el){ el.removeAttribute('onclick'); el.style.cursor = 'default'; });
+      container.appendChild(clonedSummary);
+    }
+
     var cloned = tbl.cloneNode(true);
     cloned.style.cssText = 'border-collapse:collapse;font-size:8px;width:100%;';
     cloned.querySelectorAll('th,td').forEach(function(el) {
