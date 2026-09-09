@@ -4897,7 +4897,14 @@ async function exportPdf(tbodyId, filename, summaryId) {
           breakPointsCss.push({ top: relTop(tr), groupTr: currentGroupTr, groupTop: currentGroupTr ? relTop(currentGroupTr) : null });
         }
       });
+      // 표 전체의 마지막 지점(끝) — wrap이 DOM에서 제거되기 전에 미리 측정해 둔다 (제거 후 측정하면 0이 되는 버그 방지)
       var lastTr = bodyTrs.length ? bodyTrs[bodyTrs.length - 1] : null;
+      var lastTrBottomCss = lastTr ? relBottom(lastTr) : null;
+
+      // 그룹 밴드(예: "C그룹 · 최현미") 좌표도 DOM 제거 전에 미리 측정
+      var groupRowSample = bodyTrs.find(function(tr) { return tr.classList.contains('group-row'); });
+      var groupBandTopCss = groupRowSample ? relTop(groupRowSample) : 0;
+      var groupBandBottomCss = groupRowSample ? relBottom(groupRowSample) : 0;
 
       var SCALE = 2;
       var canvas = await html2canvas(wrap, {
@@ -4922,25 +4929,36 @@ async function exportPdf(tbodyId, filename, summaryId) {
       var breakPointsPx = breakPointsCss.map(function(b) {
         return { px: b.top * SCALE, groupTr: b.groupTr, groupTopPx: b.groupTop !== null ? b.groupTop * SCALE : null };
       });
-      if (lastTr) breakPointsPx.push({ px: relBottom(lastTr) * SCALE, groupTr: null, groupTopPx: null });
+      if (lastTrBottomCss !== null) breakPointsPx.push({ px: lastTrBottomCss * SCALE, groupTr: null, groupTopPx: null });
       breakPointsPx.sort(function(a, b) { return a.px - b.px; });
 
-      function nextBreak(afterY, capacity) {
-        var limit = afterY + capacity;
+      function findBreak(afterY, limit) {
         var chosen = null;
         for (var i = 0; i < breakPointsPx.length; i++) {
           var bp = breakPointsPx[i];
           if (bp.px > afterY + 0.5 && bp.px <= limit) chosen = bp;
           if (bp.px > limit) break;
         }
-        if (chosen === null) chosen = { px: Math.min(limit, imgH), groupTr: null, groupTopPx: null }; // 부득이한 경우(단일 조가 한 페이지보다 큰 경우)만 강제 절단
         return chosen;
       }
 
+      // 페이지 용량 안에 맞는 절단 지점 + 마지막 "조 하나"가 조금 초과해서 통째로
+      // 다음 페이지(거의 빈 페이지)로 밀려나는 것을 막기 위한 여유 허용치.
+      // 표의 진짜 끝까지 도달하는 경우에 한해서만, 약간 초과(최대 15%)를 허용하고 해당 페이지만 살짝 축소해서 담는다.
+      var ORPHAN_TOLERANCE = 1.15;
+      function nextBreak(afterY, capacity) {
+        var normal = findBreak(afterY, afterY + capacity);
+        var extended = findBreak(afterY, afterY + capacity * ORPHAN_TOLERANCE);
+        if (extended && extended.px >= imgH - 0.5 && (!normal || extended.px > normal.px)) {
+          return { chosen: extended, overflow: true };
+        }
+        var chosen = normal || { px: Math.min(afterY + capacity, imgH), groupTr: null, groupTopPx: null }; // 부득이한 경우(단일 조가 한 페이지보다 큰 경우)만 강제 절단
+        return { chosen: chosen, overflow: false };
+      }
+
       // 그룹 밴드(예: "C그룹 · 최현미") 하나를 헤더 아래에 다시 그리기 위한 높이/캔버스 좌표
-      var groupRowSample = bodyTrs.find(function(tr) { return tr.classList.contains('group-row'); });
-      var groupBandTopPx = groupRowSample ? relTop(groupRowSample) * SCALE : 0;
-      var groupBandBottomPx = groupRowSample ? relBottom(groupRowSample) * SCALE : 0;
+      var groupBandTopPx = groupBandTopCss * SCALE;
+      var groupBandBottomPx = groupBandBottomCss * SCALE;
       var groupBandHeightPx = groupRowSample ? (groupBandBottomPx - groupBandTopPx) : 0;
 
       var TOP_MARGIN_CSS_PAGE2 = 24; // 2페이지 이후 상단 여백(px)
@@ -4957,7 +4975,8 @@ async function exportPdf(tbodyId, filename, summaryId) {
         var bandExtra = needContinuationBand ? groupBandHeightPx : 0;
 
         var capacity = isFirst ? pageCapacityPx : (pageCapacityPx - headerHeightPx - topMarginPx - bandExtra);
-        var chosen = nextBreak(curY, capacity);
+        var result = nextBreak(curY, capacity);
+        var chosen = result.chosen;
         var cutY = chosen.px;
         if (cutY <= curY) cutY = Math.min(curY + capacity, imgH);
 
@@ -4982,7 +5001,16 @@ async function exportPdf(tbodyId, filename, summaryId) {
         }
 
         if (pageNum > 0) pdf.addPage();
-        pdf.addImage(sliceCanvas.toDataURL('image/jpeg', 0.95), 'JPEG', 0, 0, pdfW, sliceCanvas.height / ratio);
+
+        // 마지막 조를 포함시키기 위해 용량을 살짝 초과한 페이지는, 페이지 안에 들어가도록 비율을 유지한 채 살짝 축소해서 배치
+        var destW = pdfW, destH = sliceCanvas.height / ratio, destX = 0;
+        if (destH > pdfH) {
+          var shrink = pdfH / destH;
+          destH = pdfH;
+          destW = pdfW * shrink;
+          destX = (pdfW - destW) / 2;
+        }
+        pdf.addImage(sliceCanvas.toDataURL('image/jpeg', 0.95), 'JPEG', destX, 0, destW, destH);
 
         pageNum++;
         curY = cutY;
