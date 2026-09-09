@@ -4963,6 +4963,8 @@ async function exportPdf(tbodyId, filename, summaryId) {
 
       var TOP_MARGIN_CSS_PAGE2 = 24; // 2페이지 이후 상단 여백(px)
       var topMarginPx = TOP_MARGIN_CSS_PAGE2 * SCALE;
+      var BOTTOM_MARGIN_CSS_PAGE2 = 12; // 2페이지 이후 하단 여백(px)
+      var bottomMarginPx = BOTTOM_MARGIN_CSS_PAGE2 * SCALE;
 
       var pageNum = 0;
       var curY = 0;
@@ -4974,7 +4976,7 @@ async function exportPdf(tbodyId, filename, summaryId) {
         var needContinuationBand = (!isFirst && curYGroup && curYGroup.groupTr && curYGroup.groupTopPx < curY - 0.5);
         var bandExtra = needContinuationBand ? groupBandHeightPx : 0;
 
-        var capacity = isFirst ? pageCapacityPx : (pageCapacityPx - headerHeightPx - topMarginPx - bandExtra);
+        var capacity = isFirst ? pageCapacityPx : (pageCapacityPx - headerHeightPx - topMarginPx - bottomMarginPx - bandExtra);
         var result = nextBreak(curY, capacity);
         var chosen = result.chosen;
         var cutY = chosen.px;
@@ -4986,10 +4988,10 @@ async function exportPdf(tbodyId, filename, summaryId) {
           sliceCanvas.getContext('2d').drawImage(canvas, 0, curY, imgW, cutY - curY, 0, 0, imgW, cutY - curY);
         } else {
           var bodyH = cutY - curY;
-          sliceCanvas.width = imgW; sliceCanvas.height = topMarginPx + headerHeightPx + bandExtra + bodyH;
+          sliceCanvas.width = imgW; sliceCanvas.height = topMarginPx + headerHeightPx + bandExtra + bodyH + bottomMarginPx;
           var ctx = sliceCanvas.getContext('2d');
           ctx.fillStyle = '#ffffff';
-          ctx.fillRect(0, 0, sliceCanvas.width, sliceCanvas.height); // 상단 여백 영역을 흰색으로 채움
+          ctx.fillRect(0, 0, sliceCanvas.width, sliceCanvas.height); // 상단/하단 여백 영역을 흰색으로 채움
           ctx.drawImage(canvas, 0, headerTopPx, imgW, headerHeightPx, 0, topMarginPx, imgW, headerHeightPx); // A그룹 위 헤더와 동일한 헤더 반복
           var bodyY = topMarginPx + headerHeightPx;
           if (needContinuationBand) {
@@ -4998,6 +5000,7 @@ async function exportPdf(tbodyId, filename, summaryId) {
             bodyY += groupBandHeightPx;
           }
           ctx.drawImage(canvas, 0, curY, imgW, bodyH, 0, bodyY, imgW, bodyH);
+          // bottomMarginPx만큼은 흰색으로 이미 채워져 있으므로 별도로 그릴 내용 없음(맨 아래 여백)
         }
 
         if (pageNum > 0) pdf.addPage();
