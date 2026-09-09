@@ -4995,8 +4995,9 @@ async function exportPdf(tbodyId, filename, summaryId) {
           ctx.drawImage(canvas, 0, headerTopPx, imgW, headerHeightPx, 0, topMarginPx, imgW, headerHeightPx); // A그룹 위 헤더와 동일한 헤더 반복
           var bodyY = topMarginPx + headerHeightPx;
           if (needContinuationBand) {
-            // 페이지 경계에서 그룹이 끊긴 경우, 이어지는 그룹명 밴드(예: "C그룹 · 최현미")를 헤더 바로 아래 반복 표시
-            ctx.drawImage(canvas, 0, groupBandTopPx, imgW, groupBandHeightPx, 0, bodyY, imgW, groupBandHeightPx);
+            // 페이지 경계에서 그룹이 끊긴 경우, 이어지는 "그 그룹"의 밴드(예: "C그룹 · 최현미")를 헤더 바로 아래 반복 표시
+            // (항상 첫 그룹 위치가 아니라, curYGroup에 저장된 실제로 이어지는 그룹의 캔버스 위치를 사용해야 한다)
+            ctx.drawImage(canvas, 0, curYGroup.groupTopPx, imgW, groupBandHeightPx, 0, bodyY, imgW, groupBandHeightPx);
             bodyY += groupBandHeightPx;
           }
           ctx.drawImage(canvas, 0, curY, imgW, bodyH, 0, bodyY, imgW, bodyH);
