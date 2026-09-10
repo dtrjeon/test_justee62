@@ -3874,7 +3874,7 @@ function renderTab0(data, w) {
         var nameBorderStyle = joBorderFull || extraBorderStyle;
 
         var absentClass = (isPersonal && action !== '하였고') ? ' personal-absent' : (action === '불참하였고' ? ' team-absent' : '');
-        html += '<tr class="jo-row active-row' + (isFirst ? ' jo-row-first' : '') + absentClass + '">' +
+        html += '<tr class="jo-row active-row' + (isFirst ? ' jo-row-first' : '') + (isRecFirst ? ' rec-row-first' : '') + absentClass + '" data-rec-idx="' + ri + '">' +
           // 조번호: 첫 번째 건의 첫 번째 조원에만 전체 rowspan (다른 조 경계선만)
           (!joNumRendered ? '<td class="td-jo" rowspan="' + totalRowspan + '" style="position:sticky;left:0;z-index:2;background:#fff;box-shadow:1px 0 0 #c5cde8;' + joBorderStyle + '">' + jo + '</td>' : '') +
           '<td class="td-name" style="position:sticky;left:28px;z-index:2;background:#fff;box-shadow:2px 0 4px rgba(26,58,176,0.10);' + roleCls + nameBorderStyle + '">' + m.name + '</td>' +
@@ -4932,7 +4932,9 @@ async function buildWeeklyLayoutData(captureCanvas) {
 
   var groupBands = []; // {label, top, bottom}
   var joUnitsRaw = []; // {label, top, groupLabel}
+  var recStartsRaw = []; // {top, joRawIdx, recIdx}
   var currentGroupLabel = null;
+  var joRawIdx = -1;
   trs.forEach(function(tr) {
     if (tr.classList.contains('group-row')) {
       currentGroupLabel = tr.textContent.trim();
@@ -4940,6 +4942,11 @@ async function buildWeeklyLayoutData(captureCanvas) {
     } else if (tr.classList.contains('jo-row-first')) {
       var joCell = tr.querySelector('.td-jo');
       joUnitsRaw.push({ label: (joCell ? joCell.textContent.trim() : '?') + '조', top: relTop(tr), groupLabel: currentGroupLabel });
+      joRawIdx++;
+    }
+    if (tr.classList.contains('rec-row-first')) {
+      var recIdx = parseInt(tr.getAttribute('data-rec-idx') || '0', 10);
+      recStartsRaw.push({ top: relTop(tr), joRawIdx: joRawIdx, recIdx: recIdx });
     }
   });
   var lastTr = trs.length ? trs[trs.length - 1] : null;
@@ -4955,19 +4962,36 @@ async function buildWeeklyLayoutData(captureCanvas) {
   }
   joUnitsRaw.forEach(function(j) { j.bottom = nextStartAfter(j.top); });
 
+  // 조 안의 "건(레코드)" 단위 경계 — 조를 세밀하게 쪼갤 때(펼치기) 사용. 그룹행/조행/건행 전부 포함해서 끝지점 계산
+  var allStartsFine = allStarts.concat(recStartsRaw.map(function(r) { return r.top; })).sort(function(a, b) { return a - b; });
+  function nextStartAfterFine(y) {
+    for (var i = 0; i < allStartsFine.length; i++) { if (allStartsFine[i] > y + 0.5) return allStartsFine[i]; }
+    return lastBottom;
+  }
+  recStartsRaw.forEach(function(r) { r.bottom = nextStartAfterFine(r.top); });
+
   var groupSample = trs.find(function(tr) { return tr.classList.contains('group-row'); });
   var groupBandHeight = groupSample ? (relBottom(groupSample) - relTop(groupSample)) : 0;
 
-  // 같은 조 번호가 연속으로 나오면(예: "9조"가 두 블록) 하나의 유닛으로 합침
+  // 같은 조 번호가 연속으로 나오면 하나의 유닛으로 합침 (원본 구조상 실제로는 항상 1:1)
   var joUnits = [];
-  joUnitsRaw.forEach(function(j) {
+  var rawToFinalIdx = [];
+  joUnitsRaw.forEach(function(j, rawIdx) {
     var prev = joUnits.length ? joUnits[joUnits.length - 1] : null;
     if (prev && prev.label === j.label && prev.groupLabel === j.groupLabel && Math.abs(prev.bottom - j.top) < 1) {
       prev.bottom = j.bottom;
       prev.blockCount += 1;
+      rawToFinalIdx.push(joUnits.length - 1);
     } else {
-      joUnits.push({ label: j.label, groupLabel: j.groupLabel, top: j.top, bottom: j.bottom, blockCount: 1 });
+      joUnits.push({ label: j.label, groupLabel: j.groupLabel, top: j.top, bottom: j.bottom, blockCount: 1, records: [] });
+      rawToFinalIdx.push(joUnits.length - 1);
     }
+  });
+  // 각 조 유닛에 "건" 단위 세부 목록을 붙임 (건이 1개뿐이면 펼치기 의미 없음)
+  recStartsRaw.forEach(function(r) {
+    var finalIdx = rawToFinalIdx[r.joRawIdx];
+    if (finalIdx === undefined) return;
+    joUnits[finalIdx].records.push({ top: r.top, bottom: r.bottom, recIdx: r.recIdx, hasJoCell: r.recIdx === 0 });
   });
 
   var cssWidth = wrap.scrollWidth;
@@ -5069,17 +5093,22 @@ async function previewPdfComposition() {
   PDF_LAST_LAYOUT = layout;
   PDF_LAST_AUTO_PAGES = pages;
   PDF_JO_ASSIGN_STATE = null; // 새 미리보기를 돌리면 수동 편집 상태는 초기화(다시 자동 배치로 채움)
+  PDF_EXPANDED_JO = null;
 
   box.textContent = pageLabelsToText(layout, pages);
   document.getElementById('pdf-jo-assign-open-btn').style.display = 'block';
 }
 
-// ── 조 배치 수동 편집기 ──────────────────────────────────────────────────
+// ── 조 배치 수동 편집기 (조 단위 또는, 필요시 "건" 단위로 펼쳐서 편집 가능) ──────
+// 유닛 id 체계: "j<조인덱스>" = 조 전체(기본), "r<조인덱스>_<건인덱스>" = 펼쳐진 개별 건
+var PDF_EXPANDED_JO = null; // Set of 조 인덱스(펼쳐진 상태)
+
 function openJoAssignEditor() {
   if (!PDF_LAST_LAYOUT || !PDF_LAST_AUTO_PAGES) { alert('먼저 "미리보기"를 한 번 실행해 주세요.'); return; }
   if (!PDF_JO_ASSIGN_STATE) {
-    // 자동 배치 결과로 초기 상태를 채움
-    PDF_JO_ASSIGN_STATE = PDF_LAST_AUTO_PAGES.map(function(idxs) { return idxs.slice(); });
+    // 자동 배치 결과로 초기 상태를 채움(전부 조 단위)
+    PDF_JO_ASSIGN_STATE = PDF_LAST_AUTO_PAGES.map(function(idxs) { return idxs.map(function(i) { return 'j' + i; }); });
+    PDF_EXPANDED_JO = new Set();
   }
   renderJoAssignTable();
   document.getElementById('jo-assign-modal').classList.add('show');
@@ -5091,16 +5120,40 @@ function addJoAssignPageColumn() {
   PDF_JO_ASSIGN_STATE.push([]);
   renderJoAssignTable();
 }
-function pageOfUnit(idx) {
-  for (var p = 0; p < PDF_JO_ASSIGN_STATE.length; p++) { if (PDF_JO_ASSIGN_STATE[p].indexOf(idx) !== -1) return p; }
+function pageOfUnit(id) {
+  for (var p = 0; p < PDF_JO_ASSIGN_STATE.length; p++) { if (PDF_JO_ASSIGN_STATE[p].indexOf(id) !== -1) return p; }
   return -1;
 }
-function setUnitPage(idx, pageIdx) {
+function setUnitPage(id, pageIdx) {
   PDF_JO_ASSIGN_STATE.forEach(function(arr) {
-    var pos = arr.indexOf(idx);
+    var pos = arr.indexOf(id);
     if (pos !== -1) arr.splice(pos, 1);
   });
-  PDF_JO_ASSIGN_STATE[pageIdx].push(idx);
+  PDF_JO_ASSIGN_STATE[pageIdx].push(id);
+}
+// 조를 "건" 단위로 펼치기/접기 — 펼치면 기존 배치 페이지를 그대로 물려받아 건별로 재배치 가능
+function toggleJoExpand(joIdx) {
+  var u = PDF_LAST_LAYOUT.joUnits[joIdx];
+  if (PDF_EXPANDED_JO.has(joIdx)) {
+    // 접기: 흩어진 건들을 모아 그 중 가장 앞 페이지로 조 전체를 되돌림
+    var foundPage = 0, found = false;
+    for (var ri = 0; ri < u.records.length; ri++) {
+      var id = 'r' + joIdx + '_' + ri;
+      var p = pageOfUnit(id);
+      if (p !== -1 && (!found || p < foundPage)) { foundPage = p; found = true; }
+      PDF_JO_ASSIGN_STATE.forEach(function(arr) { var pos = arr.indexOf(id); if (pos !== -1) arr.splice(pos, 1); });
+    }
+    PDF_JO_ASSIGN_STATE[found ? foundPage : 0].push('j' + joIdx);
+    PDF_EXPANDED_JO.delete(joIdx);
+  } else {
+    // 펼치기: 조 전체가 있던 페이지를 각 건에 그대로 부여
+    var wholeId = 'j' + joIdx;
+    var curPage = pageOfUnit(wholeId);
+    PDF_JO_ASSIGN_STATE.forEach(function(arr) { var pos = arr.indexOf(wholeId); if (pos !== -1) arr.splice(pos, 1); });
+    u.records.forEach(function(rec, ri) { PDF_JO_ASSIGN_STATE[curPage !== -1 ? curPage : 0].push('r' + joIdx + '_' + ri); });
+    PDF_EXPANDED_JO.add(joIdx);
+  }
+  renderJoAssignTable();
 }
 function renderJoAssignTable() {
   var layout = PDF_LAST_LAYOUT;
@@ -5116,15 +5169,38 @@ function renderJoAssignTable() {
       html += '<tr><td colspan="' + (pageCount + 1) + '" style="background:#eef1fa;font-weight:700;padding:5px 8px;color:var(--primary);">[' + u.groupLabel + ']</td></tr>';
       lastGroup = u.groupLabel;
     }
-    var curPage = pageOfUnit(idx);
-    html += '<tr>';
-    html += '<td style="padding:5px 8px;border-bottom:1px solid #f0f0f0;position:sticky;left:0;background:#fff;">' + u.label + (u.blockCount > 1 ? ' <span style="color:#e65100;font-size:10px;">×' + u.blockCount + '</span>' : '') + '</td>';
-    for (var p2 = 0; p2 < pageCount; p2++) {
-      html += '<td style="text-align:center;border-bottom:1px solid #f0f0f0;">' +
-        '<input type="radio" name="jo-assign-' + idx + '" value="' + p2 + '" ' + (curPage === p2 ? 'checked' : '') +
-        ' onchange="setUnitPage(' + idx + ',' + p2 + ')" style="width:16px;height:16px;"></td>';
+    var canSplit = u.records.length > 1;
+    var expanded = PDF_EXPANDED_JO.has(idx);
+
+    if (!expanded) {
+      var curPage = pageOfUnit('j' + idx);
+      html += '<tr>';
+      html += '<td style="padding:5px 8px;border-bottom:1px solid #f0f0f0;position:sticky;left:0;background:#fff;">' + u.label +
+        (canSplit ? ' <button onclick="toggleJoExpand(' + idx + ')" style="margin-left:4px;font-size:9px;padding:1px 6px;border-radius:8px;border:1px solid #ccc;background:#fafbff;cursor:pointer;">▸ ' + u.records.length + '건 펼치기</button>' : '') +
+        '</td>';
+      for (var p2 = 0; p2 < pageCount; p2++) {
+        html += '<td style="text-align:center;border-bottom:1px solid #f0f0f0;">' +
+          '<input type="radio" name="jo-assign-j' + idx + '" value="' + p2 + '" ' + (curPage === p2 ? 'checked' : '') +
+          ' onchange="setUnitPage(\'j' + idx + '\',' + p2 + ')" style="width:16px;height:16px;"></td>';
+      }
+      html += '</tr>';
+    } else {
+      u.records.forEach(function(rec, ri) {
+        var id = 'r' + idx + '_' + ri;
+        var curPageR = pageOfUnit(id);
+        html += '<tr style="background:#fffef5;">';
+        html += '<td style="padding:5px 8px 5px 18px;border-bottom:1px solid #f0f0f0;position:sticky;left:0;background:#fffef5;font-size:10px;color:#8a5a00;">' +
+          u.label + ' - ' + (ri + 1) + '건' + (rec.hasJoCell ? '' : ' <span style="color:#c00;">(조번호 셀 없음→자동 라벨)</span>') +
+          (ri === 0 ? ' <button onclick="toggleJoExpand(' + idx + ')" style="margin-left:6px;font-size:9px;padding:1px 6px;border-radius:8px;border:1px solid #ccc;background:#fff;cursor:pointer;">▾ 접기</button>' : '') +
+          '</td>';
+        for (var p3 = 0; p3 < pageCount; p3++) {
+          html += '<td style="text-align:center;border-bottom:1px solid #f0f0f0;">' +
+            '<input type="radio" name="jo-assign-' + id + '" value="' + p3 + '" ' + (curPageR === p3 ? 'checked' : '') +
+            ' onchange="setUnitPage(\'' + id + '\',' + p3 + ')" style="width:16px;height:16px;"></td>';
+        }
+        html += '</tr>';
+      });
     }
-    html += '</tr>';
   });
   html += '</table>';
   document.getElementById('jo-assign-table-wrap').innerHTML = html;
@@ -5133,8 +5209,8 @@ function renderJoAssignTable() {
 // 조 배치 편집기에서 확정한 구성대로 실제 PDF 생성
 async function generateManualWeeklyPdf() {
   if (!PDF_JO_ASSIGN_STATE || !PDF_LAST_LAYOUT) { alert('배치 정보가 없습니다.'); return; }
-  var pagesUnitIndices = PDF_JO_ASSIGN_STATE.filter(function(arr) { return arr.length > 0; });
-  if (!pagesUnitIndices.length) { alert('최소 한 페이지에는 조를 배치해 주세요.'); return; }
+  var pagesUnitIds = PDF_JO_ASSIGN_STATE.filter(function(arr) { return arr.length > 0; });
+  if (!pagesUnitIds.length) { alert('최소 한 페이지에는 조를 배치해 주세요.'); return; }
 
   closeJoAssignEditor();
   showToast('⏳ PDF 생성 중...');
@@ -5157,26 +5233,42 @@ async function generateManualWeeklyPdf() {
   var headerHeightPx = headerBottomPx - headerTopPx;
   var topMarginPx = settings.topMargin * SCALE, bottomMarginPx = settings.bottomMargin * SCALE;
   var groupBandHeightPx = layout.groupBandHeight * SCALE;
+  var LABEL_STRIP_HEIGHT = 22 * SCALE; // 조번호 셀이 없는 "건"을 위한 합성 라벨 띠 높이(css 22px)
   function bandTopPxForGroup(label) {
     var g = layout.groupBands.find(function(gg) { return gg.label === label; });
     return g ? g.top * SCALE : null;
   }
+  // id("j<idx>" 또는 "r<idx>_<ri>")를 실제 캔버스 구간 + 그룹라벨 + (필요시)합성라벨로 해석
+  function resolveUnit(id) {
+    if (id.charAt(0) === 'j') {
+      var jIdx = parseInt(id.slice(1), 10);
+      var u = layout.joUnits[jIdx];
+      return { groupLabel: u.groupLabel, top: u.top * SCALE, height: (u.bottom - u.top) * SCALE, needsSyntheticLabel: false, label: u.label };
+    } else {
+      var m = id.match(/^r(\d+)_(\d+)$/);
+      var jIdx2 = parseInt(m[1], 10), ri = parseInt(m[2], 10);
+      var u2 = layout.joUnits[jIdx2];
+      var rec = u2.records[ri];
+      return { groupLabel: u2.groupLabel, top: rec.top * SCALE, height: (rec.bottom - rec.top) * SCALE, needsSyntheticLabel: !rec.hasJoCell, label: u2.label };
+    }
+  }
 
   try {
-    for (var p = 0; p < pagesUnitIndices.length; p++) {
-      var idxs = pagesUnitIndices[p].slice().sort(function(a, b) { return a - b; }); // 문서상 원래 순서 유지
+    for (var p = 0; p < pagesUnitIds.length; p++) {
+      var ids = pagesUnitIds[p]; // 편집기에서 사용자가 배치한 순서 그대로 사용
       var isFirst = (p === 0);
 
-      var segments = []; // {top, height} — canvas px 기준
+      var segments = []; // {top, height, syntheticLabel(optional)} — canvas px 기준
       var lastGroup = null;
-      idxs.forEach(function(ui) {
-        var u = layout.joUnits[ui];
-        if (u.groupLabel !== lastGroup) {
-          var bandTop = bandTopPxForGroup(u.groupLabel);
+      ids.forEach(function(id) {
+        var r = resolveUnit(id);
+        if (r.groupLabel !== lastGroup) {
+          var bandTop = bandTopPxForGroup(r.groupLabel);
           if (bandTop !== null) segments.push({ top: bandTop, height: groupBandHeightPx });
-          lastGroup = u.groupLabel;
+          lastGroup = r.groupLabel;
         }
-        segments.push({ top: u.top * SCALE, height: (u.bottom - u.top) * SCALE });
+        if (r.needsSyntheticLabel) segments.push({ synthetic: r.label + ' (계속)', height: LABEL_STRIP_HEIGHT });
+        segments.push({ top: r.top, height: r.height });
       });
       var bodyHeight = segments.reduce(function(s, seg) { return s + seg.height; }, 0);
 
@@ -5197,7 +5289,16 @@ async function generateManualWeeklyPdf() {
 
       var yCursor = prefixHeight;
       segments.forEach(function(seg) {
-        ctx.drawImage(canvas, 0, seg.top, imgW, seg.height, 0, yCursor, imgW, seg.height);
+        if (seg.synthetic) {
+          ctx.fillStyle = '#fff4e0';
+          ctx.fillRect(0, yCursor, imgW, seg.height);
+          ctx.fillStyle = '#8a5a00';
+          ctx.font = (13 * SCALE) + 'px "Noto Sans KR", sans-serif';
+          ctx.textBaseline = 'middle';
+          ctx.fillText(seg.synthetic, 10 * SCALE, yCursor + seg.height / 2);
+        } else {
+          ctx.drawImage(canvas, 0, seg.top, imgW, seg.height, 0, yCursor, imgW, seg.height);
+        }
         yCursor += seg.height;
       });
 
