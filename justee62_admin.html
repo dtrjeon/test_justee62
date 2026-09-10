@@ -1361,6 +1361,24 @@ window.TEST_DATA = {"records": [{"저장일시": "2026-03-14", "주차": 3, "전
         <button class="modal-btn ok" style="flex:1;" onclick="savePdfPreviewSettings()">저장</button>
         <button class="modal-btn cancel" style="flex:1;" onclick="closePdfPreviewSettings()">닫기</button>
       </div>
+      <button id="pdf-jo-assign-open-btn" onclick="openJoAssignEditor()" style="display:none;width:100%;margin-top:10px;background:#fff4e0;border:1px solid #f3c98a;color:#8a5a00;border-radius:8px;padding:9px;font-weight:700;font-size:12px;cursor:pointer;">🎛 조 배치 직접 편집해서 재구성하기</button>
+    </div>
+  </div>
+
+  <!-- 조 배치 수동 편집(재구성) 모달 -->
+  <div class="modal-bg" id="jo-assign-modal" style="z-index:210;">
+    <div class="modal" style="max-width:680px;padding:18px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+        <div style="font-size:15px;font-weight:800;color:#333;">🎛 조 배치 편집</div>
+        <button onclick="closeJoAssignEditor()" style="background:none;border:none;font-size:18px;color:#999;cursor:pointer;">✕</button>
+      </div>
+      <div style="font-size:11px;color:var(--text3);margin-bottom:10px;">각 조가 들어갈 페이지를 라디오 버튼으로 선택하세요. 미리보기 결과값으로 미리 채워져 있습니다.</div>
+      <div id="jo-assign-table-wrap" style="overflow-x:auto;max-height:50vh;overflow-y:auto;border:1px solid #eee;border-radius:8px;"></div>
+      <div style="display:flex;gap:8px;margin-top:12px;">
+        <button class="modal-btn" style="flex:1;background:#eef1f8;color:var(--primary);" onclick="addJoAssignPageColumn()">＋ 페이지 추가</button>
+        <button class="modal-btn ok" style="flex:2;" onclick="generateManualWeeklyPdf()">이 구성대로 PDF 생성</button>
+        <button class="modal-btn cancel" style="flex:1;" onclick="closeJoAssignEditor()">닫기</button>
+      </div>
     </div>
   </div>
 
@@ -4847,6 +4865,7 @@ function openPdfPreviewSettings() {
   document.getElementById('pdf-set-debugpopup').checked = !!s.debugPopup;
   document.getElementById('pdf-preview-result').style.display = 'none';
   document.getElementById('pdf-preview-result').textContent = '';
+  document.getElementById('pdf-jo-assign-open-btn').style.display = 'none';
   document.getElementById('pdf-preview-settings-modal').classList.add('show');
 }
 function closePdfPreviewSettings() {
@@ -4873,18 +4892,18 @@ function savePdfPreviewSettings() {
   closePdfPreviewSettings();
 }
 
-// 실제 PDF를 만들지 않고, 설정값 기준으로 "몇 페이지에 어떤 조/그룹이 들어가는지"만 빠르게 계산
-// (html2canvas/jsPDF 없이 CSS 좌표만으로 계산 — SCALE 값은 폭/높이 비율에 영향을 주지 않으므로 생략 가능)
-function computeWeeklyPdfPreview(settings) {
+// 표를 오프스크린에 렌더링해서 측정(+선택적으로 캔버스 캡처)하는 공용 함수.
+// captureCanvas=false: 미리보기/편집기용(빠름, 캔버스 없음). captureCanvas=true: 실제 PDF 생성용.
+async function buildWeeklyLayoutData(captureCanvas) {
   var tbodyEl = document.getElementById('tb-weekly');
   var tbl = tbodyEl ? tbodyEl.closest('table') : null;
   var summaryEl = document.getElementById('wb-summary-block');
-  if (!tbl || !summaryEl) return ['표를 찾을 수 없습니다. 주간현황 탭에서 데이터를 먼저 불러와 주세요.'];
+  if (!tbl || !summaryEl) return null;
 
   var wrap = document.createElement('div');
   wrap.style.cssText = 'position:fixed;left:-9999px;top:0;background:#fff;padding:12px;z-index:-1;width:1400px;';
   var titleDiv = document.createElement('div');
-  titleDiv.style.cssText = 'font-weight:900;font-size:13px;margin-bottom:8px;';
+  titleDiv.style.cssText = 'font-weight:900;font-size:13px;margin-bottom:8px;color:#1a3a9e;';
   titleDiv.textContent = '주간현황';
   wrap.appendChild(titleDiv);
   var clonedSummary = summaryEl.cloneNode(true);
@@ -4900,6 +4919,7 @@ function computeWeeklyPdfPreview(settings) {
   });
   wrap.appendChild(clonedTable);
   document.body.appendChild(wrap);
+  if (captureCanvas) { await new Promise(function(res) { setTimeout(res, 150); }); }
 
   var wrapRect = wrap.getBoundingClientRect();
   function relTop(el) { return el.getBoundingClientRect().top - wrapRect.top; }
@@ -4908,99 +4928,296 @@ function computeWeeklyPdfPreview(settings) {
   var thead = clonedTable.querySelector('thead');
   var tbody = clonedTable.querySelector('tbody');
   var trs = Array.prototype.slice.call(tbody.querySelectorAll('tr'));
+  var headerTop = relTop(thead), headerBottom = relBottom(thead);
 
-  var headerHeight = relBottom(thead) - relTop(thead);
-
-  var breakPoints = [], groupTops = [], debugMarks = [];
+  var groupBands = []; // {label, top, bottom}
+  var joUnitsRaw = []; // {label, top, groupLabel}
+  var currentGroupLabel = null;
   trs.forEach(function(tr) {
     if (tr.classList.contains('group-row')) {
-      var t = relTop(tr);
-      groupTops.push(t); breakPoints.push(t);
-      debugMarks.push({ top: t, label: '[' + tr.textContent.trim() + ']' });
+      currentGroupLabel = tr.textContent.trim();
+      groupBands.push({ label: currentGroupLabel, top: relTop(tr), bottom: relBottom(tr) });
     } else if (tr.classList.contains('jo-row-first')) {
-      var t2 = relTop(tr);
-      breakPoints.push(t2);
       var joCell = tr.querySelector('.td-jo');
-      debugMarks.push({ top: t2, label: (joCell ? joCell.textContent.trim() : '?') + '조' });
+      joUnitsRaw.push({ label: (joCell ? joCell.textContent.trim() : '?') + '조', top: relTop(tr), groupLabel: currentGroupLabel });
     }
   });
   var lastTr = trs.length ? trs[trs.length - 1] : null;
-  var lastBottom = lastTr ? relBottom(lastTr) : null;
-  if (lastBottom !== null) breakPoints.push(lastBottom);
-  breakPoints.sort(function(a, b) { return a - b; });
-  groupTops.sort(function(a, b) { return a - b; });
-  debugMarks.sort(function(a, b) { return a.top - b.top; });
+  var lastBottom = lastTr ? relBottom(lastTr) : 0;
+
+  // 각 조 유닛의 끝 지점 = 바로 다음 유닛(그룹행 또는 조)의 시작 지점, 마지막 유닛은 표 끝
+  var allStarts = groupBands.map(function(g) { return g.top; })
+    .concat(joUnitsRaw.map(function(j) { return j.top; }))
+    .sort(function(a, b) { return a - b; });
+  function nextStartAfter(y) {
+    for (var i = 0; i < allStarts.length; i++) { if (allStarts[i] > y + 0.5) return allStarts[i]; }
+    return lastBottom;
+  }
+  joUnitsRaw.forEach(function(j) { j.bottom = nextStartAfter(j.top); });
 
   var groupSample = trs.find(function(tr) { return tr.classList.contains('group-row'); });
   var groupBandHeight = groupSample ? (relBottom(groupSample) - relTop(groupSample)) : 0;
+
+  // 같은 조 번호가 연속으로 나오면(예: "9조"가 두 블록) 하나의 유닛으로 합침
+  var joUnits = [];
+  joUnitsRaw.forEach(function(j) {
+    var prev = joUnits.length ? joUnits[joUnits.length - 1] : null;
+    if (prev && prev.label === j.label && prev.groupLabel === j.groupLabel && Math.abs(prev.bottom - j.top) < 1) {
+      prev.bottom = j.bottom;
+      prev.blockCount += 1;
+    } else {
+      joUnits.push({ label: j.label, groupLabel: j.groupLabel, top: j.top, bottom: j.bottom, blockCount: 1 });
+    }
+  });
 
   var cssWidth = wrap.scrollWidth;
   var totalHeight = wrap.scrollHeight;
   var pdfW = 297, pdfH = 210;
   if (totalHeight > cssWidth * 1.2) { pdfW = 210; pdfH = 297; }
-  var cssRatio = cssWidth / pdfW; // css px per mm (SCALE 무관 — 실제 export와 동일 비율)
+  var cssRatio = cssWidth / pdfW;
   var pageCapacity = pdfH * cssRatio;
 
+  var canvas = null;
+  if (captureCanvas) {
+    canvas = await html2canvas(wrap, { scale: 2, useCORS: true, backgroundColor: '#ffffff', width: wrap.scrollWidth, height: wrap.scrollHeight });
+  }
   document.body.removeChild(wrap);
 
-  function activeGroupAt(y) {
-    var found = null;
-    for (var i = 0; i < groupTops.length; i++) { if (groupTops[i] <= y + 0.5) found = groupTops[i]; else break; }
-    return found;
-  }
-  function findBreak(afterY, limit) {
-    var chosen = null;
-    for (var i = 0; i < breakPoints.length; i++) {
-      var bp = breakPoints[i];
-      if (bp > afterY + 0.5 && bp <= limit) chosen = bp;
-      if (bp > limit) break;
-    }
-    return chosen;
-  }
+  return {
+    headerTop: headerTop, headerBottom: headerBottom, headerHeight: headerBottom - headerTop,
+    groupBands: groupBands, joUnits: joUnits, groupBandHeight: groupBandHeight,
+    cssWidth: cssWidth, totalHeight: totalHeight, pdfW: pdfW, pdfH: pdfH, pageCapacity: pageCapacity,
+    canvas: canvas
+  };
+}
+
+// 현재 설정값으로 "조" 유닛들을 몇 페이지로 자동 배치할지 계산 (실제 export와 동일한 알고리즘)
+function computeAutoPageAssignment(layout, settings) {
+  var breakPoints = layout.joUnits.map(function(u) { return u.top; });
+  var lastBottom = layout.joUnits.length ? layout.joUnits[layout.joUnits.length - 1].bottom : layout.totalHeight;
+  breakPoints.push(lastBottom);
+  breakPoints.sort(function(a, b) { return a - b; });
+  var groupTops = layout.groupBands.map(function(g) { return g.top; }).sort(function(a, b) { return a - b; });
+
+  function activeGroupAt(y) { var f = null; for (var i = 0; i < groupTops.length; i++) { if (groupTops[i] <= y + 0.5) f = groupTops[i]; else break; } return f; }
+  function findBreak(afterY, limit) { var c = null; for (var i = 0; i < breakPoints.length; i++) { var bp = breakPoints[i]; if (bp > afterY + 0.5 && bp <= limit) c = bp; if (bp > limit) break; } return c; }
   var tol = 1 + (settings.tolerancePct / 100);
   function nextBreak(afterY, capacity) {
     var normal = findBreak(afterY, afterY + capacity);
     var extended = findBreak(afterY, afterY + capacity * tol);
-    if (extended !== null && extended >= totalHeight - 0.5 && (normal === null || extended > normal)) return extended;
-    return normal !== null ? normal : Math.min(afterY + capacity, totalHeight);
+    if (extended !== null && extended >= layout.totalHeight - 0.5 && (normal === null || extended > normal)) return extended;
+    return normal !== null ? normal : Math.min(afterY + capacity, layout.totalHeight);
   }
-  function labelsInRange(a, b) { return debugMarks.filter(function(m) { return m.top > a - 0.5 && m.top < b + 0.5; }).map(function(m) { return m.label; }); }
 
-  var lines = [];
+  var pages = [];
   var pageNum = 0, curY = 0;
-  while (curY < totalHeight - 0.5) {
+  while (curY < layout.totalHeight - 0.5) {
     var isFirst = (pageNum === 0);
     var activeGroupTop = (!isFirst) ? activeGroupAt(curY) : null;
     var needBand = (activeGroupTop !== null && activeGroupTop < curY - 0.5);
-    var bandExtra = needBand ? groupBandHeight : 0;
-    var capacity = isFirst ? pageCapacity : (pageCapacity - headerHeight - settings.topMargin - settings.bottomMargin - bandExtra);
+    var bandExtra = needBand ? layout.groupBandHeight : 0;
+    var capacity = isFirst ? layout.pageCapacity : (layout.pageCapacity - layout.headerHeight - settings.topMargin - settings.bottomMargin - bandExtra);
     var cutY = nextBreak(curY, capacity);
-    if (cutY <= curY) cutY = Math.min(curY + capacity, totalHeight);
-    var contLabel = null;
-    if (needBand) {
-      var m = debugMarks.find(function(mm) { return Math.abs(mm.top - activeGroupTop) < 1; });
-      contLabel = m ? m.label : '(알 수 없음)';
-    }
-    lines.push('페이지 ' + (pageNum + 1) + ': ' + (labelsInRange(curY, cutY).join(', ') || '(내용 없음)') +
-      (needBand ? '\n   ↳ 이어지는 그룹 밴드: ' + contLabel : ''));
+    if (cutY <= curY) cutY = Math.min(curY + capacity, layout.totalHeight);
+    var idxs = [];
+    layout.joUnits.forEach(function(u, idx) { if (u.top > curY - 0.5 && u.top < cutY + 0.5) idxs.push(idx); });
+    pages.push(idxs);
     pageNum++;
     curY = cutY;
-    if (pageNum > 30) { lines.push('(30페이지 초과 — 중단)'); break; }
+    if (pageNum > 30) break;
   }
-  return lines;
+  return pages;
 }
 
-function previewPdfComposition() {
+var PDF_LAST_LAYOUT = null;      // 최근 미리보기에서 계산된 레이아웃(조 유닛/그룹행 위치 등)
+var PDF_LAST_AUTO_PAGES = null;  // 최근 미리보기의 자동 페이지 배치(조 유닛 인덱스 배열의 배열)
+var PDF_JO_ASSIGN_STATE = null;  // 편집기에서 사용자가 조정한 배치(페이지별 조 유닛 인덱스 배열)
+
+function pageLabelsToText(layout, pages) {
+  return pages.map(function(idxs, p) {
+    var labels = idxs.slice().sort(function(a, b) { return a - b; }).map(function(i) {
+      var u = layout.joUnits[i];
+      return u.label + (u.blockCount > 1 ? '(' + u.blockCount + ')' : '');
+    });
+    // 이 페이지에 포함된 그룹들을 라벨 앞에 붙여서 보여줌
+    var withGroups = [];
+    var lastGroup = null;
+    idxs.slice().sort(function(a, b) { return a - b; }).forEach(function(i) {
+      var u = layout.joUnits[i];
+      if (u.groupLabel !== lastGroup) { withGroups.push('[' + u.groupLabel + ']'); lastGroup = u.groupLabel; }
+      withGroups.push(u.label + (u.blockCount > 1 ? '(' + u.blockCount + ')' : ''));
+    });
+    return '페이지 ' + (p + 1) + ': ' + (withGroups.join(', ') || '(내용 없음)');
+  }).join('\n\n');
+}
+
+async function previewPdfComposition() {
   var f = readPdfSettingsFromForm();
   var settings = {
     topMargin: isNaN(f.topMargin) ? 24 : f.topMargin,
     bottomMargin: isNaN(f.bottomMargin) ? 12 : f.bottomMargin,
     tolerancePct: isNaN(f.tolerancePct) ? 15 : f.tolerancePct
   };
-  var lines = computeWeeklyPdfPreview(settings);
   var box = document.getElementById('pdf-preview-result');
-  box.textContent = lines.join('\n\n');
+  box.textContent = '계산 중...';
   box.style.display = 'block';
+
+  var layout = await buildWeeklyLayoutData(false);
+  if (!layout) { box.textContent = '표를 찾을 수 없습니다. 주간현황 탭에서 데이터를 먼저 불러와 주세요.'; return; }
+  var pages = computeAutoPageAssignment(layout, settings);
+
+  PDF_LAST_LAYOUT = layout;
+  PDF_LAST_AUTO_PAGES = pages;
+  PDF_JO_ASSIGN_STATE = null; // 새 미리보기를 돌리면 수동 편집 상태는 초기화(다시 자동 배치로 채움)
+
+  box.textContent = pageLabelsToText(layout, pages);
+  document.getElementById('pdf-jo-assign-open-btn').style.display = 'block';
+}
+
+// ── 조 배치 수동 편집기 ──────────────────────────────────────────────────
+function openJoAssignEditor() {
+  if (!PDF_LAST_LAYOUT || !PDF_LAST_AUTO_PAGES) { alert('먼저 "미리보기"를 한 번 실행해 주세요.'); return; }
+  if (!PDF_JO_ASSIGN_STATE) {
+    // 자동 배치 결과로 초기 상태를 채움
+    PDF_JO_ASSIGN_STATE = PDF_LAST_AUTO_PAGES.map(function(idxs) { return idxs.slice(); });
+  }
+  renderJoAssignTable();
+  document.getElementById('jo-assign-modal').classList.add('show');
+}
+function closeJoAssignEditor() {
+  document.getElementById('jo-assign-modal').classList.remove('show');
+}
+function addJoAssignPageColumn() {
+  PDF_JO_ASSIGN_STATE.push([]);
+  renderJoAssignTable();
+}
+function pageOfUnit(idx) {
+  for (var p = 0; p < PDF_JO_ASSIGN_STATE.length; p++) { if (PDF_JO_ASSIGN_STATE[p].indexOf(idx) !== -1) return p; }
+  return -1;
+}
+function setUnitPage(idx, pageIdx) {
+  PDF_JO_ASSIGN_STATE.forEach(function(arr) {
+    var pos = arr.indexOf(idx);
+    if (pos !== -1) arr.splice(pos, 1);
+  });
+  PDF_JO_ASSIGN_STATE[pageIdx].push(idx);
+}
+function renderJoAssignTable() {
+  var layout = PDF_LAST_LAYOUT;
+  var pageCount = PDF_JO_ASSIGN_STATE.length;
+  var html = '<table style="border-collapse:collapse;width:100%;font-size:11px;">';
+  html += '<tr style="background:#f2f4fa;"><th style="padding:6px 8px;text-align:left;border-bottom:1px solid #ddd;position:sticky;left:0;background:#f2f4fa;">조</th>';
+  for (var p = 0; p < pageCount; p++) html += '<th style="padding:6px 8px;border-bottom:1px solid #ddd;min-width:56px;">페이지' + (p + 1) + '</th>';
+  html += '</tr>';
+
+  var lastGroup = null;
+  layout.joUnits.forEach(function(u, idx) {
+    if (u.groupLabel !== lastGroup) {
+      html += '<tr><td colspan="' + (pageCount + 1) + '" style="background:#eef1fa;font-weight:700;padding:5px 8px;color:var(--primary);">[' + u.groupLabel + ']</td></tr>';
+      lastGroup = u.groupLabel;
+    }
+    var curPage = pageOfUnit(idx);
+    html += '<tr>';
+    html += '<td style="padding:5px 8px;border-bottom:1px solid #f0f0f0;position:sticky;left:0;background:#fff;">' + u.label + (u.blockCount > 1 ? ' <span style="color:#e65100;font-size:10px;">×' + u.blockCount + '</span>' : '') + '</td>';
+    for (var p2 = 0; p2 < pageCount; p2++) {
+      html += '<td style="text-align:center;border-bottom:1px solid #f0f0f0;">' +
+        '<input type="radio" name="jo-assign-' + idx + '" value="' + p2 + '" ' + (curPage === p2 ? 'checked' : '') +
+        ' onchange="setUnitPage(' + idx + ',' + p2 + ')" style="width:16px;height:16px;"></td>';
+    }
+    html += '</tr>';
+  });
+  html += '</table>';
+  document.getElementById('jo-assign-table-wrap').innerHTML = html;
+}
+
+// 조 배치 편집기에서 확정한 구성대로 실제 PDF 생성
+async function generateManualWeeklyPdf() {
+  if (!PDF_JO_ASSIGN_STATE || !PDF_LAST_LAYOUT) { alert('배치 정보가 없습니다.'); return; }
+  var pagesUnitIndices = PDF_JO_ASSIGN_STATE.filter(function(arr) { return arr.length > 0; });
+  if (!pagesUnitIndices.length) { alert('최소 한 페이지에는 조를 배치해 주세요.'); return; }
+
+  closeJoAssignEditor();
+  showToast('⏳ PDF 생성 중...');
+  try {
+    await _loadAdminScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js');
+    await _loadAdminScript('https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js');
+  } catch (e) { alert('라이브러리 로드 실패: ' + e.message); return; }
+
+  var layout = await buildWeeklyLayoutData(true);
+  if (!layout || !layout.canvas) { alert('표를 찾을 수 없습니다.'); return; }
+
+  var settings = loadPdfPreviewSettings();
+  var SCALE = 2;
+  var canvas = layout.canvas;
+  var imgW = canvas.width;
+  var ratio = imgW / layout.pdfW; // canvas px per mm
+  var pdf = new window.jspdf.jsPDF({ orientation: layout.pdfW > layout.pdfH ? 'landscape' : 'portrait', unit: 'mm', format: 'a4' });
+
+  var headerTopPx = layout.headerTop * SCALE, headerBottomPx = layout.headerBottom * SCALE;
+  var headerHeightPx = headerBottomPx - headerTopPx;
+  var topMarginPx = settings.topMargin * SCALE, bottomMarginPx = settings.bottomMargin * SCALE;
+  var groupBandHeightPx = layout.groupBandHeight * SCALE;
+  function bandTopPxForGroup(label) {
+    var g = layout.groupBands.find(function(gg) { return gg.label === label; });
+    return g ? g.top * SCALE : null;
+  }
+
+  try {
+    for (var p = 0; p < pagesUnitIndices.length; p++) {
+      var idxs = pagesUnitIndices[p].slice().sort(function(a, b) { return a - b; }); // 문서상 원래 순서 유지
+      var isFirst = (p === 0);
+
+      var segments = []; // {top, height} — canvas px 기준
+      var lastGroup = null;
+      idxs.forEach(function(ui) {
+        var u = layout.joUnits[ui];
+        if (u.groupLabel !== lastGroup) {
+          var bandTop = bandTopPxForGroup(u.groupLabel);
+          if (bandTop !== null) segments.push({ top: bandTop, height: groupBandHeightPx });
+          lastGroup = u.groupLabel;
+        }
+        segments.push({ top: u.top * SCALE, height: (u.bottom - u.top) * SCALE });
+      });
+      var bodyHeight = segments.reduce(function(s, seg) { return s + seg.height; }, 0);
+
+      var prefixHeight = isFirst ? headerBottomPx : (topMarginPx + headerHeightPx);
+      var totalCanvasH = prefixHeight + bodyHeight + (isFirst ? 0 : bottomMarginPx);
+
+      var sliceCanvas = document.createElement('canvas');
+      sliceCanvas.width = imgW; sliceCanvas.height = totalCanvasH;
+      var ctx = sliceCanvas.getContext('2d');
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, sliceCanvas.width, sliceCanvas.height);
+
+      if (isFirst) {
+        ctx.drawImage(canvas, 0, 0, imgW, headerBottomPx, 0, 0, imgW, headerBottomPx); // 타이틀+요약+헤더
+      } else {
+        ctx.drawImage(canvas, 0, headerTopPx, imgW, headerHeightPx, 0, topMarginPx, imgW, headerHeightPx); // 헤더만 반복
+      }
+
+      var yCursor = prefixHeight;
+      segments.forEach(function(seg) {
+        ctx.drawImage(canvas, 0, seg.top, imgW, seg.height, 0, yCursor, imgW, seg.height);
+        yCursor += seg.height;
+      });
+
+      if (p > 0) pdf.addPage();
+      var destW = layout.pdfW, destH = sliceCanvas.height / ratio, destX = 0;
+      if (destH > layout.pdfH) {
+        var shrink = layout.pdfH / destH;
+        destH = layout.pdfH; destW = layout.pdfW * shrink; destX = (layout.pdfW - destW) / 2;
+      }
+      pdf.addImage(sliceCanvas.toDataURL('image/jpeg', 0.95), 'JPEG', destX, 0, destW, destH);
+    }
+
+    var wk = (typeof currentWeek !== 'undefined') ? currentWeek : null;
+    var wkName = ((wk === 0 || wk === null || isNaN(wk)) ? '전체 주간현황' : (wk + '주차 주간현황')) + '(재구성)';
+    pdf.save(wkName + '.pdf');
+    showToast('✅ ' + wkName + '.pdf 저장 완료');
+  } catch (e) {
+    alert('PDF 생성 오류: ' + e.message);
+    console.error(e);
+  }
 }
 
 async function exportPdf(tbodyId, filename, summaryId) {
