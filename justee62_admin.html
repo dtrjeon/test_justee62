@@ -1156,6 +1156,10 @@ window.TEST_DATA = {"records": [{"저장일시": "2026-03-14", "주차": 3, "전
     <h2>관리자 인증</h2>
     <p>62기 수지주일반 전도현황<br>접근 권한이 필요합니다.</p>
     <input class="lock-input" type="password" id="lock-input" maxlength="10" placeholder="••••" oninput="onLockInput()" onkeydown="if(event.key==='Enter')checkPassword()">
+    <label style="display:flex;align-items:center;justify-content:center;gap:6px;font-size:12px;color:#666;margin:10px 0 2px;cursor:pointer;">
+      <input type="checkbox" id="lock-remember" style="width:15px;height:15px;">
+      이 기기에서 로그인 상태 자동 저장(다음에 자동 로그인)
+    </label>
     <button class="lock-btn" onclick="checkPassword()">🔓 확인</button>
     <div class="lock-error" id="lock-error"></div>
   </div>
@@ -2564,8 +2568,8 @@ function calcCurrentWeek() {
 
   var diff = Math.floor((now - monday) / (1000 * 60 * 60 * 24 * 7)) + 1;
   var week = Math.min(Math.max(diff, 1), 13);
-  // 전주 반환 (최소 1주)
-  return Math.max(week - 1, 1);
+  // 실제 이번 주(오늘이 속한 월~일 주)를 그대로 반환
+  return week;
 }
 let currentTab = 0,
   currentWeek = calcCurrentWeek();
@@ -2627,13 +2631,28 @@ async function checkPassword() {
     if (json.status === 'ok' && (json.level === 'admin' || json.level === 'monitor')) {
       window._authLevel = json.level;
       sessionStorage.setItem(LS_AUTH, json.level);
-      localStorage.setItem('index_admin_token', json.token || '');
-      if (json.level === 'admin') {
-        localStorage.setItem('index_admin_verified', '1'); // 공개보고서 페이지와 인증 공유
-        localStorage.removeItem('index_monitor_verified');
+
+      // "로그인 상태 자동 저장" 체크 여부에 따라 다음 방문 시 자동 로그인할지 결정
+      var rememberEl = document.getElementById('lock-remember');
+      var remember = rememberEl ? rememberEl.checked : true;
+      localStorage.setItem('admin_remember_pref', remember ? '1' : '0');
+
+      if (remember) {
+        localStorage.setItem('index_admin_token', json.token || '');
+        if (json.level === 'admin') {
+          localStorage.setItem('index_admin_verified', '1'); // 공개보고서 페이지와 인증 공유
+          localStorage.removeItem('index_monitor_verified');
+        } else {
+          localStorage.setItem('index_monitor_verified', '1'); // 공개보고서 페이지와 열람 권한 공유
+          localStorage.removeItem('index_admin_verified');
+        }
       } else {
-        localStorage.setItem('index_monitor_verified', '1'); // 공개보고서 페이지와 열람 권한 공유
+        // 자동 로그인을 원하지 않으면 영구 저장 플래그를 남기지 않는다(이번 세션에서만 로그인 유지)
+        localStorage.removeItem('index_admin_token');
         localStorage.removeItem('index_admin_verified');
+        localStorage.removeItem('index_monitor_verified');
+      }
+      if (json.level === 'monitor') {
         showToast('👁️ 모니터링 권한으로 접속했습니다. (문서번호 관리·불일치 수정은 admin 전용)');
       }
       document.getElementById('lock-screen').style.display = 'none';
@@ -2660,6 +2679,10 @@ function onLockInput() {
 }
 
 window.onload = function() {
+  // "로그인 상태 자동 저장" 체크박스: 이전에 저장해 둔 선택값을 복원(기본값 켜짐)
+  var rememberEl = document.getElementById('lock-remember');
+  if (rememberEl) rememberEl.checked = (localStorage.getItem('admin_remember_pref') !== '0');
+
   // 세션 인증 또는 공개보고서 페이지에서의 인증(localStorage 공유, admin/monitor 모두 공유됨)이 있으면 통과
   var sessLevel = sessionStorage.getItem(LS_AUTH); // 'admin' | 'monitor' | '1'(구버전) | null
   var sharedAdmin   = localStorage.getItem('index_admin_verified') === '1';
@@ -2790,6 +2813,22 @@ function getMaxWeek() {
   return maxWeek;
 }
 
+// 주차별 날짜 범위(월~일) 라벨. 예: "9/7~9/13(일)"
+function getWeekDateRangeLabel(w) {
+  if (!CFG.trainStart) return '';
+  var start = new Date(CFG.trainStart);
+  var dow = start.getDay();
+  var diffToMonday = (dow === 0) ? -6 : 1 - dow;
+  var startMonday = new Date(start);
+  startMonday.setDate(start.getDate() + diffToMonday);
+  var wStart = new Date(startMonday);
+  wStart.setDate(startMonday.getDate() + (w - 1) * 7);
+  var wEnd = new Date(wStart);
+  wEnd.setDate(wStart.getDate() + 6);
+  function fmt(d) { return (d.getMonth() + 1) + '/' + d.getDate(); }
+  return fmt(wStart) + '~' + fmt(wEnd) + '(일)';
+}
+
 function buildWeekSelect() {
   var sel = document.getElementById('week-select');
   sel.innerHTML = '';
@@ -2804,7 +2843,8 @@ function buildWeekSelect() {
   for (var w = 1; w <= maxWeek; w++) {
     var o = document.createElement('option');
     o.value = w;
-    o.textContent = w + '주차';
+    var range = getWeekDateRangeLabel(w);
+    o.textContent = w + '주차' + (range ? '(' + range + ')' : '');
     sel.appendChild(o);
   }
   sel.value = currentWeek;
