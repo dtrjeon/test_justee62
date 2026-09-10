@@ -4957,6 +4957,9 @@ async function buildWeeklyLayoutData(captureCanvas) {
   if (!tbl || !summaryEl) return null;
 
   var wrap = document.createElement('div');
+  wrap.setAttribute('data-weekly-pdf-wrap', '1');
+  // 혹시 이전 실행에서 정리되지 못하고 남아있는 임시 요소가 있다면(구버전 버그 등) 먼저 치운다.
+  document.querySelectorAll('[data-weekly-pdf-wrap]').forEach(function(stale) { stale.remove(); });
   wrap.style.cssText = 'position:fixed;left:-9999px;top:0;background:#fff;padding:12px;z-index:-1;width:1400px;';
   var titleDiv = document.createElement('div');
   titleDiv.style.cssText = 'font-weight:900;font-size:13px;margin-bottom:8px;color:#1a3a9e;';
@@ -4975,100 +4978,108 @@ async function buildWeeklyLayoutData(captureCanvas) {
   });
   wrap.appendChild(clonedTable);
   document.body.appendChild(wrap);
-  if (captureCanvas) { await new Promise(function(res) { setTimeout(res, 150); }); }
+  try {
+    if (captureCanvas) { await new Promise(function(res) { setTimeout(res, 150); }); }
 
-  var wrapRect = wrap.getBoundingClientRect();
-  function relTop(el) { return el.getBoundingClientRect().top - wrapRect.top; }
-  function relBottom(el) { return el.getBoundingClientRect().bottom - wrapRect.top; }
+    var wrapRect = wrap.getBoundingClientRect();
+    function relTop(el) { return el.getBoundingClientRect().top - wrapRect.top; }
+    function relBottom(el) { return el.getBoundingClientRect().bottom - wrapRect.top; }
 
-  var thead = clonedTable.querySelector('thead');
-  var tbody = clonedTable.querySelector('tbody');
-  var trs = Array.prototype.slice.call(tbody.querySelectorAll('tr'));
-  var headerTop = relTop(thead), headerBottom = relBottom(thead);
+    var thead = clonedTable.querySelector('thead');
+    var tbody = clonedTable.querySelector('tbody');
+    if (!thead || !tbody) { throw new Error('표 구조(thead/tbody)를 찾을 수 없습니다.'); }
+    var trs = Array.prototype.slice.call(tbody.querySelectorAll('tr'));
+    var headerTop = relTop(thead), headerBottom = relBottom(thead);
 
-  var groupBands = []; // {label, top, bottom}
-  var joUnitsRaw = []; // {label, top, groupLabel}
-  var recStartsRaw = []; // {top, joRawIdx, recIdx}
-  var currentGroupLabel = null;
-  var joRawIdx = -1;
-  trs.forEach(function(tr) {
-    if (tr.classList.contains('group-row')) {
-      currentGroupLabel = tr.textContent.trim();
-      groupBands.push({ label: currentGroupLabel, top: relTop(tr), bottom: relBottom(tr) });
-    } else if (tr.classList.contains('jo-row-first')) {
-      var joCell = tr.querySelector('.td-jo');
-      joUnitsRaw.push({ label: (joCell ? joCell.textContent.trim() : '?') + '조', top: relTop(tr), groupLabel: currentGroupLabel });
-      joRawIdx++;
+    var groupBands = []; // {label, top, bottom}
+    var joUnitsRaw = []; // {label, top, groupLabel}
+    var recStartsRaw = []; // {top, joRawIdx, recIdx}
+    var currentGroupLabel = null;
+    var joRawIdx = -1;
+    trs.forEach(function(tr) {
+      if (tr.classList.contains('group-row')) {
+        currentGroupLabel = tr.textContent.trim();
+        groupBands.push({ label: currentGroupLabel, top: relTop(tr), bottom: relBottom(tr) });
+      } else if (tr.classList.contains('jo-row-first')) {
+        var joCell = tr.querySelector('.td-jo');
+        joUnitsRaw.push({ label: (joCell ? joCell.textContent.trim() : '?') + '조', top: relTop(tr), groupLabel: currentGroupLabel });
+        joRawIdx++;
+      }
+      if (tr.classList.contains('rec-row-first')) {
+        var recIdx = parseInt(tr.getAttribute('data-rec-idx') || '0', 10);
+        recStartsRaw.push({ top: relTop(tr), joRawIdx: joRawIdx, recIdx: recIdx });
+      }
+    });
+    var lastTr = trs.length ? trs[trs.length - 1] : null;
+    var lastBottom = lastTr ? relBottom(lastTr) : headerBottom;
+
+    // 각 조 유닛의 끝 지점 = 바로 다음 유닛(그룹행 또는 조)의 시작 지점, 마지막 유닛은 표 끝
+    var allStarts = groupBands.map(function(g) { return g.top; })
+      .concat(joUnitsRaw.map(function(j) { return j.top; }))
+      .sort(function(a, b) { return a - b; });
+    function nextStartAfter(y) {
+      for (var i = 0; i < allStarts.length; i++) { if (allStarts[i] > y + 0.5) return allStarts[i]; }
+      return lastBottom;
     }
-    if (tr.classList.contains('rec-row-first')) {
-      var recIdx = parseInt(tr.getAttribute('data-rec-idx') || '0', 10);
-      recStartsRaw.push({ top: relTop(tr), joRawIdx: joRawIdx, recIdx: recIdx });
+    joUnitsRaw.forEach(function(j) { j.bottom = nextStartAfter(j.top); });
+
+    // 조 안의 "건(레코드)" 단위 경계 — 조를 세밀하게 쪼갤 때(펼치기) 사용. 그룹행/조행/건행 전부 포함해서 끝지점 계산
+    var allStartsFine = allStarts.concat(recStartsRaw.map(function(r) { return r.top; })).sort(function(a, b) { return a - b; });
+    function nextStartAfterFine(y) {
+      for (var i = 0; i < allStartsFine.length; i++) { if (allStartsFine[i] > y + 0.5) return allStartsFine[i]; }
+      return lastBottom;
     }
-  });
-  var lastTr = trs.length ? trs[trs.length - 1] : null;
-  var lastBottom = lastTr ? relBottom(lastTr) : 0;
+    recStartsRaw.forEach(function(r) { r.bottom = nextStartAfterFine(r.top); });
 
-  // 각 조 유닛의 끝 지점 = 바로 다음 유닛(그룹행 또는 조)의 시작 지점, 마지막 유닛은 표 끝
-  var allStarts = groupBands.map(function(g) { return g.top; })
-    .concat(joUnitsRaw.map(function(j) { return j.top; }))
-    .sort(function(a, b) { return a - b; });
-  function nextStartAfter(y) {
-    for (var i = 0; i < allStarts.length; i++) { if (allStarts[i] > y + 0.5) return allStarts[i]; }
-    return lastBottom;
-  }
-  joUnitsRaw.forEach(function(j) { j.bottom = nextStartAfter(j.top); });
+    var groupSample = trs.find(function(tr) { return tr.classList.contains('group-row'); });
+    var groupBandHeight = groupSample ? (relBottom(groupSample) - relTop(groupSample)) : 0;
 
-  // 조 안의 "건(레코드)" 단위 경계 — 조를 세밀하게 쪼갤 때(펼치기) 사용. 그룹행/조행/건행 전부 포함해서 끝지점 계산
-  var allStartsFine = allStarts.concat(recStartsRaw.map(function(r) { return r.top; })).sort(function(a, b) { return a - b; });
-  function nextStartAfterFine(y) {
-    for (var i = 0; i < allStartsFine.length; i++) { if (allStartsFine[i] > y + 0.5) return allStartsFine[i]; }
-    return lastBottom;
-  }
-  recStartsRaw.forEach(function(r) { r.bottom = nextStartAfterFine(r.top); });
+    // 같은 조 번호가 연속으로 나오면 하나의 유닛으로 합침 (원본 구조상 실제로는 항상 1:1)
+    var joUnits = [];
+    var rawToFinalIdx = [];
+    joUnitsRaw.forEach(function(j, rawIdx) {
+      var prev = joUnits.length ? joUnits[joUnits.length - 1] : null;
+      if (prev && prev.label === j.label && prev.groupLabel === j.groupLabel && Math.abs(prev.bottom - j.top) < 1) {
+        prev.bottom = j.bottom;
+        prev.blockCount += 1;
+        rawToFinalIdx.push(joUnits.length - 1);
+      } else {
+        joUnits.push({ label: j.label, groupLabel: j.groupLabel, top: j.top, bottom: j.bottom, blockCount: 1, records: [] });
+        rawToFinalIdx.push(joUnits.length - 1);
+      }
+    });
+    // 각 조 유닛에 "건" 단위 세부 목록을 붙임 (건이 1개뿐이면 펼치기 의미 없음)
+    recStartsRaw.forEach(function(r) {
+      var finalIdx = rawToFinalIdx[r.joRawIdx];
+      if (finalIdx === undefined) return;
+      joUnits[finalIdx].records.push({ top: r.top, bottom: r.bottom, recIdx: r.recIdx, hasJoCell: r.recIdx === 0 });
+    });
 
-  var groupSample = trs.find(function(tr) { return tr.classList.contains('group-row'); });
-  var groupBandHeight = groupSample ? (relBottom(groupSample) - relTop(groupSample)) : 0;
+    var cssWidth = wrap.scrollWidth;
+    var totalHeight = wrap.scrollHeight;
+    var pdfW = 297, pdfH = 210;
+    if (totalHeight > cssWidth * 1.2) { pdfW = 210; pdfH = 297; }
+    var cssRatio = cssWidth / pdfW;
+    var pageCapacity = pdfH * cssRatio;
 
-  // 같은 조 번호가 연속으로 나오면 하나의 유닛으로 합침 (원본 구조상 실제로는 항상 1:1)
-  var joUnits = [];
-  var rawToFinalIdx = [];
-  joUnitsRaw.forEach(function(j, rawIdx) {
-    var prev = joUnits.length ? joUnits[joUnits.length - 1] : null;
-    if (prev && prev.label === j.label && prev.groupLabel === j.groupLabel && Math.abs(prev.bottom - j.top) < 1) {
-      prev.bottom = j.bottom;
-      prev.blockCount += 1;
-      rawToFinalIdx.push(joUnits.length - 1);
-    } else {
-      joUnits.push({ label: j.label, groupLabel: j.groupLabel, top: j.top, bottom: j.bottom, blockCount: 1, records: [] });
-      rawToFinalIdx.push(joUnits.length - 1);
+    var canvas = null;
+    if (captureCanvas) {
+      canvas = await html2canvas(wrap, { scale: 2, useCORS: true, backgroundColor: '#ffffff', width: wrap.scrollWidth, height: wrap.scrollHeight });
     }
-  });
-  // 각 조 유닛에 "건" 단위 세부 목록을 붙임 (건이 1개뿐이면 펼치기 의미 없음)
-  recStartsRaw.forEach(function(r) {
-    var finalIdx = rawToFinalIdx[r.joRawIdx];
-    if (finalIdx === undefined) return;
-    joUnits[finalIdx].records.push({ top: r.top, bottom: r.bottom, recIdx: r.recIdx, hasJoCell: r.recIdx === 0 });
-  });
 
-  var cssWidth = wrap.scrollWidth;
-  var totalHeight = wrap.scrollHeight;
-  var pdfW = 297, pdfH = 210;
-  if (totalHeight > cssWidth * 1.2) { pdfW = 210; pdfH = 297; }
-  var cssRatio = cssWidth / pdfW;
-  var pageCapacity = pdfH * cssRatio;
-
-  var canvas = null;
-  if (captureCanvas) {
-    canvas = await html2canvas(wrap, { scale: 2, useCORS: true, backgroundColor: '#ffffff', width: wrap.scrollWidth, height: wrap.scrollHeight });
+    return {
+      headerTop: headerTop, headerBottom: headerBottom, headerHeight: headerBottom - headerTop,
+      groupBands: groupBands, joUnits: joUnits, groupBandHeight: groupBandHeight,
+      cssWidth: cssWidth, totalHeight: totalHeight, pdfW: pdfW, pdfH: pdfH, pageCapacity: pageCapacity,
+      canvas: canvas
+    };
+  } finally {
+    // 중간에 어떤 이유로든(측정 실패, html2canvas 오류 등) 예외가 나더라도,
+    // 화면 밖에 만들어둔 임시 wrap이 DOM에 그대로 남아 쌓이는 일이 없도록 항상 정리한다.
+    // (이걸 안 하면, 실패가 반복될 때마다 겹쳐 쌓인 임시 요소가 다음 캡처에 함께 찍혀
+    //  나중에 "같은 카드가 여러 번 반복되는" 것처럼 보이는 PDF가 만들어질 수 있다.)
+    if (wrap.parentNode) wrap.parentNode.removeChild(wrap);
   }
-  document.body.removeChild(wrap);
-
-  return {
-    headerTop: headerTop, headerBottom: headerBottom, headerHeight: headerBottom - headerTop,
-    groupBands: groupBands, joUnits: joUnits, groupBandHeight: groupBandHeight,
-    cssWidth: cssWidth, totalHeight: totalHeight, pdfW: pdfW, pdfH: pdfH, pageCapacity: pageCapacity,
-    canvas: canvas
-  };
 }
 
 // 현재 설정값으로 "조" 유닛들을 몇 페이지로 자동 배치할지 계산 (실제 export와 동일한 알고리즘)
