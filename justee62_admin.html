@@ -1329,6 +1329,41 @@ window.TEST_DATA = {"records": [{"저장일시": "2026-03-14", "주차": 3, "전
     </div>
   </div>
 
+  <!-- 주간현황 PDF 페이지 구성 설정(previewer_setting) 모달 -->
+  <div class="modal-bg" id="pdf-preview-settings-modal">
+    <div class="modal" style="max-width:420px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+        <div style="font-size:15px;font-weight:800;color:#333;">🧩 PDF 페이지 구성 설정</div>
+        <button onclick="closePdfPreviewSettings()" style="background:none;border:none;font-size:18px;color:#999;cursor:pointer;">✕</button>
+      </div>
+
+      <div class="modal-section">
+        <label>2페이지 이후 상단 여백(px)</label>
+        <input type="number" id="pdf-set-topmargin" style="width:100%;padding:6px 8px;border:1px solid rgba(0,0,20,0.15);border-radius:6px;font-size:14px;">
+      </div>
+      <div class="modal-section">
+        <label>2페이지 이후 하단 여백(px)</label>
+        <input type="number" id="pdf-set-bottommargin" style="width:100%;padding:6px 8px;border:1px solid rgba(0,0,20,0.15);border-radius:6px;font-size:14px;">
+      </div>
+      <div class="modal-section">
+        <label>마지막 조 포함 허용치(%) <span style="font-size:10px;font-weight:400;color:var(--text3);">표 끝의 조 하나가 이 범위 안에서 넘치면 축소해서 같이 포함</span></label>
+        <input type="number" id="pdf-set-tolerance" style="width:100%;padding:6px 8px;border:1px solid rgba(0,0,20,0.15);border-radius:6px;font-size:14px;">
+      </div>
+      <div class="modal-section" style="display:flex;align-items:center;gap:8px;">
+        <input type="checkbox" id="pdf-set-debugpopup" style="width:16px;height:16px;">
+        <label style="margin:0;">PDF 생성 후 페이지 구성 팝업으로 보여주기</label>
+      </div>
+
+      <div id="pdf-preview-result" style="display:none;font-size:11px;white-space:pre-wrap;background:#f7f9ff;border-radius:8px;padding:10px;margin-top:6px;max-height:220px;overflow-y:auto;line-height:1.5;"></div>
+
+      <div style="display:flex;gap:8px;margin-top:16px;">
+        <button class="modal-btn" style="flex:1;background:#eef1f8;color:var(--primary);" onclick="previewPdfComposition()">👀 미리보기</button>
+        <button class="modal-btn ok" style="flex:1;" onclick="savePdfPreviewSettings()">저장</button>
+        <button class="modal-btn cancel" style="flex:1;" onclick="closePdfPreviewSettings()">닫기</button>
+      </div>
+    </div>
+  </div>
+
   <!-- 문서번호/전도유형 불일치 확인 패널 -->
   <!-- 데이터 오류 상세 모달 -->
   <div class="modal-bg" id="data-error-modal" style="z-index:200;">
@@ -1434,6 +1469,7 @@ window.TEST_DATA = {"records": [{"저장일시": "2026-03-14", "주차": 3, "전
         <button onclick="showRenumberPanel()" style="background:#fff8e1;border:1px solid #f57f17;color:#f57f17;border-radius:10px;padding:6px 8px;font-size:9px;font-weight:700;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:2px;min-width:40px;"><span style="font-size:16px;line-height:1;">🔢</span>Re-No</button>
         <button onclick="exportCsv('tb-weekly','tab0_주간현황')" style="background:#f5f5f5;border:1px solid #ddd;color:#555;border-radius:10px;padding:6px 8px;font-size:9px;font-weight:700;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:2px;min-width:40px;"><span style="font-size:16px;line-height:1;">⬇</span>CSV</button>
         <button onclick="exportPdf('tb-weekly','tab0_주간현황','wb-summary-block')" style="background:#2050c8;border:none;color:#fff;border-radius:10px;padding:6px 8px;font-size:9px;font-weight:700;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:2px;min-width:40px;"><span style="font-size:16px;line-height:1;">⬇</span>PDF</button>
+        <button onclick="openPdfPreviewSettings()" style="background:#eef1f8;border:none;color:var(--primary);border-radius:10px;padding:6px 8px;font-size:9px;font-weight:700;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:2px;min-width:40px;"><span style="font-size:16px;line-height:1;">🧩</span>PDF설정</button>
         <label style="display:flex;flex-direction:column;align-items:center;gap:2px;cursor:pointer;font-size:10px;" onclick="toggleInactiveRows()">
           <div style="position:relative;width:34px;height:18px;">
             <div id="toggle-track-0" style="position:absolute;top:0;left:0;width:34px;height:18px;background:#4caf50;border-radius:9px;transition:background .2s;"></div>
@@ -4781,6 +4817,192 @@ function printTab2Pdf() {
   setTimeout(function(){ win.print(); }, 600);
 }
 
+// ── 주간현황 PDF 페이지 구성 설정(previewer_setting) ────────────────────────
+var PDF_PREVIEW_SETTINGS_KEY = 'pdfPageCompositionSettings_v1';
+function loadPdfPreviewSettings() {
+  var defaults = { topMargin: 24, bottomMargin: 12, tolerancePct: 15, debugPopup: true };
+  try {
+    var raw = localStorage.getItem(PDF_PREVIEW_SETTINGS_KEY);
+    if (raw) {
+      var parsed = JSON.parse(raw);
+      return {
+        topMargin: (typeof parsed.topMargin === 'number') ? parsed.topMargin : defaults.topMargin,
+        bottomMargin: (typeof parsed.bottomMargin === 'number') ? parsed.bottomMargin : defaults.bottomMargin,
+        tolerancePct: (typeof parsed.tolerancePct === 'number') ? parsed.tolerancePct : defaults.tolerancePct,
+        debugPopup: (typeof parsed.debugPopup === 'boolean') ? parsed.debugPopup : defaults.debugPopup
+      };
+    }
+  } catch(e) {}
+  return defaults;
+}
+function savePdfPreviewSettingsToStorage(s) {
+  try { localStorage.setItem(PDF_PREVIEW_SETTINGS_KEY, JSON.stringify(s)); } catch(e) {}
+}
+
+function openPdfPreviewSettings() {
+  var s = loadPdfPreviewSettings();
+  document.getElementById('pdf-set-topmargin').value = s.topMargin;
+  document.getElementById('pdf-set-bottommargin').value = s.bottomMargin;
+  document.getElementById('pdf-set-tolerance').value = s.tolerancePct;
+  document.getElementById('pdf-set-debugpopup').checked = !!s.debugPopup;
+  document.getElementById('pdf-preview-result').style.display = 'none';
+  document.getElementById('pdf-preview-result').textContent = '';
+  document.getElementById('pdf-preview-settings-modal').classList.add('show');
+}
+function closePdfPreviewSettings() {
+  document.getElementById('pdf-preview-settings-modal').classList.remove('show');
+}
+function readPdfSettingsFromForm() {
+  return {
+    topMargin: parseFloat(document.getElementById('pdf-set-topmargin').value),
+    bottomMargin: parseFloat(document.getElementById('pdf-set-bottommargin').value),
+    tolerancePct: parseFloat(document.getElementById('pdf-set-tolerance').value),
+    debugPopup: document.getElementById('pdf-set-debugpopup').checked
+  };
+}
+function savePdfPreviewSettings() {
+  var f = readPdfSettingsFromForm();
+  var s = {
+    topMargin: isNaN(f.topMargin) ? 24 : f.topMargin,
+    bottomMargin: isNaN(f.bottomMargin) ? 12 : f.bottomMargin,
+    tolerancePct: isNaN(f.tolerancePct) ? 15 : f.tolerancePct,
+    debugPopup: f.debugPopup
+  };
+  savePdfPreviewSettingsToStorage(s);
+  showToast('✅ PDF 설정 저장됨');
+  closePdfPreviewSettings();
+}
+
+// 실제 PDF를 만들지 않고, 설정값 기준으로 "몇 페이지에 어떤 조/그룹이 들어가는지"만 빠르게 계산
+// (html2canvas/jsPDF 없이 CSS 좌표만으로 계산 — SCALE 값은 폭/높이 비율에 영향을 주지 않으므로 생략 가능)
+function computeWeeklyPdfPreview(settings) {
+  var tbodyEl = document.getElementById('tb-weekly');
+  var tbl = tbodyEl ? tbodyEl.closest('table') : null;
+  var summaryEl = document.getElementById('wb-summary-block');
+  if (!tbl || !summaryEl) return ['표를 찾을 수 없습니다. 주간현황 탭에서 데이터를 먼저 불러와 주세요.'];
+
+  var wrap = document.createElement('div');
+  wrap.style.cssText = 'position:fixed;left:-9999px;top:0;background:#fff;padding:12px;z-index:-1;width:1400px;';
+  var titleDiv = document.createElement('div');
+  titleDiv.style.cssText = 'font-weight:900;font-size:13px;margin-bottom:8px;';
+  titleDiv.textContent = '주간현황';
+  wrap.appendChild(titleDiv);
+  var clonedSummary = summaryEl.cloneNode(true);
+  clonedSummary.style.cssText = 'margin-bottom:16px;';
+  clonedSummary.querySelectorAll('[onclick]').forEach(function(el){ el.removeAttribute('onclick'); });
+  wrap.appendChild(clonedSummary);
+  var clonedTable = tbl.cloneNode(true);
+  clonedTable.style.cssText = 'border-collapse:collapse;font-size:8px;width:100%;';
+  clonedTable.querySelectorAll('th,td').forEach(function(el) {
+    el.style.border = '1px solid #ccc'; el.style.padding = '3px 4px';
+    el.style.whiteSpace = 'normal'; el.style.wordBreak = 'break-all';
+    el.style.position = 'static'; el.style.left = 'auto'; el.style.zIndex = 'auto'; el.style.boxShadow = 'none';
+  });
+  wrap.appendChild(clonedTable);
+  document.body.appendChild(wrap);
+
+  var wrapRect = wrap.getBoundingClientRect();
+  function relTop(el) { return el.getBoundingClientRect().top - wrapRect.top; }
+  function relBottom(el) { return el.getBoundingClientRect().bottom - wrapRect.top; }
+
+  var thead = clonedTable.querySelector('thead');
+  var tbody = clonedTable.querySelector('tbody');
+  var trs = Array.prototype.slice.call(tbody.querySelectorAll('tr'));
+
+  var headerHeight = relBottom(thead) - relTop(thead);
+
+  var breakPoints = [], groupTops = [], debugMarks = [];
+  trs.forEach(function(tr) {
+    if (tr.classList.contains('group-row')) {
+      var t = relTop(tr);
+      groupTops.push(t); breakPoints.push(t);
+      debugMarks.push({ top: t, label: '[' + tr.textContent.trim() + ']' });
+    } else if (tr.classList.contains('jo-row-first')) {
+      var t2 = relTop(tr);
+      breakPoints.push(t2);
+      var joCell = tr.querySelector('.td-jo');
+      debugMarks.push({ top: t2, label: (joCell ? joCell.textContent.trim() : '?') + '조' });
+    }
+  });
+  var lastTr = trs.length ? trs[trs.length - 1] : null;
+  var lastBottom = lastTr ? relBottom(lastTr) : null;
+  if (lastBottom !== null) breakPoints.push(lastBottom);
+  breakPoints.sort(function(a, b) { return a - b; });
+  groupTops.sort(function(a, b) { return a - b; });
+  debugMarks.sort(function(a, b) { return a.top - b.top; });
+
+  var groupSample = trs.find(function(tr) { return tr.classList.contains('group-row'); });
+  var groupBandHeight = groupSample ? (relBottom(groupSample) - relTop(groupSample)) : 0;
+
+  var cssWidth = wrap.scrollWidth;
+  var totalHeight = wrap.scrollHeight;
+  var pdfW = 297, pdfH = 210;
+  if (totalHeight > cssWidth * 1.2) { pdfW = 210; pdfH = 297; }
+  var cssRatio = cssWidth / pdfW; // css px per mm (SCALE 무관 — 실제 export와 동일 비율)
+  var pageCapacity = pdfH * cssRatio;
+
+  document.body.removeChild(wrap);
+
+  function activeGroupAt(y) {
+    var found = null;
+    for (var i = 0; i < groupTops.length; i++) { if (groupTops[i] <= y + 0.5) found = groupTops[i]; else break; }
+    return found;
+  }
+  function findBreak(afterY, limit) {
+    var chosen = null;
+    for (var i = 0; i < breakPoints.length; i++) {
+      var bp = breakPoints[i];
+      if (bp > afterY + 0.5 && bp <= limit) chosen = bp;
+      if (bp > limit) break;
+    }
+    return chosen;
+  }
+  var tol = 1 + (settings.tolerancePct / 100);
+  function nextBreak(afterY, capacity) {
+    var normal = findBreak(afterY, afterY + capacity);
+    var extended = findBreak(afterY, afterY + capacity * tol);
+    if (extended !== null && extended >= totalHeight - 0.5 && (normal === null || extended > normal)) return extended;
+    return normal !== null ? normal : Math.min(afterY + capacity, totalHeight);
+  }
+  function labelsInRange(a, b) { return debugMarks.filter(function(m) { return m.top > a - 0.5 && m.top < b + 0.5; }).map(function(m) { return m.label; }); }
+
+  var lines = [];
+  var pageNum = 0, curY = 0;
+  while (curY < totalHeight - 0.5) {
+    var isFirst = (pageNum === 0);
+    var activeGroupTop = (!isFirst) ? activeGroupAt(curY) : null;
+    var needBand = (activeGroupTop !== null && activeGroupTop < curY - 0.5);
+    var bandExtra = needBand ? groupBandHeight : 0;
+    var capacity = isFirst ? pageCapacity : (pageCapacity - headerHeight - settings.topMargin - settings.bottomMargin - bandExtra);
+    var cutY = nextBreak(curY, capacity);
+    if (cutY <= curY) cutY = Math.min(curY + capacity, totalHeight);
+    var contLabel = null;
+    if (needBand) {
+      var m = debugMarks.find(function(mm) { return Math.abs(mm.top - activeGroupTop) < 1; });
+      contLabel = m ? m.label : '(알 수 없음)';
+    }
+    lines.push('페이지 ' + (pageNum + 1) + ': ' + (labelsInRange(curY, cutY).join(', ') || '(내용 없음)') +
+      (needBand ? '\n   ↳ 이어지는 그룹 밴드: ' + contLabel : ''));
+    pageNum++;
+    curY = cutY;
+    if (pageNum > 30) { lines.push('(30페이지 초과 — 중단)'); break; }
+  }
+  return lines;
+}
+
+function previewPdfComposition() {
+  var f = readPdfSettingsFromForm();
+  var settings = {
+    topMargin: isNaN(f.topMargin) ? 24 : f.topMargin,
+    bottomMargin: isNaN(f.bottomMargin) ? 12 : f.bottomMargin,
+    tolerancePct: isNaN(f.tolerancePct) ? 15 : f.tolerancePct
+  };
+  var lines = computeWeeklyPdfPreview(settings);
+  var box = document.getElementById('pdf-preview-result');
+  box.textContent = lines.join('\n\n');
+  box.style.display = 'block';
+}
+
 async function exportPdf(tbodyId, filename, summaryId) {
   var table = document.getElementById(tbodyId);
   if (!table) { alert('테이블을 찾을 수 없습니다.'); return; }
@@ -4856,6 +5078,7 @@ async function exportPdf(tbodyId, filename, summaryId) {
     if (summaryEl) {
       // 주간현황(요약+조별상세) PDF: "조" 단위 경계에서만 페이지를 나누고(조원 행이 잘리지 않도록),
       // 실제 렌더링 좌표를 측정해 페이지 용량에 맞춰 채운다. 2페이지부터는 표 헤더를 반복 포함.
+      var pdfUserSettings = loadPdfPreviewSettings(); // PDF 페이지 구성 설정(previewer_setting)에서 저장한 값
       var wrap = document.createElement('div');
       wrap.style.cssText = 'position:fixed;left:-9999px;top:0;background:#fff;padding:12px;z-index:-1;width:1400px;';
 
@@ -4965,8 +5188,8 @@ async function exportPdf(tbodyId, filename, summaryId) {
 
       // 페이지 용량 안에 맞는 절단 지점 + 마지막 "조 하나"가 조금 초과해서 통째로
       // 다음 페이지(거의 빈 페이지)로 밀려나는 것을 막기 위한 여유 허용치.
-      // 표의 진짜 끝까지 도달하는 경우에 한해서만, 약간 초과(최대 15%)를 허용하고 해당 페이지만 살짝 축소해서 담는다.
-      var ORPHAN_TOLERANCE = 1.15;
+      // 표의 진짜 끝까지 도달하는 경우에 한해서만, 설정된 허용치까지 초과를 허용하고 해당 페이지만 살짝 축소해서 담는다.
+      var ORPHAN_TOLERANCE = 1 + (pdfUserSettings.tolerancePct / 100);
       function nextBreak(afterY, capacity) {
         var normal = findBreak(afterY, afterY + capacity);
         var extended = findBreak(afterY, afterY + capacity * ORPHAN_TOLERANCE);
@@ -4981,13 +5204,14 @@ async function exportPdf(tbodyId, filename, summaryId) {
       var groupBandSampleTopPx = groupBandSampleTopCss * SCALE;
       var groupBandHeightPx = groupRowSample ? (groupBandBottomPx - groupBandSampleTopPx) : 0;
 
-      var TOP_MARGIN_CSS_PAGE2 = 24; // 2페이지 이후 상단 여백(px)
+      var TOP_MARGIN_CSS_PAGE2 = pdfUserSettings.topMargin; // 2페이지 이후 상단 여백(px)
       var topMarginPx = TOP_MARGIN_CSS_PAGE2 * SCALE;
-      var BOTTOM_MARGIN_CSS_PAGE2 = 12; // 2페이지 이후 하단 여백(px)
+      var BOTTOM_MARGIN_CSS_PAGE2 = pdfUserSettings.bottomMargin; // 2페이지 이후 하단 여백(px)
       var bottomMarginPx = BOTTOM_MARGIN_CSS_PAGE2 * SCALE;
 
       var pageNum = 0;
       var curY = 0;
+      var pdfDebugLines = []; // 모바일 화면 팝업용(콘솔을 열기 어려운 환경 대비)
       while (curY < imgH - 0.5) {
         var isFirst = (pageNum === 0);
 
@@ -5001,15 +5225,17 @@ async function exportPdf(tbodyId, filename, summaryId) {
         var cutY = nextBreak(curY, capacity);
         if (cutY <= curY) cutY = Math.min(curY + capacity, imgH);
 
-        // 디버그 로그: 이 페이지에 실제로 포함된 조/그룹행과, 이어지는 그룹 밴드 여부를 콘솔에 출력
+        // 디버그 로그: 이 페이지에 실제로 포함된 조/그룹행과, 이어지는 그룹 밴드 여부를 기록(콘솔 + 모바일용 화면 팝업)
         var contLabel = null;
         if (needContinuationBand) {
           var contMark = debugMarksPx.find(function(m) { return Math.abs(m.px - activeGroupTop) < 1; });
           contLabel = contMark ? contMark.label : '(알 수 없음)';
         }
-        console.log('[주간현황 PDF] 페이지 ' + (pageNum + 1) + ': ' +
+        var debugLine = '페이지 ' + (pageNum + 1) + ': ' +
           (labelsInRange(curY, cutY).join(', ') || '(내용 없음)') +
-          (needContinuationBand ? '  |  이어지는 그룹 밴드: ' + contLabel : ''));
+          (needContinuationBand ? '\n   ↳ 이어지는 그룹 밴드: ' + contLabel : '');
+        console.log('[주간현황 PDF] ' + debugLine);
+        pdfDebugLines.push(debugLine);
 
         var sliceCanvas = document.createElement('canvas');
         if (isFirst) {
@@ -5053,6 +5279,11 @@ async function exportPdf(tbodyId, filename, summaryId) {
       var wkName = (wk === 0 || wk === null || isNaN(wk)) ? '전체 주간현황' : (wk + '주차 주간현황');
       pdf.save(wkName + '.pdf');
       showToast('✅ ' + wkName + '.pdf 저장 완료');
+      if (pdfDebugLines.length && pdfUserSettings.debugPopup) {
+        setTimeout(function() {
+          alert('[주간현황 PDF 페이지 구성 확인]\n\n' + pdfDebugLines.join('\n\n'));
+        }, 300); // 다운로드가 먼저 시작된 뒤 팝업이 뜨도록 약간의 지연
+      }
       return;
     } else {
       var container = document.createElement('div');
