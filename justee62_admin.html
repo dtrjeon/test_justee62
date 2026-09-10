@@ -5044,7 +5044,10 @@ function computeAutoPageAssignment(layout, settings) {
     var cutY = nextBreak(curY, capacity);
     if (cutY <= curY) cutY = Math.min(curY + capacity, layout.totalHeight);
     var idxs = [];
-    layout.joUnits.forEach(function(u, idx) { if (u.top > curY - 0.5 && u.top < cutY + 0.5) idxs.push(idx); });
+    // 주의: 상한을 curY와 같은 방향(−0.5)으로 둬야 한다. 예전처럼 +0.5를 쓰면
+    // 경계에 딱 걸친 조(예: 7조)가 "이 페이지"와 "다음 페이지" 양쪽 조건을 모두 만족해서
+    // 같은 조가 두 페이지에 중복으로 들어가는 버그가 생긴다.
+    layout.joUnits.forEach(function(u, idx) { if (u.top > curY - 0.5 && u.top < cutY - 0.5) idxs.push(idx); });
     pages.push(idxs);
     pageNum++;
     curY = cutY;
@@ -5255,7 +5258,10 @@ async function generateManualWeeklyPdf() {
 
   try {
     for (var p = 0; p < pagesUnitIds.length; p++) {
-      var ids = pagesUnitIds[p]; // 편집기에서 사용자가 배치한 순서 그대로 사용
+      // 사용자가 체크한 순서가 아니라, 원본 문서상의 위/아래 순서(top 값)대로 항상 정렬해서 그린다.
+      // (안 그러면 같은 조의 여러 "건"이 순서가 뒤바뀌어 그려지거나, "조 번호가 없는 건" 앞에
+      //  진짜 조 번호가 달린 건이 뒤늦게 나오는 등 배치가 꼬여 보일 수 있다.)
+      var ids = pagesUnitIds[p].slice().sort(function(a, b) { return resolveUnit(a).top - resolveUnit(b).top; });
       var isFirst = (p === 0);
 
       var segments = []; // {top, height, syntheticLabel(optional)} — canvas px 기준
@@ -5491,7 +5497,8 @@ async function exportPdf(tbodyId, filename, summaryId) {
       // 디버그 로그용: px 좌표로 변환 + 정렬 (페이지 분할 로직에는 관여하지 않음)
       var debugMarksPx = debugMarksCss.map(function(m) { return { px: m.top * SCALE, label: m.label }; }).sort(function(a, b) { return a.px - b.px; });
       function labelsInRange(fromY, toY) {
-        return debugMarksPx.filter(function(m) { return m.px > fromY - 0.5 && m.px < toY + 0.5; }).map(function(m) { return m.label; });
+        // 상한을 fromY와 같은 방향(−0.5)으로 둬서 경계 조가 두 페이지 로그에 중복 표시되지 않게 함
+        return debugMarksPx.filter(function(m) { return m.px > fromY - 0.5 && m.px < toY - 0.5; }).map(function(m) { return m.label; });
       }
 
       function findBreak(afterY, limit) {
