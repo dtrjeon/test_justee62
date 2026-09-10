@@ -4904,7 +4904,8 @@ function savePdfPreviewSettings() {
   };
   savePdfPreviewSettingsToStorage(s);
   showToast('✅ PDF 설정 저장됨');
-  closePdfPreviewSettings();
+  // 주의: 여기서 모달을 닫지 않는다 — ①조배치 → ②저장 → ③PDF생성·열기를 같은 화면에서
+  // 이어서 누르는 3단계 흐름이라, 저장 즉시 닫히면 ③을 이어 누를 수 없게 된다.
 }
 
 // 표를 오프스크린에 렌더링해서 측정(+선택적으로 캔버스 캡처)하는 공용 함수.
