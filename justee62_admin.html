@@ -1140,7 +1140,7 @@ tr:last-child td {
 </style>
 </head>
 <body>
-<div style="position:fixed;top:2px;left:4px;font-size:9px;color:rgba(255,255,255,0.35);z-index:99999;pointer-events:none;font-family:monospace;letter-spacing:.3px;">v2026.08.31-15(modal-nesting-fix)</div>
+<div style="position:fixed;top:2px;left:4px;font-size:9px;color:rgba(255,255,255,0.35);z-index:99999;pointer-events:none;font-family:monospace;letter-spacing:.3px;">v2026.08.31-16(team-widths-fonts)</div>
 <script>
 // ── 테스트 모드 데이터 ──────────────────────────────────────────────────────
 // 테스트 모드 ON: window.TEST_MODE = true
@@ -1693,9 +1693,9 @@ window.TEST_DATA = {"records": [{"저장일시": "2026-03-14", "주차": 3, "전
     <div class="tbl-scroll">
       <table class="team-tbl">
         <colgroup>
-          <col><col><col><col>
-          <col><col><col><col>
-          <col>
+          <col><col><col style="width:5.71%;"><col>
+          <col style="width:5.71%;"><col style="width:5.71%;"><col style="width:5.71%;"><col style="width:5.71%;">
+          <col style="width:5.71%;">
           <col style="width:6.67%;">
           <col style="width:5.71%;"><col style="width:5.71%;"><col style="width:5.71%;"><col style="width:5.71%;"><col style="width:5.71%;"><col style="width:5.71%;"><col style="width:5.71%;"><col style="width:5.71%;"><col style="width:5.71%;">
           <col><col>
@@ -1719,7 +1719,7 @@ window.TEST_DATA = {"records": [{"저장일시": "2026-03-14", "주차": 3, "전
             <th style="border-right:1px solid #c5cde8;">1회↑</th>
             <th style="border-right:1px solid #c5cde8;"></th>
             <th style="border-right:1px solid #c5cde8;">횟수</th>
-            <th title="간증">간증</th><th title="서론">서론</th><th title="은혜">은혜</th><th title="인간">인간</th><th title="하나님">하나님</th><th title="그리스도" style="font-size:80%;">그리스도</th><th title="믿음">믿음</th><th title="결신">결신</th><th style="border-right:1px solid #c5cde8;font-size:80%;" title="즉석양육">즉석양육</th>
+            <th title="간증">간증</th><th title="서론">서론</th><th title="은혜">은혜</th><th title="인간">인간</th><th title="하나님">하나님</th><th title="그리스도">그리스도</th><th title="믿음">믿음</th><th title="결신">결신</th><th style="border-right:1px solid #c5cde8;" title="즉석양육">즉석양육</th>
             <th style="border-right:1px solid #c5cde8;">(월/일)</th>
             <th>비고</th>
           </tr>
@@ -2056,7 +2056,7 @@ window.TEST_DATA = {"records": [{"저장일시": "2026-03-14", "주차": 3, "전
 // ── 빈 값 표시용 옅은 회색 대시 ─────────────────────────────────────────────
 var DASH = '<span style="color:#c8ccd6;">-</span>';
 // ── 조 구성 데이터 ─────────────────────────────────────────────────────────
-const ADMIN_VERSION = 'admin v2026.08.31-modalnestingfix';
+const ADMIN_VERSION = 'admin v2026.08.31-teamwidthsfonts';
 // 하드코딩 기준 데이터 (step 복원용)
 const HARDCODED_MEMBERS = [{
   jo: 1,
@@ -4901,8 +4901,8 @@ function printTab2Pdf() {
     '<th colspan="9" class="sub-hd">관계전도(팀) 복음참여 현황</th>' +
     '</tr><tr>' +
     '<th class="sub-hd">간증</th><th class="sub-hd">서론</th><th class="sub-hd">은혜</th>' +
-    '<th class="sub-hd">인간</th><th class="sub-hd">하나님</th><th class="sub-hd" style="font-size:80%;">그리스도</th>' +
-    '<th class="sub-hd">믿음</th><th class="sub-hd">결신</th><th class="sub-hd" style="font-size:80%;">즉석양육</th>' +
+    '<th class="sub-hd">인간</th><th class="sub-hd">하나님</th><th class="sub-hd">그리스도</th>' +
+    '<th class="sub-hd">믿음</th><th class="sub-hd">결신</th><th class="sub-hd">즉석양육</th>' +
     '</tr></thead>' +
     '<tbody>' + rows + '</tbody>' +
     '</table>' +
