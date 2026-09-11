@@ -1373,7 +1373,7 @@ window.TEST_DATA = {"records": [{"저장일시": "2026-03-14", "주차": 3, "전
       </div>
       <div class="modal-section" style="display:flex;align-items:center;gap:8px;">
         <input type="checkbox" id="pdf-set-showinactive" style="width:16px;height:16px;">
-        <label style="margin:0;">미실시 조도 PDF에 포함해서 보여주기 <span style="font-size:10px;font-weight:400;color:var(--text3);">(화면의 "실시만 보기"와 무관하게 적용)</span></label>
+        <label style="margin:0;">미실시 조도 PDF에 포함해서 보여주기 <span style="font-size:10px;font-weight:400;color:var(--text3);">(화면의 "실시 보기"와 무관하게 적용)</span></label>
       </div>
       <div class="modal-section" style="display:flex;align-items:center;gap:8px;">
         <input type="checkbox" id="pdf-set-debugpopup" style="width:16px;height:16px;">
@@ -1506,18 +1506,18 @@ window.TEST_DATA = {"records": [{"저장일시": "2026-03-14", "주차": 3, "전
   <!-- 하단 상세 테이블 -->
   <div class="tbl-wrap">
     <div class="tbl-head" style="display:flex;justify-content:space-between;align-items:center;">
-      <span class="tbl-head-title" style="line-height:1.7;white-space:nowrap;flex-shrink:0;">조별 상세 현황<br><span style="font-size:7px;font-weight:500;color:var(--text2);white-space:nowrap;"><span id="week-label-0"><span style="color:#c8ccd6;">-</span></span>주차&nbsp;<span id="week-period-0"></span></span></span>
+      <span class="tbl-head-title" style="line-height:1.7;white-space:nowrap;flex-shrink:0;">조별 상세 현황<br><span style="font-size:8px;font-weight:500;color:var(--text2);white-space:nowrap;"><span id="week-label-0"><span style="color:#c8ccd6;">-</span></span>주차&nbsp;<span id="week-period-0"></span></span></span>
       <div style="display:flex;align-items:flex-end;gap:8px;">
         <button onclick="showRenumberPanel()" style="background:#fff8e1;border:1px solid #f57f17;color:#f57f17;border-radius:10px;padding:6px 8px;font-size:8px;white-space:nowrap;font-weight:700;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:2px;min-width:44px;"><span style="font-size:16px;line-height:1;">🔢</span>Re-No</button>
         <button onclick="exportCsv('tb-weekly','tab0_주간현황')" style="background:#f5f5f5;border:1px solid #ddd;color:#555;border-radius:10px;padding:6px 8px;font-size:8px;white-space:nowrap;font-weight:700;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:2px;min-width:44px;"><span style="font-size:16px;line-height:1;">⬇</span>CSV</button>
         <button onclick="exportPdf('tb-weekly','tab0_주간현황','wb-summary-block')" style="background:#2050c8;border:none;color:#fff;border-radius:10px;padding:6px 8px;font-size:8px;white-space:nowrap;font-weight:700;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:2px;min-width:44px;"><span style="font-size:16px;line-height:1;">⬇</span>PDF</button>
         <button onclick="openPdfPreviewSettings()" style="background:#eef1f8;border:none;color:var(--primary);border-radius:10px;padding:6px 8px;font-size:8px;white-space:nowrap;font-weight:700;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:2px;min-width:44px;"><span style="font-size:16px;line-height:1;">🧩</span>PDF설정</button>
-        <label style="display:flex;flex-direction:column;align-items:center;gap:2px;cursor:pointer;font-size:9px;" onclick="toggleInactiveRows()">
-          <div style="position:relative;width:28px;height:15px;">
-            <div id="toggle-track-0" style="position:absolute;top:0;left:0;width:28px;height:15px;background:#4caf50;border-radius:8px;transition:background .2s;"></div>
-            <div id="toggle-thumb-0" style="position:absolute;top:2px;left:15px;width:11px;height:11px;background:#fff;border-radius:50%;transition:left .2s;box-shadow:0 1px 3px rgba(0,0,0,0.3);"></div>
+        <label style="display:flex;flex-direction:column;align-items:center;gap:2px;cursor:pointer;font-size:10px;" onclick="toggleInactiveRows()">
+          <div style="position:relative;width:34px;height:18px;">
+            <div id="toggle-track-0" style="position:absolute;top:0;left:0;width:34px;height:18px;background:#4caf50;border-radius:9px;transition:background .2s;"></div>
+            <div id="toggle-thumb-0" style="position:absolute;top:2px;left:18px;width:14px;height:14px;background:#fff;border-radius:50%;transition:left .2s;box-shadow:0 1px 3px rgba(0,0,0,0.3);"></div>
           </div>
-          <span id="toggle-label-0" style="font-weight:700;color:#4caf50;white-space:nowrap;">실시만 보기</span>
+          <span id="toggle-label-0" style="font-weight:700;color:#4caf50;white-space:nowrap;">실시 보기</span>
         </label>
       </div>
     </div>
@@ -2759,14 +2759,14 @@ window.onload = function() {
   } else {
     loadData();
   }
-  // 토글 초기 UI 상태 동기화 (실시만 보기 = ON)
+  // 토글 초기 UI 상태 동기화 (실시 보기 = ON)
   var track = document.getElementById('toggle-track-0');
   var thumb = document.getElementById('toggle-thumb-0');
   var label = document.getElementById('toggle-label-0');
   if (track) track.style.background = '#4caf50';
-  if (thumb) thumb.style.left = '15px';
+  if (thumb) thumb.style.left = '18px';
   if (label) {
-    label.textContent = '실시만 보기';
+    label.textContent = '실시 보기';
     label.style.color = '#4caf50';
   }
   // 데이터 오류 모달 배경 클릭 시 닫기
@@ -3094,7 +3094,7 @@ function updatePeriodTxt(w) {
     return (d.getMonth() + 1) + '/' + d.getDate();
   }
 
-  el.textContent = fmt(wMonday) + '-' + fmt(wSunday);
+  el.textContent = fmt(wMonday) + ' ~ ' + fmt(wSunday);
 }
 
 function showDataErrorModal() {
@@ -4234,9 +4234,9 @@ function toggleInactiveRows() {
   var thumb = document.getElementById('toggle-thumb-0');
   var label = document.getElementById('toggle-label-0');
   if (track) track.style.background = _showInactive0 ? 'rgba(32,80,200,0.3)' : '#4caf50';
-  if (thumb) thumb.style.left = _showInactive0 ? '2px' : '15px';
+  if (thumb) thumb.style.left = _showInactive0 ? '2px' : '18px';
   if (label) {
-    label.textContent = _showInactive0 ? '전체 보기' : '실시만 보기';
+    label.textContent = _showInactive0 ? '전체 보기' : '실시 보기';
     label.style.color = _showInactive0 ? 'var(--text3)' : '#4caf50';
   }
 }
@@ -4245,7 +4245,7 @@ function applyInactiveFilter() {
   document.querySelectorAll('#tb-weekly tr').forEach(function(r) {
     if (r.classList.contains('inactive-row')) {
       if (!_showInactive0) {
-        // 실시만 보기: 미실시 행 숨김
+        // 실시 보기: 미실시 행 숨김
         r.style.display = 'none';
       } else {
         // 전체 보기: 미실시 행 표시 (조·이름·역할·단계 + "미실시" 표기)
@@ -4983,7 +4983,7 @@ async function buildWeeklyLayoutData(captureCanvas) {
     el.style.whiteSpace = 'normal'; el.style.wordBreak = 'break-all';
     el.style.position = 'static'; el.style.left = 'auto'; el.style.zIndex = 'auto'; el.style.boxShadow = 'none';
   });
-  // "실시만 보기" 필터로 화면에서 숨겨진(display:none) 미실시 행 처리.
+  // "실시 보기" 필터로 화면에서 숨겨진(display:none) 미실시 행 처리.
   // display:none 상태로 두면 getBoundingClientRect()가 전부 0으로 나와서 위치 계산이
   // 뒤틀리므로, 어느 쪽이든(포함/제외) "숨김" 상태로는 절대 두지 않는다.
   // "PDF 설정"의 "미실시 조 포함" 값(기본값: 포함)에 따라 다시 보이게 하거나 완전히 제거한다.
@@ -5335,7 +5335,7 @@ function toggleJoExpand(joIdx) {
   }
   renderJoAssignTable();
 }
-// 라디오 버튼 대신 앱 다른 곳(실시만 보기 등)과 통일된 토글 스위치 모양으로 표시
+// 라디오 버튼 대신 앱 다른 곳(실시 보기 등)과 통일된 토글 스위치 모양으로 표시
 function togglePageCellHtml(id, pageIdx, isOn) {
   return '<div onclick="setUnitPage(\'' + id + '\',' + pageIdx + '); renderJoAssignTable();" ' +
     'style="position:relative;width:34px;height:18px;border-radius:9px;background:' + (isOn ? '#4caf50' : '#ddd') + ';margin:0 auto;cursor:pointer;transition:background .2s;">' +
@@ -5605,7 +5605,7 @@ async function exportPdf(tbodyId, filename, summaryId) {
       el.style.zIndex = 'auto';
       el.style.boxShadow = 'none';
     });
-    // "실시만 보기" 필터로 화면에서 숨겨진(display:none) 미실시 행 처리.
+    // "실시 보기" 필터로 화면에서 숨겨진(display:none) 미실시 행 처리.
     // display:none 상태로 두면 getBoundingClientRect()가 전부 0으로 나와서 위치 계산이
     // 뒤틀리므로, "PDF 설정"의 "미실시 조 포함" 값(기본값: 포함)에 따라 다시 보이게
     // 하거나 완전히 제거한다(숨김 상태로는 절대 두지 않는다).
