@@ -1710,7 +1710,7 @@ window.TEST_DATA = {"records": [{"저장일시": "2026-03-14", "주차": 3, "전
             <th style="border-right:1px solid #c5cde8;">1회↑</th>
             <th style="border-right:1px solid #c5cde8;"></th>
             <th style="border-right:1px solid #c5cde8;">횟수</th>
-            <th title="간증">간</th><th title="서론">서</th><th title="은혜">은</th><th title="인간">인</th><th title="하나님">하</th><th title="그리스도">그</th><th title="믿음">믿</th><th title="결신">결</th><th style="border-right:1px solid #c5cde8;" title="즉석양육">즉</th>
+            <th title="간증">간증</th><th title="서론">서론</th><th title="은혜">은혜</th><th title="인간">인간</th><th title="하나님">하나님</th><th title="그리스도" style="font-size:80%;">그리스도</th><th title="믿음">믿음</th><th title="결신">결신</th><th style="border-right:1px solid #c5cde8;font-size:80%;" title="즉석양육">즉석양육</th>
             <th style="border-right:1px solid #c5cde8;">(월/일)</th>
             <th>비고</th>
           </tr>
@@ -4819,10 +4819,13 @@ function printTab2Pdf() {
           return '<td class="pc">' + (cnt||DASH) + '</td>';
         }).join('');
 
-        // 개인전도 횟수
+        // 개인전도 횟수: 전도자 선택(조원) = relationMember 필드와 이름 일치 여부로 집계
+        // (개인전도 레코드는 action이 비어있는 경우가 많아, 다른 화면들과 동일하게
+        //  relationMember 기준으로 맞춰야 정확하다 — 기존엔 action 기준이라 숫자가 어긋났다)
         var indivCnt = joRecs.filter(function(r){
-          var act = m.role==='리더' ? r.leaderAction : m.role==='훈련자' ? r.trainerAction : r.traineeAction;
-          return (r.evangType==='개인'||r.evangType==='관계'||r.evangType==='QQ') && act==='하였고';
+          if (r.evangType !== '개인') return false;
+          var evangName = (r.relationMember || '').replace(/\(.*?\)/g, '').trim();
+          return evangName === m.name;
         }).length;
 
         rows += '<tr>' +
@@ -4881,9 +4884,9 @@ function printTab2Pdf() {
     '<th rowspan="2">개인전도</th>' +
     '<th colspan="9" class="sub-hd">관계전도(팀) 복음참여 현황</th>' +
     '</tr><tr>' +
-    '<th class="sub-hd">간</th><th class="sub-hd">서</th><th class="sub-hd">은</th>' +
-    '<th class="sub-hd">인</th><th class="sub-hd">하</th><th class="sub-hd">그</th>' +
-    '<th class="sub-hd">믿</th><th class="sub-hd">결</th><th class="sub-hd">즉</th>' +
+    '<th class="sub-hd">간증</th><th class="sub-hd">서론</th><th class="sub-hd">은혜</th>' +
+    '<th class="sub-hd">인간</th><th class="sub-hd">하나님</th><th class="sub-hd" style="font-size:80%;">그리스도</th>' +
+    '<th class="sub-hd">믿음</th><th class="sub-hd">결신</th><th class="sub-hd" style="font-size:80%;">즉석양육</th>' +
     '</tr></thead>' +
     '<tbody>' + rows + '</tbody>' +
     '</table>' +
