@@ -1140,7 +1140,7 @@ tr:last-child td {
 </style>
 </head>
 <body>
-<div style="position:fixed;top:2px;left:4px;font-size:9px;color:rgba(255,255,255,0.35);z-index:99999;pointer-events:none;font-family:monospace;letter-spacing:.3px;">v2026.08.31-3(pdf-wrap-cleanup-fix)</div>
+<div style="position:fixed;top:2px;left:4px;font-size:9px;color:rgba(255,255,255,0.35);z-index:99999;pointer-events:none;font-family:monospace;letter-spacing:.3px;">v2026.08.31-5(inactive-toggle)</div>
 <script>
 // ── 테스트 모드 데이터 ──────────────────────────────────────────────────────
 // 테스트 모드 ON: window.TEST_MODE = true
@@ -1370,6 +1370,10 @@ window.TEST_DATA = {"records": [{"저장일시": "2026-03-14", "주차": 3, "전
       <div class="modal-section">
         <label>마지막 조 포함 허용치(%) <span style="font-size:10px;font-weight:400;color:var(--text3);">표 끝의 조 하나가 이 범위 안에서 넘치면 축소해서 같이 포함</span></label>
         <input type="number" id="pdf-set-tolerance" style="width:100%;padding:6px 8px;border:1px solid rgba(0,0,20,0.15);border-radius:6px;font-size:14px;">
+      </div>
+      <div class="modal-section" style="display:flex;align-items:center;gap:8px;">
+        <input type="checkbox" id="pdf-set-showinactive" style="width:16px;height:16px;">
+        <label style="margin:0;">미실시 조도 PDF에 포함해서 보여주기 <span style="font-size:10px;font-weight:400;color:var(--text3);">(화면의 "실시만 보기"와 무관하게 적용)</span></label>
       </div>
       <div class="modal-section" style="display:flex;align-items:center;gap:8px;">
         <input type="checkbox" id="pdf-set-debugpopup" style="width:16px;height:16px;">
@@ -2042,7 +2046,7 @@ window.TEST_DATA = {"records": [{"저장일시": "2026-03-14", "주차": 3, "전
 // ── 빈 값 표시용 옅은 회색 대시 ─────────────────────────────────────────────
 var DASH = '<span style="color:#c8ccd6;">-</span>';
 // ── 조 구성 데이터 ─────────────────────────────────────────────────────────
-const ADMIN_VERSION = 'admin v2026.08.31-pdfwrapfix';
+const ADMIN_VERSION = 'admin v2026.08.31-inactivetoggle';
 // 하드코딩 기준 데이터 (step 복원용)
 const HARDCODED_MEMBERS = [{
   jo: 1,
@@ -4894,7 +4898,7 @@ function printTab2Pdf() {
 // ── 주간현황 PDF 페이지 구성 설정(previewer_setting) ────────────────────────
 var PDF_PREVIEW_SETTINGS_KEY = 'pdfPageCompositionSettings_v1';
 function loadPdfPreviewSettings() {
-  var defaults = { topMargin: 24, bottomMargin: 12, tolerancePct: 15, debugPopup: true };
+  var defaults = { topMargin: 24, bottomMargin: 12, tolerancePct: 15, debugPopup: true, showInactive: true };
   try {
     var raw = localStorage.getItem(PDF_PREVIEW_SETTINGS_KEY);
     if (raw) {
@@ -4903,7 +4907,8 @@ function loadPdfPreviewSettings() {
         topMargin: (typeof parsed.topMargin === 'number') ? parsed.topMargin : defaults.topMargin,
         bottomMargin: (typeof parsed.bottomMargin === 'number') ? parsed.bottomMargin : defaults.bottomMargin,
         tolerancePct: (typeof parsed.tolerancePct === 'number') ? parsed.tolerancePct : defaults.tolerancePct,
-        debugPopup: (typeof parsed.debugPopup === 'boolean') ? parsed.debugPopup : defaults.debugPopup
+        debugPopup: (typeof parsed.debugPopup === 'boolean') ? parsed.debugPopup : defaults.debugPopup,
+        showInactive: (typeof parsed.showInactive === 'boolean') ? parsed.showInactive : defaults.showInactive
       };
     }
   } catch(e) {}
@@ -4919,6 +4924,7 @@ function openPdfPreviewSettings() {
   document.getElementById('pdf-set-bottommargin').value = s.bottomMargin;
   document.getElementById('pdf-set-tolerance').value = s.tolerancePct;
   document.getElementById('pdf-set-debugpopup').checked = !!s.debugPopup;
+  document.getElementById('pdf-set-showinactive').checked = (s.showInactive !== false);
   document.getElementById('pdf-preview-result').style.display = 'none';
   document.getElementById('pdf-preview-result').textContent = '';
   document.getElementById('pdf-preview-settings-modal').classList.add('show');
@@ -4931,7 +4937,8 @@ function readPdfSettingsFromForm() {
     topMargin: parseFloat(document.getElementById('pdf-set-topmargin').value),
     bottomMargin: parseFloat(document.getElementById('pdf-set-bottommargin').value),
     tolerancePct: parseFloat(document.getElementById('pdf-set-tolerance').value),
-    debugPopup: document.getElementById('pdf-set-debugpopup').checked
+    debugPopup: document.getElementById('pdf-set-debugpopup').checked,
+    showInactive: document.getElementById('pdf-set-showinactive').checked
   };
 }
 function savePdfPreviewSettings() {
@@ -4940,7 +4947,8 @@ function savePdfPreviewSettings() {
     topMargin: isNaN(f.topMargin) ? 24 : f.topMargin,
     bottomMargin: isNaN(f.bottomMargin) ? 12 : f.bottomMargin,
     tolerancePct: isNaN(f.tolerancePct) ? 15 : f.tolerancePct,
-    debugPopup: f.debugPopup
+    debugPopup: f.debugPopup,
+    showInactive: f.showInactive
   };
   savePdfPreviewSettingsToStorage(s);
   showToast('✅ PDF 설정 저장됨');
@@ -4974,6 +4982,17 @@ async function buildWeeklyLayoutData(captureCanvas) {
     el.style.border = '1px solid #ccc'; el.style.padding = '3px 4px';
     el.style.whiteSpace = 'normal'; el.style.wordBreak = 'break-all';
     el.style.position = 'static'; el.style.left = 'auto'; el.style.zIndex = 'auto'; el.style.boxShadow = 'none';
+  });
+  // "실시만 보기" 필터로 화면에서 숨겨진(display:none) 미실시 행 처리.
+  // display:none 상태로 두면 getBoundingClientRect()가 전부 0으로 나와서 위치 계산이
+  // 뒤틀리므로, 어느 쪽이든(포함/제외) "숨김" 상태로는 절대 두지 않는다.
+  // "PDF 설정"의 "미실시 조 포함" 값(기본값: 포함)에 따라 다시 보이게 하거나 완전히 제거한다.
+  var _pdfShowInactive = loadPdfPreviewSettings().showInactive !== false;
+  Array.prototype.slice.call(clonedTable.querySelectorAll('tr')).forEach(function(tr) {
+    if (tr.style.display === 'none') {
+      if (_pdfShowInactive) tr.style.display = '';
+      else tr.remove();
+    }
   });
   wrap.appendChild(clonedTable);
   document.body.appendChild(wrap);
@@ -5552,6 +5571,17 @@ async function exportPdf(tbodyId, filename, summaryId) {
       el.style.left = 'auto';
       el.style.zIndex = 'auto';
       el.style.boxShadow = 'none';
+    });
+    // "실시만 보기" 필터로 화면에서 숨겨진(display:none) 미실시 행 처리.
+    // display:none 상태로 두면 getBoundingClientRect()가 전부 0으로 나와서 위치 계산이
+    // 뒤틀리므로, "PDF 설정"의 "미실시 조 포함" 값(기본값: 포함)에 따라 다시 보이게
+    // 하거나 완전히 제거한다(숨김 상태로는 절대 두지 않는다).
+    var _pdfShowInactive2 = loadPdfPreviewSettings().showInactive !== false;
+    Array.prototype.slice.call(t.querySelectorAll('tr')).forEach(function(tr) {
+      if (tr.style.display === 'none') {
+        if (_pdfShowInactive2) tr.style.display = '';
+        else tr.remove();
+      }
     });
     return t;
   }
