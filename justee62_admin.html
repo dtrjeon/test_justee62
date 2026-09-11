@@ -1337,7 +1337,7 @@ window.TEST_DATA = {"records": [{"저장일시": "2026-03-14", "주차": 3, "전
   <div class="modal-bg" id="pdf-preview-settings-modal">
     <div class="modal" style="max-width:420px;">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
-        <div style="font-size:15px;font-weight:800;color:#333;">🧩 PDF 페이지 구성 설정</div>
+        <div id="pdf-preview-modal-title" style="font-size:15px;font-weight:800;color:#333;">🧩 PDF 페이지 구성 설정</div>
         <button onclick="closePdfPreviewSettings()" style="background:none;border:none;font-size:18px;color:#999;cursor:pointer;">✕</button>
       </div>
 
@@ -1686,6 +1686,7 @@ window.TEST_DATA = {"records": [{"저장일시": "2026-03-14", "주차": 3, "전
         <button onclick="exportCsv('tb-weekly-2','tab2_팀전도현황')" style="background:#f5f5f5;border:1px solid #ddd;color:#555;border-radius:12px;padding:4px 10px;font-size:10px;font-weight:700;cursor:pointer;white-space:nowrap;">⬇ CSV</button>
         <button onclick="toggleSuryoChart()" id="suryo-chart-btn" style="background:#f0f4ff;border:1px solid #c5cde8;color:#1a3ab0;border-radius:12px;padding:4px 10px;font-size:10px;font-weight:700;cursor:pointer;white-space:nowrap;" title="조별 전도 현황 차트">📊</button>
         <button onclick="printTab2Pdf()" style="background:#2050c8;border:none;color:#fff;border-radius:10px;padding:6px 8px;font-size:8px;white-space:nowrap;font-weight:700;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:2px;min-width:44px;"><span style="font-size:16px;line-height:1;">⬇</span>PDF</button>
+        <button onclick="openPdfPreviewSettings('tab2')" style="background:#eef1f8;border:none;color:var(--primary);border-radius:10px;padding:6px 8px;font-size:8px;white-space:nowrap;font-weight:700;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:2px;min-width:44px;"><span style="font-size:16px;line-height:1;">🧩</span>PDF설정</button>
       </div>
     </div>
     <div class="tbl-scroll">
@@ -4898,6 +4899,26 @@ function printTab2Pdf() {
 
 // ── 주간현황 PDF 페이지 구성 설정(previewer_setting) ────────────────────────
 var PDF_PREVIEW_SETTINGS_KEY = 'pdfPageCompositionSettings_v1';
+
+// 이 PDF 엔진이 여러 표(조별 상세 현황 / 그룹·조별 팀전도 현황)에서 공용으로 쓰이도록,
+// "지금 어느 표를 대상으로 작업 중인지"를 이 변수 하나로 관리한다.
+var PDF_TARGET = 'tab0';
+function getPdfTargetConfig(target) {
+  if (target === 'tab2') {
+    return {
+      tbodyId: 'tb-weekly-2',
+      summaryElId: null, // 팀전도현황에는 조별 상세 현황 같은 요약카드가 없음 — 제목만 표시
+      titleText: '그룹/조별 팀전도 현황',
+      modalTitle: '🧩 PDF 페이지 구성 설정 (팀전도현황)'
+    };
+  }
+  return {
+    tbodyId: 'tb-weekly',
+    summaryElId: 'wb-summary-block',
+    titleText: '주간현황',
+    modalTitle: '🧩 PDF 페이지 구성 설정'
+  };
+}
 function loadPdfPreviewSettings() {
   var defaults = { topMargin: 24, bottomMargin: 12, tolerancePct: 15, debugPopup: true, showInactive: true };
   try {
@@ -4919,7 +4940,11 @@ function savePdfPreviewSettingsToStorage(s) {
   try { localStorage.setItem(PDF_PREVIEW_SETTINGS_KEY, JSON.stringify(s)); } catch(e) {}
 }
 
-function openPdfPreviewSettings() {
+function openPdfPreviewSettings(target) {
+  PDF_TARGET = target || 'tab0';
+  var cfg = getPdfTargetConfig(PDF_TARGET);
+  var titleEl = document.getElementById('pdf-preview-modal-title');
+  if (titleEl) titleEl.textContent = cfg.modalTitle;
   var s = loadPdfPreviewSettings();
   document.getElementById('pdf-set-topmargin').value = s.topMargin;
   document.getElementById('pdf-set-bottommargin').value = s.bottomMargin;
@@ -4960,10 +4985,11 @@ function savePdfPreviewSettings() {
 // 표를 오프스크린에 렌더링해서 측정(+선택적으로 캔버스 캡처)하는 공용 함수.
 // captureCanvas=false: 미리보기/편집기용(빠름, 캔버스 없음). captureCanvas=true: 실제 PDF 생성용.
 async function buildWeeklyLayoutData(captureCanvas) {
-  var tbodyEl = document.getElementById('tb-weekly');
+  var cfg = getPdfTargetConfig(PDF_TARGET);
+  var tbodyEl = document.getElementById(cfg.tbodyId);
   var tbl = tbodyEl ? tbodyEl.closest('table') : null;
-  var summaryEl = document.getElementById('wb-summary-block');
-  if (!tbl || !summaryEl) return null;
+  var summaryEl = cfg.summaryElId ? document.getElementById(cfg.summaryElId) : null;
+  if (!tbl || (cfg.summaryElId && !summaryEl)) return null;
 
   var wrap = document.createElement('div');
   wrap.setAttribute('data-weekly-pdf-wrap', '1');
@@ -4971,12 +4997,14 @@ async function buildWeeklyLayoutData(captureCanvas) {
   wrap.style.cssText = 'position:fixed;left:-9999px;top:0;background:#fff;padding:12px;z-index:-1;width:1400px;';
   var titleDiv = document.createElement('div');
   titleDiv.style.cssText = 'font-weight:900;font-size:13px;margin-bottom:8px;color:#1a3a9e;';
-  titleDiv.textContent = '주간현황';
+  titleDiv.textContent = cfg.titleText;
   wrap.appendChild(titleDiv);
-  var clonedSummary = summaryEl.cloneNode(true);
-  clonedSummary.style.cssText = 'margin-bottom:16px;';
-  clonedSummary.querySelectorAll('[onclick]').forEach(function(el){ el.removeAttribute('onclick'); });
-  wrap.appendChild(clonedSummary);
+  if (summaryEl) {
+    var clonedSummary = summaryEl.cloneNode(true);
+    clonedSummary.style.cssText = 'margin-bottom:16px;';
+    clonedSummary.querySelectorAll('[onclick]').forEach(function(el){ el.removeAttribute('onclick'); });
+    wrap.appendChild(clonedSummary);
+  }
   var clonedTable = tbl.cloneNode(true);
   clonedTable.style.cssText = 'border-collapse:collapse;font-size:8px;width:100%;';
   clonedTable.querySelectorAll('th,td').forEach(function(el) {
@@ -5143,6 +5171,7 @@ function computeAutoPageAssignment(layout, settings) {
 }
 
 var PDF_LAST_LAYOUT = null;      // 최근 미리보기에서 계산된 레이아웃(조 유닛/그룹행 위치 등)
+var PDF_LAST_LAYOUT_TARGET = null; // 위 레이아웃이 어느 표(tab0/tab2) 기준으로 계산된 것인지
 var PDF_LAST_AUTO_PAGES = null;  // 최근 미리보기의 자동 페이지 배치(조 유닛 인덱스 배열의 배열)
 var PDF_JO_ASSIGN_STATE = null;  // 편집기에서 사용자가 조정한 배치(페이지별 조 유닛 인덱스 배열)
 
@@ -5195,6 +5224,7 @@ async function previewPdfComposition() {
   var pages = computeAutoPageAssignment(layout, settings);
 
   PDF_LAST_LAYOUT = layout;
+  PDF_LAST_LAYOUT_TARGET = PDF_TARGET; // 이 배치가 어느 표(tab0/tab2) 것인지 기록해서 서로 섞이지 않게 함
   PDF_LAST_AUTO_PAGES = pages;
   PDF_JO_ASSIGN_STATE = null; // 새 미리보기를 돌리면 수동 편집 상태는 초기화(다시 자동 배치로 채움)
   PDF_EXPANDED_JO = null;
@@ -5243,7 +5273,7 @@ async function previewPdfComposition() {
 var PDF_EXPANDED_JO = null; // Set of 조 인덱스(펼쳐진 상태)
 
 function openJoAssignEditor() {
-  if (!PDF_LAST_LAYOUT || !PDF_LAST_AUTO_PAGES) { alert('먼저 "미리보기"를 한 번 실행해 주세요.'); return; }
+  if (!PDF_LAST_LAYOUT || !PDF_LAST_AUTO_PAGES || PDF_LAST_LAYOUT_TARGET !== PDF_TARGET) { alert('먼저 "미리보기"를 한 번 실행해 주세요.'); return; }
   if (!PDF_JO_ASSIGN_STATE) {
     // 자동 배치 결과로 초기 상태를 채움(전부 조 단위)
     PDF_JO_ASSIGN_STATE = PDF_LAST_AUTO_PAGES.map(function(idxs) { return idxs.map(function(i) { return 'j' + i; }); });
@@ -5491,6 +5521,9 @@ function buildPdfDocFromAssignment(layout, pagesUnitIds, settings) {
 // 파일명 규칙: "N주차_조별 상세현황.pdf" (전체보기는 "전체_조별 상세현황.pdf")
 function weeklyPdfFileName() {
   var wk = (typeof currentWeek !== 'undefined') ? currentWeek : null;
+  if (PDF_TARGET === 'tab2') {
+    return ((wk === 0 || wk === null || isNaN(wk)) ? '전체' : ('1~' + wk + '주')) + '_그룹조별_팀전도현황';
+  }
   return ((wk === 0 || wk === null || isNaN(wk)) ? '전체' : (wk + '주차')) + '_조별 상세현황';
 }
 // 저장(다운로드)과 동시에 새 탭으로 열어서 바로 보여준다("생성 및 열기")
@@ -5509,7 +5542,7 @@ function saveAndOpenPdf(pdf, wkName) {
 function quickGeneratePdf() {
   syncFormSettingsToStorage(); // 체크박스/여백 값을 "저장" 안 눌러도 지금 상태 그대로 반영
   closePdfPreviewSettings();
-  if (PDF_JO_ASSIGN_STATE && PDF_LAST_LAYOUT) {
+  if (PDF_JO_ASSIGN_STATE && PDF_LAST_LAYOUT && PDF_LAST_LAYOUT_TARGET === PDF_TARGET) {
     generateManualWeeklyPdf();
   } else {
     generateAutoPdfAndOpen();
