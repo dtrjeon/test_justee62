@@ -4958,8 +4958,7 @@ async function buildWeeklyLayoutData(captureCanvas) {
 
   var wrap = document.createElement('div');
   wrap.setAttribute('data-weekly-pdf-wrap', '1');
-  // 혹시 이전 실행에서 정리되지 못하고 남아있는 임시 요소가 있다면(구버전 버그 등) 먼저 치운다.
-  document.querySelectorAll('[data-weekly-pdf-wrap]').forEach(function(stale) { stale.remove(); });
+  cleanupStaleTempWraps();
   wrap.style.cssText = 'position:fixed;left:-9999px;top:0;background:#fff;padding:12px;z-index:-1;width:1400px;';
   var titleDiv = document.createElement('div');
   titleDiv.style.cssText = 'font-weight:900;font-size:13px;margin-bottom:8px;color:#1a3a9e;';
@@ -5513,7 +5512,21 @@ async function generateManualWeeklyPdf() {
   }
 }
 
+// 화면 밖(off-screen)에 임시로 만들어 캡처용으로만 쓰는 wrap 요소들은 전부 이 스타일 신호
+// (left:-9999px)를 공유한다. 여러 PDF 생성 경로 중 어느 하나라도 중간에 실패해서 정리를
+// 못 하고 남기면, 다음 캡처 때 그 잔재가 함께 찍혀 "같은 카드가 여러 번 반복된" 이상한
+// PDF가 만들어질 수 있으므로, 새로 캡처를 시작하기 전에 항상 먼저 싹 치운다.
+function cleanupStaleTempWraps() {
+  Array.prototype.slice.call(document.body.children).forEach(function(child) {
+    if (child.tagName === 'DIV') {
+      var st = child.getAttribute('style') || '';
+      if (st.indexOf('-9999px') !== -1) child.remove();
+    }
+  });
+}
+
 async function exportPdf(tbodyId, filename, summaryId) {
+  cleanupStaleTempWraps();
   var table = document.getElementById(tbodyId);
   if (!table) { alert('테이블을 찾을 수 없습니다.'); return; }
   var tbl = table.closest('table');
