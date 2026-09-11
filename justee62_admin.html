@@ -1140,7 +1140,7 @@ tr:last-child td {
 </style>
 </head>
 <body>
-<div style="position:fixed;top:2px;left:4px;font-size:9px;color:rgba(255,255,255,0.35);z-index:99999;pointer-events:none;font-family:monospace;letter-spacing:.3px;">v2026.08.31-9(save-only-single-file)</div>
+<div style="position:fixed;top:2px;left:4px;font-size:9px;color:rgba(255,255,255,0.35);z-index:99999;pointer-events:none;font-family:monospace;letter-spacing:.3px;">v2026.08.31-10(toggle-switches)</div>
 <script>
 // ── 테스트 모드 데이터 ──────────────────────────────────────────────────────
 // 테스트 모드 ON: window.TEST_MODE = true
@@ -2046,7 +2046,7 @@ window.TEST_DATA = {"records": [{"저장일시": "2026-03-14", "주차": 3, "전
 // ── 빈 값 표시용 옅은 회색 대시 ─────────────────────────────────────────────
 var DASH = '<span style="color:#c8ccd6;">-</span>';
 // ── 조 구성 데이터 ─────────────────────────────────────────────────────────
-const ADMIN_VERSION = 'admin v2026.08.31-saveonly';
+const ADMIN_VERSION = 'admin v2026.08.31-toggleswitches';
 // 하드코딩 기준 데이터 (step 복원용)
 const HARDCODED_MEMBERS = [{
   jo: 1,
@@ -5335,6 +5335,13 @@ function toggleJoExpand(joIdx) {
   }
   renderJoAssignTable();
 }
+// 라디오 버튼 대신 앱 다른 곳(실시만 보기 등)과 통일된 토글 스위치 모양으로 표시
+function togglePageCellHtml(id, pageIdx, isOn) {
+  return '<div onclick="setUnitPage(\'' + id + '\',' + pageIdx + '); renderJoAssignTable();" ' +
+    'style="position:relative;width:34px;height:18px;border-radius:9px;background:' + (isOn ? '#4caf50' : '#ddd') + ';margin:0 auto;cursor:pointer;transition:background .2s;">' +
+    '<div style="position:absolute;top:2px;left:' + (isOn ? '18px' : '2px') + ';width:14px;height:14px;background:#fff;border-radius:50%;transition:left .2s;box-shadow:0 1px 3px rgba(0,0,0,0.3);"></div>' +
+    '</div>';
+}
 function renderJoAssignTable() {
   var layout = PDF_LAST_LAYOUT;
   var pageCount = PDF_JO_ASSIGN_STATE.length;
@@ -5359,9 +5366,7 @@ function renderJoAssignTable() {
         (canSplit ? ' <button onclick="toggleJoExpand(' + idx + ')" style="margin-left:4px;font-size:9px;padding:1px 6px;border-radius:8px;border:1px solid #ccc;background:#fafbff;cursor:pointer;">▸ ' + u.records.length + '건 펼치기</button>' : '') +
         '</td>';
       for (var p2 = 0; p2 < pageCount; p2++) {
-        html += '<td style="text-align:center;border-bottom:1px solid #f0f0f0;">' +
-          '<input type="radio" name="jo-assign-j' + idx + '" value="' + p2 + '" ' + (curPage === p2 ? 'checked' : '') +
-          ' onchange="setUnitPage(\'j' + idx + '\',' + p2 + ')" style="width:16px;height:16px;"></td>';
+        html += '<td style="text-align:center;border-bottom:1px solid #f0f0f0;">' + togglePageCellHtml('j' + idx, p2, curPage === p2) + '</td>';
       }
       html += '</tr>';
     } else {
@@ -5374,9 +5379,7 @@ function renderJoAssignTable() {
           (ri === 0 ? ' <button onclick="toggleJoExpand(' + idx + ')" style="margin-left:6px;font-size:9px;padding:1px 6px;border-radius:8px;border:1px solid #ccc;background:#fff;cursor:pointer;">▾ 접기</button>' : '') +
           '</td>';
         for (var p3 = 0; p3 < pageCount; p3++) {
-          html += '<td style="text-align:center;border-bottom:1px solid #f0f0f0;">' +
-            '<input type="radio" name="jo-assign-' + id + '" value="' + p3 + '" ' + (curPageR === p3 ? 'checked' : '') +
-            ' onchange="setUnitPage(\'' + id + '\',' + p3 + ')" style="width:16px;height:16px;"></td>';
+          html += '<td style="text-align:center;border-bottom:1px solid #f0f0f0;">' + togglePageCellHtml(id, p3, curPageR === p3) + '</td>';
         }
         html += '</tr>';
       });
