@@ -1140,7 +1140,7 @@ tr:last-child td {
 </style>
 </head>
 <body>
-<div style="position:fixed;top:2px;left:4px;font-size:9px;color:rgba(255,255,255,0.35);z-index:99999;pointer-events:none;font-family:monospace;letter-spacing:.3px;">v2026.08.31-7(no-double-save)</div>
+<div style="position:fixed;top:2px;left:4px;font-size:9px;color:rgba(255,255,255,0.35);z-index:99999;pointer-events:none;font-family:monospace;letter-spacing:.3px;">v2026.08.31-9(save-only-single-file)</div>
 <script>
 // ── 테스트 모드 데이터 ──────────────────────────────────────────────────────
 // 테스트 모드 ON: window.TEST_MODE = true
@@ -1355,7 +1355,7 @@ window.TEST_DATA = {"records": [{"저장일시": "2026-03-14", "주차": 3, "전
         <span style="color:#c3c9dd;font-size:15px;">→</span>
         <button onclick="quickGeneratePdf()" style="flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;background:#2050c8;border:none;border-radius:10px;padding:9px 4px;cursor:pointer;">
           <span style="font-size:19px;line-height:1;">⬇</span>
-          <span style="font-size:10px;font-weight:700;color:#fff;">③ PDF생성·열기</span>
+          <span style="font-size:10px;font-weight:700;color:#fff;">③ PDF생성</span>
         </button>
       </div>
 
@@ -2046,7 +2046,7 @@ window.TEST_DATA = {"records": [{"저장일시": "2026-03-14", "주차": 3, "전
 // ── 빈 값 표시용 옅은 회색 대시 ─────────────────────────────────────────────
 var DASH = '<span style="color:#c8ccd6;">-</span>';
 // ── 조 구성 데이터 ─────────────────────────────────────────────────────────
-const ADMIN_VERSION = 'admin v2026.08.31-nodoublesave';
+const ADMIN_VERSION = 'admin v2026.08.31-saveonly';
 // 하드코딩 기준 데이터 (step 복원용)
 const HARDCODED_MEMBERS = [{
   jo: 1,
@@ -4952,7 +4952,7 @@ function savePdfPreviewSettings() {
   };
   savePdfPreviewSettingsToStorage(s);
   showToast('✅ PDF 설정 저장됨');
-  // 주의: 여기서 모달을 닫지 않는다 — ①조배치 → ②저장 → ③PDF생성·열기를 같은 화면에서
+  // 주의: 여기서 모달을 닫지 않는다 — ①조배치 → ②저장 → ③PDF생성을 같은 화면에서
   // 이어서 누르는 3단계 흐름이라, 저장 즉시 닫히면 ③을 이어 누를 수 없게 된다.
 }
 
@@ -5163,7 +5163,21 @@ function pageLabelsToText(layout, pages) {
   }).join('\n\n');
 }
 
+// 폼에 있는 현재 값을 저장소에 즉시 반영한다(별도로 "② 저장"을 누르지 않아도,
+// 체크박스/입력값을 바꾸자마자 미리보기·PDF생성에 곧바로 적용되도록 하기 위함).
+function syncFormSettingsToStorage() {
+  var f = readPdfSettingsFromForm();
+  savePdfPreviewSettingsToStorage({
+    topMargin: isNaN(f.topMargin) ? 24 : f.topMargin,
+    bottomMargin: isNaN(f.bottomMargin) ? 12 : f.bottomMargin,
+    tolerancePct: isNaN(f.tolerancePct) ? 15 : f.tolerancePct,
+    debugPopup: f.debugPopup,
+    showInactive: f.showInactive
+  });
+}
+
 async function previewPdfComposition() {
+  syncFormSettingsToStorage();
   var f = readPdfSettingsFromForm();
   var settings = {
     topMargin: isNaN(f.topMargin) ? 24 : f.topMargin,
@@ -5190,7 +5204,7 @@ async function previewPdfComposition() {
   // 주의: 여기서는 PDF 파일을 절대 만들지 않는다 — 모바일 브라우저는 PDF blob을 새 탭으로
   // 열기만 해도 자동으로 다운로드 처리해버리는 경우가 많아서(즉 "미리보기"가 사실상
   // 파일을 남기게 됨), 대신 각 페이지를 이미지(PNG)로 캡처해서 이 화면 안에 썸네일로
-  // 직접 그려준다. 저장/다운로드는 오직 "③ PDF생성·열기"를 눌러야만 일어난다.
+  // 직접 그려준다. 저장/다운로드는 오직 "③ PDF생성"을 눌러야만 일어난다.
   showToast('⏳ 페이지 미리보기 이미지 생성 중...');
   try {
     await _loadAdminScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js');
@@ -5241,7 +5255,7 @@ function closeJoAssignEditor() {
   document.getElementById('jo-assign-modal').classList.remove('show');
 }
 // ② 이 배치 저장 — 편집기만 닫는다(PDF_JO_ASSIGN_STATE는 이미 실시간으로 반영되어 있음).
-// 실제 PDF 생성은 바깥의 "③ PDF생성·열기" 단계에서 이 저장된 배치를 그대로 사용한다.
+// 실제 PDF 생성은 바깥의 "③ PDF생성" 단계에서 이 저장된 배치를 그대로 사용한다.
 // "조배치 후 페이지 구성 팝업" 설정이 켜져 있으면, 저장 직후(무거운 PDF 캡처 없이) 바로 구성을 확인시켜준다.
 function assignmentToText() {
   var layout = PDF_LAST_LAYOUT;
@@ -5280,7 +5294,7 @@ function saveJoAssignment() {
       alert('[조 배치 저장 완료 — 페이지 구성 확인]\n\n' + assignmentToText());
     }, 200);
   }
-  showToast('✅ 조 배치가 저장되었습니다. 이제 "③ PDF생성·열기"를 눌러 주세요.');
+  showToast('✅ 조 배치가 저장되었습니다. 이제 "③ PDF생성"을 눌러 주세요.');
 }
 function addJoAssignPageColumn() {
   PDF_JO_ASSIGN_STATE.push([]);
@@ -5477,32 +5491,19 @@ function weeklyPdfFileName() {
 }
 // 저장(다운로드)과 동시에 새 탭으로 열어서 바로 보여준다("생성 및 열기")
 function saveAndOpenPdf(pdf, wkName) {
-  // 주의: pdf.save()와 blob을 새 탭으로 여는 것을 "둘 다" 하면 안 된다.
-  // 모바일 브라우저는 PDF blob을 새 탭으로 열기만 해도 자동으로 다운로드 처리하는
-  // 경우가 많아서, save()까지 같이 부르면 파일이 2개(다운로드 1개 + 열기로 인한
-  // 다운로드 1개) 생겨버린다. 그래서 여기서는 blob 열기 한 번으로 통일한다 —
-  // 모바일에서는 이 한 번으로 저장+열기가 같이 되고, 데스크톱에서는 브라우저
-  // 내장 PDF 뷰어로 바로 보여지며 필요하면 그 안에서 따로 저장할 수 있다.
-  try {
-    var blob = pdf.output('blob');
-    var url = URL.createObjectURL(blob);
-    var win = window.open(url, '_blank');
-    if (!win) {
-      // 팝업이 차단된 경우에 한해서만 대체 수단으로 다운로드를 실행한다(파일 1개만 생성됨).
-      pdf.save(wkName + '.pdf');
-      showToast('⚠️ 팝업이 차단되어 다운로드로 대체했습니다: ' + wkName + '.pdf');
-    } else {
-      showToast('✅ ' + wkName + '.pdf 생성 및 열기 완료');
-    }
-  } catch (e) {
-    console.error(e);
-    pdf.save(wkName + '.pdf');
-    showToast('✅ ' + wkName + '.pdf 저장 완료 (새 탭 열기는 실패)');
-  }
+  // 이전에는 blob을 새 탭으로 열어서 "저장+보기"를 한 번에 하려고 했으나, 일부 모바일
+  // 환경에서는 그 방식 자체가 다운로드를 중복으로 발생시키는 것으로 보인다(브라우저의
+  // 다운로드 처리 + PDF 리더 앱의 자체 저장이 겹치는 등). 원인을 기기별로 확정하기
+  // 어려워서, 가장 단순하고 예측 가능한 동작(다운로드 1번만) 하나로 통일한다.
+  // "자동으로 새 탭에 열리는" 동작은 포기하고, 다운로드 알림을 탭해서 여는 일반적인
+  // 방식을 따른다.
+  pdf.save(wkName + '.pdf');
+  showToast('✅ ' + wkName + '.pdf 저장 완료 (다운로드 알림을 눌러 열어주세요)');
 }
 
-// ③ PDF생성·열기 아이콘 — 조배치 편집을 거쳤으면 그 구성대로, 아니면 자동 배치로 바로 생성 후 새 탭에서 엶
+// ③ PDF생성 아이콘 — 조배치 편집을 거쳤으면 그 구성대로, 아니면 자동 배치로 바로 생성 후 새 탭에서 엶
 function quickGeneratePdf() {
+  syncFormSettingsToStorage(); // 체크박스/여백 값을 "저장" 안 눌러도 지금 상태 그대로 반영
   closePdfPreviewSettings();
   if (PDF_JO_ASSIGN_STATE && PDF_LAST_LAYOUT) {
     generateManualWeeklyPdf();
