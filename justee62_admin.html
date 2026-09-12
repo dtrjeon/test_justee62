@@ -403,6 +403,9 @@ body {
     white-space: normal !important;
     width: 100%;
   }
+  /* 버튼(내보내기/설정 등) 줄을 라벨(날짜·전체 등) 줄보다 위로 오게 한다 */
+  .tbl-head-btns { order: -1; width: 100%; }
+  .tbl-head-label { order: 1; }
 }
 
 .tbl-head-title {
@@ -1162,7 +1165,7 @@ tr:last-child td {
 </style>
 </head>
 <body>
-<div style="position:fixed;top:2px;left:4px;font-size:9px;color:rgba(255,255,255,0.35);z-index:99999;pointer-events:none;font-family:monospace;letter-spacing:.3px;">v2026.08.31-33(tab1-header-rebalance)</div>
+<div style="position:fixed;top:2px;left:4px;font-size:9px;color:rgba(255,255,255,0.35);z-index:99999;pointer-events:none;font-family:monospace;letter-spacing:.3px;">v2026.08.31-34(mobile-btns-reorder)</div>
 <script>
 // ── 테스트 모드 데이터 ──────────────────────────────────────────────────────
 // 테스트 모드 ON: window.TEST_MODE = true
@@ -1444,8 +1447,8 @@ window.TEST_DATA = {"records": [{"저장일시": "2026-03-14", "주차": 3, "전
   <!-- 하단 상세 테이블 -->
   <div class="tbl-wrap">
     <div class="tbl-head" style="display:flex;justify-content:space-between;align-items:center;">
-      <span class="tbl-head-title" style="line-height:1.7;white-space:nowrap;flex-shrink:0;">조별 상세 현황<br><span style="font-size:8px;font-weight:500;color:var(--text2);white-space:nowrap;"><span id="week-label-0"><span style="color:#c8ccd6;">-</span></span>주차&nbsp;<span id="week-period-0"></span></span></span>
-      <div style="display:flex;align-items:flex-end;gap:8px;">
+      <span class="tbl-head-title tbl-head-label" style="line-height:1.7;white-space:nowrap;flex-shrink:0;">조별 상세 현황<br><span style="font-size:8px;font-weight:500;color:var(--text2);white-space:nowrap;"><span id="week-label-0"><span style="color:#c8ccd6;">-</span></span>주차&nbsp;<span id="week-period-0"></span></span></span>
+      <div class="tbl-head-btns" style="display:flex;align-items:flex-end;gap:8px;">
         <button onclick="showRenumberPanel()" style="background:#fff8e1;border:1px solid #f57f17;color:#f57f17;border-radius:10px;padding:6px 8px;font-size:8px;white-space:nowrap;font-weight:700;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:2px;min-width:44px;"><span style="font-size:16px;line-height:1;">🔢</span>Re-No</button>
         <button onclick="exportCsv('tb-weekly','tab0_주간현황')" style="background:#f5f5f5;border:1px solid #ddd;color:#555;border-radius:10px;padding:6px 8px;font-size:8px;white-space:nowrap;font-weight:700;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:2px;min-width:44px;"><span style="font-size:16px;line-height:1;">⬇</span>CSV</button>
         <button onclick="exportPdf('tb-weekly','tab0_주간현황','wb-summary-block')" style="background:#2050c8;border:none;color:#fff;border-radius:10px;padding:6px 8px;font-size:8px;white-space:nowrap;font-weight:700;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:2px;min-width:44px;"><span style="font-size:16px;line-height:1;">⬇</span>PDF</button>
@@ -1651,8 +1654,8 @@ window.TEST_DATA = {"records": [{"저장일시": "2026-03-14", "주차": 3, "전
   <div class="sec-title">개인별 복음참여 현황</div>
   <div class="tbl-wrap">
     <div class="tbl-head" style="display:flex;justify-content:space-between;align-items:center;">
-      <span class="tbl-head-sub" id="week-label-1">누적 집계</span>
-      <div style="display:flex;align-items:center;gap:8px;">
+      <span class="tbl-head-sub tbl-head-label" id="week-label-1">누적 집계</span>
+      <div class="tbl-head-btns" style="display:flex;align-items:center;gap:8px;">
         <button onclick="exportCsv('tb-gospel','tab1_복음참여현황')" style="background:#f5f5f5;border:1px solid #ddd;color:#555;border-radius:12px;padding:4px 10px;font-size:10px;font-weight:700;cursor:pointer;white-space:nowrap;">⬇ CSV</button>
         <button onclick="exportPdf('tb-gospel','tab1_복음참여현황','__no_summary__')" style="background:#2050c8;border:none;color:#fff;border-radius:12px;padding:4px 10px;font-size:10px;font-weight:700;cursor:pointer;white-space:nowrap;">⬇ PDF</button>
         <button onclick="openPdfPreviewSettings('tab1')" style="background:#eef1f8;border:none;color:var(--primary);border-radius:12px;padding:4px 10px;font-size:10px;font-weight:700;cursor:pointer;white-space:nowrap;">🧩 PDF설정</button>
@@ -1729,11 +1732,11 @@ window.TEST_DATA = {"records": [{"저장일시": "2026-03-14", "주차": 3, "전
 
   <div class="tbl-wrap">
     <div class="tbl-head" style="display:flex;justify-content:space-between;align-items:center;">
-      <div style="display:flex;align-items:center;gap:6px;">
+      <div class="tbl-head-label" style="display:flex;align-items:center;gap:6px;">
         <button id="incomplete-toggle-btn" onclick="toggleIncompleteFilter()" style="background:#f5f5f5;border:1px solid #ddd;color:#555;border-radius:16px;padding:5px 14px;font-size:11px;font-weight:700;cursor:pointer;transition:all .2s;white-space:nowrap;">전체</button>
         <span id="suryo-info-btn" onclick="toggleSuryoInfo()" style="cursor:pointer;font-size:16px;" title="수료요건 보기">ℹ️</span>
       </div>
-      <div style="display:flex;align-items:center;gap:6px;">
+      <div class="tbl-head-btns" style="display:flex;align-items:center;gap:6px;">
         <button onclick="exportCsv('tb-weekly-2','tab2_팀전도현황')" style="background:#f5f5f5;border:1px solid #ddd;color:#555;border-radius:12px;padding:4px 10px;font-size:10px;font-weight:700;cursor:pointer;white-space:nowrap;">⬇ CSV</button>
         <button onclick="toggleSuryoChart()" id="suryo-chart-btn" style="background:#f0f4ff;border:1px solid #c5cde8;color:#1a3ab0;border-radius:12px;padding:4px 10px;font-size:10px;font-weight:700;cursor:pointer;white-space:nowrap;" title="조별 전도 현황 차트">📊</button>
         <button onclick="printTab2Pdf()" style="background:#2050c8;border:none;color:#fff;border-radius:10px;padding:6px 8px;font-size:8px;white-space:nowrap;font-weight:700;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:2px;min-width:44px;"><span style="font-size:16px;line-height:1;">⬇</span>PDF</button>
@@ -1797,8 +1800,8 @@ window.TEST_DATA = {"records": [{"저장일시": "2026-03-14", "주차": 3, "전
   <div class="sec-title">주차별 복음제시 누적 현황</div>
   <div class="tbl-wrap" style="overflow:visible;border-radius:10px;">
     <div class="tbl-head" style="border-radius:10px 10px 0 0;background:var(--card);display:flex;justify-content:space-between;align-items:center;">
-      <span class="tbl-head-title" style="line-height:1.7;">주차별 현황 테이블<br><span style="font-size:10px;font-weight:400;color:rgba(40,50,90,0.5);">(노란색 = 선택 주차)</span></span>
-      <div style="display:flex;align-items:center;gap:8px;">
+      <span class="tbl-head-title tbl-head-label" style="line-height:1.7;">주차별 현황 테이블</span>
+      <div class="tbl-head-btns" style="display:flex;align-items:center;gap:8px;">
         <span style="font-size:10px;color:rgba(40,50,90,0.45);">※ 접촉횟수는 결신율 미포함</span>
         <button onclick="exportCsv('tb-weekly-acc','tab3_복음제시현황')" style="background:#f5f5f5;border:1px solid #ddd;color:#555;border-radius:10px;padding:6px 8px;font-size:9px;font-weight:700;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:2px;min-width:40px;"><span style="font-size:16px;line-height:1;">⬇</span>CSV</button>
         <button onclick="exportPdf('tb-weekly-acc','tab3_복음제시현황','__no_summary__')" style="background:#2050c8;border:none;color:#fff;border-radius:10px;padding:6px 8px;font-size:9px;font-weight:700;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:2px;min-width:40px;"><span style="font-size:16px;line-height:1;">⬇</span>PDF</button>
@@ -2117,7 +2120,7 @@ window.TEST_DATA = {"records": [{"저장일시": "2026-03-14", "주차": 3, "전
 // ── 빈 값 표시용 옅은 회색 대시 ─────────────────────────────────────────────
 var DASH = '<span style="color:#c8ccd6;">-</span>';
 // ── 조 구성 데이터 ─────────────────────────────────────────────────────────
-const ADMIN_VERSION = 'admin v2026.08.31-tab1headerrebalance';
+const ADMIN_VERSION = 'admin v2026.08.31-mobilebtnsreorder';
 // 하드코딩 기준 데이터 (step 복원용)
 const HARDCODED_MEMBERS = [{
   jo: 1,
