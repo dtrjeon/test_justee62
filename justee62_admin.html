@@ -1140,7 +1140,7 @@ tr:last-child td {
 </style>
 </head>
 <body>
-<div style="position:fixed;top:2px;left:4px;font-size:9px;color:rgba(255,255,255,0.35);z-index:99999;pointer-events:none;font-family:monospace;letter-spacing:.3px;">v2026.08.31-22(colwidth-reset-default)</div>
+<div style="position:fixed;top:2px;left:4px;font-size:9px;color:rgba(255,255,255,0.35);z-index:99999;pointer-events:none;font-family:monospace;letter-spacing:.3px;">v2026.08.31-21(dot-to-dash)</div>
 <script>
 // ── 테스트 모드 데이터 ──────────────────────────────────────────────────────
 // 테스트 모드 ON: window.TEST_MODE = true
@@ -2091,7 +2091,7 @@ window.TEST_DATA = {"records": [{"저장일시": "2026-03-14", "주차": 3, "전
 // ── 빈 값 표시용 옅은 회색 대시 ─────────────────────────────────────────────
 var DASH = '<span style="color:#c8ccd6;">-</span>';
 // ── 조 구성 데이터 ─────────────────────────────────────────────────────────
-const ADMIN_VERSION = 'admin v2026.08.31-colwidthresetdefault';
+const ADMIN_VERSION = 'admin v2026.08.31-dottodash';
 // 하드코딩 기준 데이터 (step 복원용)
 const HARDCODED_MEMBERS = [{
   jo: 1,
@@ -2729,13 +2729,6 @@ function onLockInput() {
 
 window.onload = function() {
   // 그룹/조별 팀전도 현황 표: 저장된 컬럼 폭(px)이 있으면 적용(없으면 기본값 그대로)
-  // 요청에 따라 tab1/tab2/tab3 컬럼 폭 설정을 기본값으로 1회 초기화(그 이후엔 다시 자유롭게 커스터마이즈 가능)
-  if (localStorage.getItem('colWidthResetDone_v1') !== '1') {
-    ['gospelTblColWidths_v1', 'teamTblColWidths_v1', 'waccTblColWidths_v1'].forEach(function(k) {
-      try { localStorage.removeItem(k); } catch (e) {}
-    });
-    try { localStorage.setItem('colWidthResetDone_v1', '1'); } catch (e) {}
-  }
   applyAllSavedColWidths();
 
   // "로그인 상태 자동 저장" 체크박스: 이전에 저장해 둔 선택값을 복원(기본값 켜짐)
