@@ -1140,7 +1140,7 @@ tr:last-child td {
 </style>
 </head>
 <body>
-<div style="position:fixed;top:2px;left:4px;font-size:9px;color:rgba(255,255,255,0.35);z-index:99999;pointer-events:none;font-family:monospace;letter-spacing:.3px;">v2026.08.31-27(colwidth-defaults-updated)</div>
+<div style="position:fixed;top:2px;left:4px;font-size:9px;color:rgba(255,255,255,0.35);z-index:99999;pointer-events:none;font-family:monospace;letter-spacing:.3px;">v2026.08.31-28(tab1-tab3-fillwidth-fix)</div>
 <script>
 // ── 테스트 모드 데이터 ──────────────────────────────────────────────────────
 // 테스트 모드 ON: window.TEST_MODE = true
@@ -1638,7 +1638,7 @@ window.TEST_DATA = {"records": [{"저장일시": "2026-03-14", "주차": 3, "전
       </div>
     </div>
     <div class="tbl-scroll">
-      <table class="gospel-tbl" style="table-layout:fixed;">
+      <table class="gospel-tbl" style="table-layout:fixed;width:100%;">
         <colgroup>
           <col id="gospel-col-1" style="width:50px;"><col id="gospel-col-2" style="width:40px;"><col id="gospel-col-3" style="width:35px;"><col id="gospel-col-4" style="width:70px;"><col id="gospel-col-5" style="width:55px;"><col id="gospel-col-6" style="width:55px;">
           <col id="gospel-col-7" style="width:60px;"><col id="gospel-col-8" style="width:60px;"><col id="gospel-col-9" style="width:60px;"><col id="gospel-col-10" style="width:60px;"><col id="gospel-col-11" style="width:60px;"><col id="gospel-col-12" style="width:60px;"><col id="gospel-col-13" style="width:60px;"><col id="gospel-col-14" style="width:60px;"><col id="gospel-col-15" style="width:60px;">
@@ -1785,7 +1785,7 @@ window.TEST_DATA = {"records": [{"저장일시": "2026-03-14", "주차": 3, "전
       </div>
     </div>
     <div class="tbl-scroll" style="overflow-x:auto;border-radius:0 0 10px 10px;">
-      <table class="weekly-acc-tbl" style="table-layout:fixed;">
+      <table class="weekly-acc-tbl" style="table-layout:fixed;width:100%;">
         <colgroup>
           <col id="wacc-col-1" style="width:50px;">
           <col id="wacc-col-2" style="width:45px;"><col id="wacc-col-3" style="width:50px;">
@@ -2095,7 +2095,7 @@ window.TEST_DATA = {"records": [{"저장일시": "2026-03-14", "주차": 3, "전
 // ── 빈 값 표시용 옅은 회색 대시 ─────────────────────────────────────────────
 var DASH = '<span style="color:#c8ccd6;">-</span>';
 // ── 조 구성 데이터 ─────────────────────────────────────────────────────────
-const ADMIN_VERSION = 'admin v2026.08.31-colwidthdefaultsupdated';
+const ADMIN_VERSION = 'admin v2026.08.31-tab1tab3fillwidthfix';
 // 하드코딩 기준 데이터 (step 복원용)
 const HARDCODED_MEMBERS = [{
   jo: 1,
