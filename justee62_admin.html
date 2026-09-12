@@ -1159,7 +1159,7 @@ tr:last-child td {
 </style>
 </head>
 <body>
-<div style="position:fixed;top:2px;left:4px;font-size:9px;color:rgba(255,255,255,0.35);z-index:99999;pointer-events:none;font-family:monospace;letter-spacing:.3px;">v2026.08.31-33s(tab1-btn-size-match)</div>
+<div style="position:fixed;top:2px;left:4px;font-size:9px;color:rgba(255,255,255,0.35);z-index:99999;pointer-events:none;font-family:monospace;letter-spacing:.3px;">v2026.08.31-34(chart-hidpi-fix)</div>
 <script>
 // ── 테스트 모드 데이터 ──────────────────────────────────────────────────────
 // 테스트 모드 ON: window.TEST_MODE = true
@@ -2114,7 +2114,7 @@ window.TEST_DATA = {"records": [{"저장일시": "2026-03-14", "주차": 3, "전
 // ── 빈 값 표시용 옅은 회색 대시 ─────────────────────────────────────────────
 var DASH = '<span style="color:#c8ccd6;">-</span>';
 // ── 조 구성 데이터 ─────────────────────────────────────────────────────────
-const ADMIN_VERSION = 'admin v2026.08.31-tab1btnsizematch';
+const ADMIN_VERSION = 'admin v2026.08.31-charthidpifix';
 // 하드코딩 기준 데이터 (step 복원용)
 const HARDCODED_MEMBERS = [{
   jo: 1,
@@ -7754,12 +7754,17 @@ function drawSuryoChart() {
   // 짝수로 맞춤
   if (maxVal % 2 !== 0) maxVal += 1;
 
-  canvas.width        = totalW;
-  canvas.height       = H;
+  // 고해상도 화면(레티나 등)에서 흐릿하게 보이지 않도록, 캔버스의 실제 픽셀 버퍼는
+  // devicePixelRatio 배율만큼 더 크게 만들고, 화면에 보이는 크기(style)는 그대로 유지한다.
+  // 이후 그리기 좌표는 전부 논리 픽셀 그대로 써도 되도록 컨텍스트를 그 배율만큼 확대해둔다.
+  var dpr = window.devicePixelRatio || 1;
+  canvas.width        = totalW * dpr;
+  canvas.height       = H * dpr;
   canvas.style.width  = totalW + 'px';
   canvas.style.height = H + 'px';
 
   var ctx = canvas.getContext('2d');
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   ctx.clearRect(0, 0, totalW, H);
 
   // ── Y축 그리드 & 레이블 ──────────────────────────────────────────────────
