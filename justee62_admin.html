@@ -1140,7 +1140,7 @@ tr:last-child td {
 </style>
 </head>
 <body>
-<div style="position:fixed;top:2px;left:4px;font-size:9px;color:rgba(255,255,255,0.35);z-index:99999;pointer-events:none;font-family:monospace;letter-spacing:.3px;">v2026.08.31-26(colsettings-export-import)</div>
+<div style="position:fixed;top:2px;left:4px;font-size:9px;color:rgba(255,255,255,0.35);z-index:99999;pointer-events:none;font-family:monospace;letter-spacing:.3px;">v2026.08.31-27(colwidth-defaults-updated)</div>
 <script>
 // ── 테스트 모드 데이터 ──────────────────────────────────────────────────────
 // 테스트 모드 ON: window.TEST_MODE = true
@@ -2095,7 +2095,7 @@ window.TEST_DATA = {"records": [{"저장일시": "2026-03-14", "주차": 3, "전
 // ── 빈 값 표시용 옅은 회색 대시 ─────────────────────────────────────────────
 var DASH = '<span style="color:#c8ccd6;">-</span>';
 // ── 조 구성 데이터 ─────────────────────────────────────────────────────────
-const ADMIN_VERSION = 'admin v2026.08.31-colsettingsexportimport';
+const ADMIN_VERSION = 'admin v2026.08.31-colwidthdefaultsupdated';
 // 하드코딩 기준 데이터 (step 복원용)
 const HARDCODED_MEMBERS = [{
   jo: 1,
@@ -4973,8 +4973,8 @@ var COLWIDTH_CONFIGS = {
       '간증', '서론', '은혜', '인간', '하나님', '그리스도', '믿음', '결신', '즉석양육',
       '풀복음완료일', '비고'
     ],
-    defaults: [50, 40, 35, 70, 55, 55, 60, 60, 60, 60, 60, 60, 60, 60, 60, 65, 65],
-    fontDefaults: [9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9]
+    defaults: [60, 60, 70, 70, 65, 65, 70, 70, 70, 70, 70, 70, 70, 70, 70, 70, 70],
+    fontDefaults: [10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10]
   },
   tab2: {
     colPrefix: 'team-col',
@@ -4989,8 +4989,8 @@ var COLWIDTH_CONFIGS = {
       '간증', '서론', '은혜', '인간', '하나님', '그리스도', '믿음', '결신', '즉석양육',
       '풀복음완료일(월/일)', '비고'
     ],
-    defaults: [40, 90, 70, 40, 70, 70, 70, 70, 70, 100, 85, 85, 85, 85, 85, 85, 85, 85, 85, 60, 100],
-    fontDefaults: [9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9]
+    defaults: [30, 60, 60, 40, 60, 40, 60, 60, 60, 60, 55, 55, 55, 55, 55, 60, 55, 55, 60, 60, 60],
+    fontDefaults: [10, 10, 10, 10, 12, 12, 12, 12, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10]
   },
   tab3: {
     colPrefix: 'wacc-col',
@@ -5005,8 +5005,8 @@ var COLWIDTH_CONFIGS = {
       '복음제시', '결신', '보류/거절', '확신부족', '이미신자', '접촉횟수',
       '결신율'
     ],
-    defaults: [50, 45, 50, 55, 55, 55, 45, 45, 45, 50, 60, 45, 55, 50, 50, 50, 50, 50, 45, 55, 55, 50, 50, 60],
-    fontDefaults: [9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9]
+    defaults: [50, 45, 50, 55, 55, 55, 45, 45, 45, 50, 50, 45, 55, 50, 50, 50, 50, 50, 45, 50, 50, 50, 50, 60],
+    fontDefaults: [11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11]
   }
 };
 
