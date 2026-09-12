@@ -1159,7 +1159,7 @@ tr:last-child td {
 </style>
 </head>
 <body>
-<div style="position:fixed;top:2px;left:4px;font-size:9px;color:rgba(255,255,255,0.35);z-index:99999;pointer-events:none;font-family:monospace;letter-spacing:.3px;">v2026.08.31-39(tab0-datebox-gapfix)</div>
+<div style="position:fixed;top:2px;left:4px;font-size:9px;color:rgba(255,255,255,0.35);z-index:99999;pointer-events:none;font-family:monospace;letter-spacing:.3px;">v2026.08.31-40(tab3-formula-box)</div>
 <script>
 // ── 테스트 모드 데이터 ──────────────────────────────────────────────────────
 // 테스트 모드 ON: window.TEST_MODE = true
@@ -1793,6 +1793,9 @@ window.TEST_DATA = {"records": [{"저장일시": "2026-03-14", "주차": 3, "전
   </div>
 
   <div class="sec-title">주차별 복음제시 누적 현황</div>
+  <div style="background:#f7f9ff;border:1px solid #dbe2f5;border-radius:8px;padding:8px 12px;margin-bottom:10px;font-size:11px;color:#3a4a8a;font-weight:600;">
+    결신율(%) = 결신 ÷ (복음제시 − (이미신자+확신부족)) × 100
+  </div>
   <div class="tbl-wrap" style="overflow:visible;border-radius:10px;">
     <div class="tbl-head" style="border-radius:10px 10px 0 0;background:var(--card);display:flex;justify-content:flex-end;align-items:center;">
       <div style="display:flex;align-items:center;gap:8px;">
@@ -2114,7 +2117,7 @@ window.TEST_DATA = {"records": [{"저장일시": "2026-03-14", "주차": 3, "전
 // ── 빈 값 표시용 옅은 회색 대시 ─────────────────────────────────────────────
 var DASH = '<span style="color:#c8ccd6;">-</span>';
 // ── 조 구성 데이터 ─────────────────────────────────────────────────────────
-const ADMIN_VERSION = 'admin v2026.08.31-tab0dateboxgapfix';
+const ADMIN_VERSION = 'admin v2026.08.31-tab3formulabox';
 // 하드코딩 기준 데이터 (step 복원용)
 const HARDCODED_MEMBERS = [{
   jo: 1,
