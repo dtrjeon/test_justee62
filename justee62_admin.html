@@ -1159,7 +1159,7 @@ tr:last-child td {
 </style>
 </head>
 <body>
-<div style="position:fixed;top:2px;left:4px;font-size:9px;color:rgba(255,255,255,0.35);z-index:99999;pointer-events:none;font-family:monospace;letter-spacing:.3px;">v2026.08.31-41(dynamic-gospel-label)</div>
+<div style="position:fixed;top:2px;left:4px;font-size:9px;color:rgba(255,255,255,0.35);z-index:99999;pointer-events:none;font-family:monospace;letter-spacing:.3px;">v2026.08.31-43(active-jo-teamonly)</div>
 <script>
 // ── 테스트 모드 데이터 ──────────────────────────────────────────────────────
 // 테스트 모드 ON: window.TEST_MODE = true
@@ -2117,7 +2117,7 @@ window.TEST_DATA = {"records": [{"저장일시": "2026-03-14", "주차": 3, "전
 // ── 빈 값 표시용 옅은 회색 대시 ─────────────────────────────────────────────
 var DASH = '<span style="color:#c8ccd6;">-</span>';
 // ── 조 구성 데이터 ─────────────────────────────────────────────────────────
-const ADMIN_VERSION = 'admin v2026.08.31-dynamicgospellabel';
+const ADMIN_VERSION = 'admin v2026.08.31-activejoteamonly';
 // 하드코딩 기준 데이터 (step 복원용)
 const HARDCODED_MEMBERS = [{
   jo: 1,
@@ -2632,9 +2632,16 @@ function inGospelRateTypes(r) {
 function updateGospelResultLabels() {
   var types = (CFG && CFG.gospelTypes && CFG.gospelTypes.length) ? CFG.gospelTypes : ['관계(팀)', '질문지(팀)'];
   var label = types.map(function(t) { return t.replace('(팀)', ''); }).join('/') + ' 결과';
+  // 유형이 3개 이상이면 글자수가 늘어나 고정 높이(32px) 박스 안에서 3줄로 넘칠 수 있어서,
+  // 그런 경우엔 글씨를 줄이고 줄간격도 좁혀서 2줄 안에 들어오게 한다.
+  var fontSize = types.length >= 3 ? '9px' : '11px';
   ['gospel-result-header-0', 'gospel-result-header-3'].forEach(function(id) {
     var el = document.getElementById(id);
-    if (el) el.textContent = label;
+    if (el) {
+      el.textContent = label;
+      el.style.fontSize = fontSize;
+      el.style.lineHeight = '1.15';
+    }
   });
 }
 
@@ -3767,8 +3774,12 @@ function renderTab0(data, w) {
   }
 
   data.forEach(function(r) {
-    activeJo.add(String(r.jo));
     var et = r.evangType || r.evang_type || '';
+    // 실시/미실시 조 판정은 "팀전도"(관계(팀)/질문지(팀)/7일후(팀)/QQ)만 인정하고,
+    // "팀전도 외"(개인/관계)는 예외 처리 — 개인전도만 한 조는 미실시로 남는다.
+    if (et === '관계(팀)' || et === '질문지(팀)' || et === '7일후(팀)' || et === 'QQ') {
+      activeJo.add(String(r.jo));
+    }
     if (et === '7일후(팀)') total7dayTeam++;
     else if (et === '관계(팀)') totalGospelTeam++;
     else if (et === '질문지(팀)') totalQuesTeam++;
@@ -6415,7 +6426,11 @@ function renderTab3(selectedWeek) {
     var wData = allData.filter(function(r) {
       return Number(r.week) === w;
     });
-    var active = new Set(wData.map(function(r) {
+    // 실시/미실시 조 판정은 "팀전도"(관계(팀)/질문지(팀)/7일후(팀)/QQ)만 인정 — 개인/관계(팀전도 외)는 제외
+    var active = new Set(wData.filter(function(r) {
+      var et = r.evangType || r.evang_type || '';
+      return et === '관계(팀)' || et === '질문지(팀)' || et === '7일후(팀)' || et === 'QQ';
+    }).map(function(r) {
       return r.jo;
     })).size;
     var inactive = totalJoCount - active;
