@@ -1140,7 +1140,7 @@ tr:last-child td {
 </style>
 </head>
 <body>
-<div style="position:fixed;top:2px;left:4px;font-size:9px;color:rgba(255,255,255,0.35);z-index:99999;pointer-events:none;font-family:monospace;letter-spacing:.3px;">v2026.08.31-22(colwidth-reset-default)</div>
+<div style="position:fixed;top:2px;left:4px;font-size:9px;color:rgba(255,255,255,0.35);z-index:99999;pointer-events:none;font-family:monospace;letter-spacing:.3px;">v2026.08.31-26(colsettings-export-import)</div>
 <script>
 // ── 테스트 모드 데이터 ──────────────────────────────────────────────────────
 // 테스트 모드 ON: window.TEST_MODE = true
@@ -1578,6 +1578,10 @@ window.TEST_DATA = {"records": [{"저장일시": "2026-03-14", "주차": 3, "전
         <button class="modal-btn" style="flex:1;background:#eef1f8;color:var(--primary);" onclick="resetColWidths()">기본값</button>
         <button class="modal-btn ok" style="flex:2;" onclick="saveColWidths()">💾 적용 및 저장</button>
         <button class="modal-btn cancel" style="flex:1;" onclick="closeColWidthEditor()">닫기</button>
+      </div>
+      <div style="display:flex;gap:8px;margin-top:8px;">
+        <button class="modal-btn" style="flex:1;background:#fff8e1;color:#8a5a00;font-size:11px;" onclick="exportAllColSettings()">📤 전체 설정 내보내기</button>
+        <button class="modal-btn" style="flex:1;background:#fff8e1;color:#8a5a00;font-size:11px;" onclick="importAllColSettings()">📥 전체 설정 가져오기</button>
       </div>
     </div>
   </div>
@@ -2091,7 +2095,7 @@ window.TEST_DATA = {"records": [{"저장일시": "2026-03-14", "주차": 3, "전
 // ── 빈 값 표시용 옅은 회색 대시 ─────────────────────────────────────────────
 var DASH = '<span style="color:#c8ccd6;">-</span>';
 // ── 조 구성 데이터 ─────────────────────────────────────────────────────────
-const ADMIN_VERSION = 'admin v2026.08.31-colwidthresetdefault';
+const ADMIN_VERSION = 'admin v2026.08.31-colsettingsexportimport';
 // 하드코딩 기준 데이터 (step 복원용)
 const HARDCODED_MEMBERS = [{
   jo: 1,
@@ -2729,13 +2733,6 @@ function onLockInput() {
 
 window.onload = function() {
   // 그룹/조별 팀전도 현황 표: 저장된 컬럼 폭(px)이 있으면 적용(없으면 기본값 그대로)
-  // 요청에 따라 tab1/tab2/tab3 컬럼 폭 설정을 기본값으로 1회 초기화(그 이후엔 다시 자유롭게 커스터마이즈 가능)
-  if (localStorage.getItem('colWidthResetDone_v1') !== '1') {
-    ['gospelTblColWidths_v1', 'teamTblColWidths_v1', 'waccTblColWidths_v1'].forEach(function(k) {
-      try { localStorage.removeItem(k); } catch (e) {}
-    });
-    try { localStorage.setItem('colWidthResetDone_v1', '1'); } catch (e) {}
-  }
   applyAllSavedColWidths();
 
   // "로그인 상태 자동 저장" 체크박스: 이전에 저장해 둔 선택값을 복원(기본값 켜짐)
@@ -4967,19 +4964,24 @@ var COLWIDTH_TARGET = 'tab2';
 var COLWIDTH_CONFIGS = {
   tab1: {
     colPrefix: 'gospel-col',
+    tableSelector: '.gospel-tbl',
     storageKey: 'gospelTblColWidths_v1',
-    modalTitle: '📐 컬럼 폭 설정(px) — 복음참여현황',
+    fontStorageKey: 'gospelTblColFonts_v1',
+    modalTitle: '📐 컬럼 폭·폰트 설정 — 복음참여현황',
     names: [
       '역할', '단계', '조', '이름', '훈련자(조장)', '개인전도횟수',
       '간증', '서론', '은혜', '인간', '하나님', '그리스도', '믿음', '결신', '즉석양육',
       '풀복음완료일', '비고'
     ],
-    defaults: [50, 40, 35, 70, 55, 55, 60, 60, 60, 60, 60, 60, 60, 60, 60, 65, 65]
+    defaults: [50, 40, 35, 70, 55, 55, 60, 60, 60, 60, 60, 60, 60, 60, 60, 65, 65],
+    fontDefaults: [9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9]
   },
   tab2: {
     colPrefix: 'team-col',
+    tableSelector: '.team-tbl',
     storageKey: 'teamTblColWidths_v1',
-    modalTitle: '📐 컬럼 폭 설정(px) — 팀전도현황',
+    fontStorageKey: 'teamTblColFonts_v1',
+    modalTitle: '📐 컬럼 폭·폰트 설정 — 팀전도현황',
     names: [
       '조', '이름', '역할', '단계',
       '관계(팀)전도 6회↑', '질문지(팀)전도 횟수', '질문지(팀)전도 2일↑', '7일후(팀) 1회↑',
@@ -4987,12 +4989,15 @@ var COLWIDTH_CONFIGS = {
       '간증', '서론', '은혜', '인간', '하나님', '그리스도', '믿음', '결신', '즉석양육',
       '풀복음완료일(월/일)', '비고'
     ],
-    defaults: [40, 90, 70, 40, 70, 70, 70, 70, 70, 100, 85, 85, 85, 85, 85, 85, 85, 85, 85, 60, 100]
+    defaults: [40, 90, 70, 40, 70, 70, 70, 70, 70, 100, 85, 85, 85, 85, 85, 85, 85, 85, 85, 60, 100],
+    fontDefaults: [9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9]
   },
   tab3: {
     colPrefix: 'wacc-col',
+    tableSelector: '.weekly-acc-tbl',
     storageKey: 'waccTblColWidths_v1',
-    modalTitle: '📐 컬럼 폭 설정(px) — 복음제시현황',
+    fontStorageKey: 'waccTblColFonts_v1',
+    modalTitle: '📐 컬럼 폭·폰트 설정 — 복음제시현황',
     names: [
       '주차', '실시', '미실시',
       '관계(팀)', '질문지(팀)', '7일후(팀)', '개인', '관계', 'QQ', '합계(제시)',
@@ -5000,14 +5005,24 @@ var COLWIDTH_CONFIGS = {
       '복음제시', '결신', '보류/거절', '확신부족', '이미신자', '접촉횟수',
       '결신율'
     ],
-    defaults: [50, 45, 50, 55, 55, 55, 45, 45, 45, 50, 60, 45, 55, 50, 50, 50, 50, 50, 45, 55, 55, 50, 50, 60]
+    defaults: [50, 45, 50, 55, 55, 55, 45, 45, 45, 50, 60, 45, 55, 50, 50, 50, 50, 50, 45, 55, 55, 50, 50, 60],
+    fontDefaults: [9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9]
   }
 };
+
+// 화면 폭 기준으로 "모바일/태블릿(PC)"을 구분해서, 폭·폰트 설정을 기기별로 따로 저장한다.
+// (같은 계정/브라우저라도 폰과 태블릿은 화면 크기가 달라서 같은 값이 안 맞을 수 있기 때문)
+function getDeviceProfile() {
+  return (window.innerWidth <= 700) ? 'mobile' : 'tablet';
+}
+function deviceStorageKey(baseKey) {
+  return baseKey + '_' + getDeviceProfile();
+}
 
 function loadColWidths(target) {
   var cfg = COLWIDTH_CONFIGS[target];
   try {
-    var raw = localStorage.getItem(cfg.storageKey);
+    var raw = localStorage.getItem(deviceStorageKey(cfg.storageKey));
     if (raw) {
       var parsed = JSON.parse(raw);
       if (Array.isArray(parsed) && parsed.length === cfg.defaults.length) return parsed;
@@ -5016,7 +5031,7 @@ function loadColWidths(target) {
   return cfg.defaults.slice();
 }
 function saveColWidthsToStorage(target, arr) {
-  try { localStorage.setItem(COLWIDTH_CONFIGS[target].storageKey, JSON.stringify(arr)); } catch (e) {}
+  try { localStorage.setItem(deviceStorageKey(COLWIDTH_CONFIGS[target].storageKey), JSON.stringify(arr)); } catch (e) {}
 }
 function applyColWidths(target, arr) {
   var prefix = COLWIDTH_CONFIGS[target].colPrefix;
@@ -5025,25 +5040,86 @@ function applyColWidths(target, arr) {
     if (col) col.style.width = arr[i] + 'px';
   }
 }
+
+// 폰트 크기는 <col>에는 적용이 안 되는 CSS 특성이라(폭과 달리), 컬럼 위치 기준 CSS 규칙을
+// <style> 태그로 직접 주입해서 적용한다. 주의: rowspan으로 셀이 합쳐지는 표(팀전도현황의
+// 조/관계/질문지/7일후/수료요건 칸)는 조원 2·3번째 행에서 열 위치가 밀려서 폰트가 살짝
+// 어긋날 수 있다 — 폭 설정과 달리 완벽하게 100% 정확하진 않다.
+function loadColFonts(target) {
+  var cfg = COLWIDTH_CONFIGS[target];
+  try {
+    var raw = localStorage.getItem(deviceStorageKey(cfg.fontStorageKey));
+    if (raw) {
+      var parsed = JSON.parse(raw);
+      if (Array.isArray(parsed) && parsed.length === cfg.fontDefaults.length) return parsed;
+    }
+  } catch (e) {}
+  return cfg.fontDefaults.slice();
+}
+function saveColFontsToStorage(target, arr) {
+  try { localStorage.setItem(deviceStorageKey(COLWIDTH_CONFIGS[target].fontStorageKey), JSON.stringify(arr)); } catch (e) {}
+}
+function applyColFonts(target, arr) {
+  var cfg = COLWIDTH_CONFIGS[target];
+  var css = '';
+  arr.forEach(function(size, i) {
+    var n = i + 1;
+    css += cfg.tableSelector + ' tbody td:nth-child(' + n + ') { font-size:' + size + 'px !important; }\n';
+  });
+  var styleId = 'colfont-style-' + target;
+  var styleEl = document.getElementById(styleId);
+  if (!styleEl) {
+    styleEl = document.createElement('style');
+    styleEl.id = styleId;
+    document.head.appendChild(styleEl);
+  }
+  styleEl.textContent = css;
+}
 function applyAllSavedColWidths() {
-  Object.keys(COLWIDTH_CONFIGS).forEach(function(t) { applyColWidths(t, loadColWidths(t)); });
+  Object.keys(COLWIDTH_CONFIGS).forEach(function(t) {
+    applyColWidths(t, loadColWidths(t));
+    applyColFonts(t, loadColFonts(t));
+  });
 }
 
 function openColWidthEditor(target) {
   COLWIDTH_TARGET = target;
   var cfg = COLWIDTH_CONFIGS[target];
   var widths = loadColWidths(target);
-  document.getElementById('colwidth-modal-title').textContent = cfg.modalTitle;
+  var fonts = loadColFonts(target);
+  var profile = getDeviceProfile();
+  document.getElementById('colwidth-modal-title').textContent = cfg.modalTitle +
+    ' — ' + (profile === 'mobile' ? '📱 모바일 설정' : '💻 태블릿/PC 설정');
   var list = document.getElementById('colwidth-list');
   var html = '';
+  html += '<div style="font-size:10px;color:var(--text3);margin-bottom:6px;">지금 이 화면 폭 기준으로 <b>' +
+    (profile === 'mobile' ? '모바일' : '태블릿/PC') +
+    '</b> 설정을 편집 중입니다. 모바일과 태블릿/PC는 서로 다른 값으로 따로 저장됩니다.</div>';
+  html += '<div style="display:flex;align-items:center;gap:8px;background:#f7f9ff;border-radius:8px;padding:8px;margin-bottom:8px;">' +
+    '<label style="flex:1;font-size:11px;color:#555;">일괄 폰트 크기 적용</label>' +
+    '<input type="number" id="colfont-bulk-input" value="9" min="6" max="30" style="width:60px;padding:5px 6px;border:1px solid rgba(0,0,20,0.15);border-radius:6px;font-size:13px;text-align:right;">' +
+    '<button onclick="applyBulkFontToInputs()" style="background:#2050c8;color:#fff;border:none;border-radius:6px;padding:6px 10px;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;">전체 적용</button>' +
+    '</div>' +
+    '<div style="display:flex;gap:8px;padding:0 2px;font-size:10px;color:var(--text3);"><span style="flex:1;">컬럼명</span><span style="width:80px;text-align:right;">폭(px)</span><span style="width:64px;text-align:right;">폰트(px)</span></div>';
   cfg.names.forEach(function(name, i) {
     html += '<div style="display:flex;align-items:center;gap:8px;">' +
       '<label style="flex:1;font-size:12px;color:#333;">' + name + '</label>' +
-      '<input type="number" id="colwidth-input-' + i + '" value="' + widths[i] + '" min="10" max="500" style="width:80px;padding:5px 6px;border:1px solid rgba(0,0,20,0.15);border-radius:6px;font-size:13px;text-align:right;"> <span style="font-size:11px;color:var(--text3);">px</span>' +
+      '<input type="number" id="colwidth-input-' + i + '" value="' + widths[i] + '" min="10" max="500" style="width:80px;padding:5px 6px;border:1px solid rgba(0,0,20,0.15);border-radius:6px;font-size:13px;text-align:right;">' +
+      '<input type="number" id="colfont-input-' + i + '" value="' + fonts[i] + '" min="6" max="30" style="width:48px;padding:5px 6px;border:1px solid rgba(0,0,20,0.15);border-radius:6px;font-size:13px;text-align:right;">' +
       '</div>';
   });
   list.innerHTML = html;
   document.getElementById('team-colwidth-modal').classList.add('show');
+}
+function applyBulkFontToInputs() {
+  var cfg = COLWIDTH_CONFIGS[COLWIDTH_TARGET];
+  var bulkEl = document.getElementById('colfont-bulk-input');
+  var v = bulkEl ? parseInt(bulkEl.value, 10) : 9;
+  if (isNaN(v) || v < 6) v = 9;
+  cfg.names.forEach(function(name, i) {
+    var el = document.getElementById('colfont-input-' + i);
+    if (el) el.value = v;
+  });
 }
 function closeColWidthEditor() {
   document.getElementById('team-colwidth-modal').classList.remove('show');
@@ -5054,6 +5130,10 @@ function resetColWidths() {
     var el = document.getElementById('colwidth-input-' + i);
     if (el) el.value = v;
   });
+  cfg.fontDefaults.forEach(function(v, i) {
+    var el = document.getElementById('colfont-input-' + i);
+    if (el) el.value = v;
+  });
 }
 function saveColWidths() {
   var cfg = COLWIDTH_CONFIGS[COLWIDTH_TARGET];
@@ -5062,10 +5142,67 @@ function saveColWidths() {
     var v = el ? parseInt(el.value, 10) : def;
     return (isNaN(v) || v < 10) ? def : v;
   });
+  var fonts = cfg.fontDefaults.map(function(def, i) {
+    var el = document.getElementById('colfont-input-' + i);
+    var v = el ? parseInt(el.value, 10) : def;
+    return (isNaN(v) || v < 6) ? def : v;
+  });
   saveColWidthsToStorage(COLWIDTH_TARGET, widths);
+  saveColFontsToStorage(COLWIDTH_TARGET, fonts);
   applyColWidths(COLWIDTH_TARGET, widths);
-  showToast('✅ 컬럼 폭이 저장되었습니다.');
+  applyColFonts(COLWIDTH_TARGET, fonts);
+  showToast('✅ 컬럼 폭·폰트가 저장되었습니다.');
   closeColWidthEditor();
+}
+
+// ── 설정값 내보내기/가져오기 (기기 변경·캐시 삭제에 대비한 백업/복원용) ──────
+// 구글시트 대신 이 방식을 쓰는 이유: 폭·폰트 설정은 "내 화면을 어떻게 보고 싶은지"에 대한
+// 개인 취향이라 서버 왕복 없이 즉시 반영되는 게 중요하고, 모바일/태블릿을 따로 저장하는
+// 구조와도 이 방식이 자연스럽게 맞는다. 대신 텍스트로 내보내고 가져올 수 있게 해서,
+// 기기를 바꾸거나 캐시가 지워져도 잃어버리지 않게 한다.
+function exportAllColSettings() {
+  var data = {};
+  Object.keys(COLWIDTH_CONFIGS).forEach(function(t) {
+    var cfg = COLWIDTH_CONFIGS[t];
+    data[t] = {};
+    ['mobile', 'tablet'].forEach(function(profile) {
+      var w = null, f = null;
+      try { var rw = localStorage.getItem(cfg.storageKey + '_' + profile); if (rw) w = JSON.parse(rw); } catch (e) {}
+      try { var rf = localStorage.getItem(cfg.fontStorageKey + '_' + profile); if (rf) f = JSON.parse(rf); } catch (e) {}
+      if (w || f) data[t][profile] = { widths: w, fonts: f };
+    });
+  });
+  var json = JSON.stringify(data);
+  var copied = false;
+  try {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(json);
+      copied = true;
+    }
+  } catch (e) {}
+  window.prompt(
+    (copied ? '✅ 클립보드에 복사되었습니다. 아래 텍스트를 안전한 곳(메모 등)에도 저장해 두세요.' : '아래 텍스트를 전체 선택해서 복사한 뒤, 안전한 곳에 저장해 두세요.') +
+    '\n다른 기기의 "가져오기"에 이 텍스트를 붙여넣으면 그대로 복원됩니다.',
+    json
+  );
+}
+function importAllColSettings() {
+  var json = window.prompt('내보내기 했던 텍스트를 여기에 붙여넣어 주세요:');
+  if (!json) return;
+  var data;
+  try { data = JSON.parse(json); } catch (e) { alert('⚠️ 올바른 형식이 아닙니다. 내보내기 한 텍스트를 그대로 붙여넣어 주세요.'); return; }
+  Object.keys(data).forEach(function(t) {
+    if (!COLWIDTH_CONFIGS[t]) return;
+    var cfg = COLWIDTH_CONFIGS[t];
+    Object.keys(data[t]).forEach(function(profile) {
+      var entry = data[t][profile];
+      if (!entry) return;
+      if (entry.widths) { try { localStorage.setItem(cfg.storageKey + '_' + profile, JSON.stringify(entry.widths)); } catch (e) {} }
+      if (entry.fonts) { try { localStorage.setItem(cfg.fontStorageKey + '_' + profile, JSON.stringify(entry.fonts)); } catch (e) {} }
+    });
+  });
+  applyAllSavedColWidths();
+  showToast('✅ 설정을 불러와 적용했습니다.');
 }
 
 var PDF_PREVIEW_SETTINGS_KEY = 'pdfPageCompositionSettings_v1';
