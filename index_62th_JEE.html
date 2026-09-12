@@ -4733,6 +4733,31 @@ function getDiagInfo(hv, rs) {
   return DIAG_MAP[hv + '_' + (rs === '믿음' ? '믿음' : 'etc')] || null;
 }
 
+// 제출 직전에 "진단결과"를 화면에 저장돼 있던 값(diag-saved-result)을 그대로 믿지 않고,
+// 지금 화면의 실제 선택 상태(heaven/reason/testimony6/yeopjeop)로부터 다시 계산해서 쓴다.
+// 예전에 어떤 이유로든 "머리신자 / 이미신자"처럼 두 갈래가 합쳐진 임시 라벨이 hidden
+// input에 남아있던 채로 제출되는 사고를 막기 위한 안전장치.
+function getFinalDiagResultForSubmit() {
+  var stored = v('diag-saved-result');
+  var hv = radio('heaven'), rs = radio('reason'), yj = radio('yeopjeop');
+  if (!hv || !rs || !yj) return stored; // 아직 답변이 다 안 채워졌으면 저장된 값 그대로(빈 값 등)
+
+  var info = getDiagInfo(hv, rs);
+  if (!info) return stored;
+
+  var t6 = radio('testimony6');
+  var diagLabel = info.diag;
+  if (t6 === '이미신자' || t6 === '머리신자') diagLabel = t6; // 실제 선택값이 있으면 그것만 사용(결합 라벨 방지)
+
+  var result = calcResult(hv, rs, yj);
+  var fresh = '진단: ' + diagLabel + ' | 영접: ' + yj + ' | 결과: ' + result;
+
+  if (stored && stored !== fresh) {
+    console.warn('[진단결과] 저장돼 있던 값과 재계산값이 달라 재계산값으로 대체합니다.', { stored: stored, fresh: fresh });
+  }
+  return fresh;
+}
+
 function diagBadgeHtml(info) {
   var badge = info.badge === 'blue-purple' ? 'orange' : info.badge;
   return '<span class="diag-badge ' + badge + '">' + info.diag + '</span>';
@@ -5224,7 +5249,7 @@ function collectFormData() {
     heaven: radio('heaven'),
     reason: radio('reason'),
     yeopjeop: radio('yeopjeop'),
-    diag_result: v('diag-saved-result'),
+    diag_result: getFinalDiagResultForSubmit(),
     testimony6: radio('testimony6'),
     testimony7: radio('testimony7'),
     leader_part: v('q8_leader_part'),
