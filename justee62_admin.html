@@ -1159,7 +1159,7 @@ tr:last-child td {
 </style>
 </head>
 <body>
-<div style="position:fixed;top:2px;left:4px;font-size:9px;color:rgba(255,255,255,0.35);z-index:99999;pointer-events:none;font-family:monospace;letter-spacing:.3px;">v2026.08.31-43(active-jo-teamonly)</div>
+<div style="position:fixed;top:2px;left:4px;font-size:9px;color:rgba(255,255,255,0.35);z-index:99999;pointer-events:none;font-family:monospace;letter-spacing:.3px;">v2026.08.31-44(no-cache-fetch)</div>
 <script>
 // ── 테스트 모드 데이터 ──────────────────────────────────────────────────────
 // 테스트 모드 ON: window.TEST_MODE = true
@@ -2117,7 +2117,7 @@ window.TEST_DATA = {"records": [{"저장일시": "2026-03-14", "주차": 3, "전
 // ── 빈 값 표시용 옅은 회색 대시 ─────────────────────────────────────────────
 var DASH = '<span style="color:#c8ccd6;">-</span>';
 // ── 조 구성 데이터 ─────────────────────────────────────────────────────────
-const ADMIN_VERSION = 'admin v2026.08.31-activejoteamonly';
+const ADMIN_VERSION = 'admin v2026.08.31-nocachefetch';
 // 하드코딩 기준 데이터 (step 복원용)
 const HARDCODED_MEMBERS = [{
   jo: 1,
@@ -2997,9 +2997,12 @@ async function loadData() {
   }
   showToast('⏳ 데이터 불러오는 중...');
   try {
-    var res = await fetch(CFG.url + '?action=get', {
+    // 캐시 방지: 매번 다른 값(현재시각)을 붙이고, 브라우저에 "캐시 쓰지 말고 새로 받아와"라고
+    // 명시한다 — 이게 없으면 시트를 직접 고쳐도 화면에 예전 값이 계속 보이는 경우가 있었다.
+    var res = await fetch(CFG.url + '?action=get&_ts=' + Date.now(), {
       method: 'GET',
-      redirect: 'follow'
+      redirect: 'follow',
+      cache: 'no-store'
     });
     var json = await res.json();
     if (json.status !== 'ok') throw new Error(json.message || '오류');
