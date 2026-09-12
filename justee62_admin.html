@@ -383,6 +383,28 @@ body {
   justify-content: space-between;
 }
 
+/* 모바일(좁은 화면)에서는 제목과 버튼들이 억지로 한 줄에 눌려서 글자가 한 글자씩
+   쪼개져 줄바꿈되는 문제가 있어서, 제목을 위 줄에 온전히 두고 버튼들은 아래에서
+   자유롭게 줄바꿈되도록 세로로 쌓는다. (인라인 style로 지정된 display:flex 등도
+   덮어써야 해서 !important를 사용) */
+@media (max-width: 700px) {
+  .tbl-head {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 8px;
+  }
+  .tbl-head > *:last-child {
+    width: 100%;
+    flex-wrap: wrap !important;
+  }
+  .tbl-head-title, .tbl-head-sub {
+    word-break: keep-all !important;
+    overflow-wrap: normal !important;
+    white-space: normal !important;
+    width: 100%;
+  }
+}
+
 .tbl-head-title {
   font-size: 11px;
   font-weight: 700;
@@ -1140,7 +1162,7 @@ tr:last-child td {
 </style>
 </head>
 <body>
-<div style="position:fixed;top:2px;left:4px;font-size:9px;color:rgba(255,255,255,0.35);z-index:99999;pointer-events:none;font-family:monospace;letter-spacing:.3px;">v2026.08.31-30(colsettings-file-export)</div>
+<div style="position:fixed;top:2px;left:4px;font-size:9px;color:rgba(255,255,255,0.35);z-index:99999;pointer-events:none;font-family:monospace;letter-spacing:.3px;">v2026.08.31-31(mobile-header-wrap-fix)</div>
 <script>
 // ── 테스트 모드 데이터 ──────────────────────────────────────────────────────
 // 테스트 모드 ON: window.TEST_MODE = true
@@ -2096,7 +2118,7 @@ window.TEST_DATA = {"records": [{"저장일시": "2026-03-14", "주차": 3, "전
 // ── 빈 값 표시용 옅은 회색 대시 ─────────────────────────────────────────────
 var DASH = '<span style="color:#c8ccd6;">-</span>';
 // ── 조 구성 데이터 ─────────────────────────────────────────────────────────
-const ADMIN_VERSION = 'admin v2026.08.31-colsettingsfileexport';
+const ADMIN_VERSION = 'admin v2026.08.31-mobileheaderwrapfix';
 // 하드코딩 기준 데이터 (step 복원용)
 const HARDCODED_MEMBERS = [{
   jo: 1,
