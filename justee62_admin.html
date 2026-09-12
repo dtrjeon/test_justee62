@@ -1140,7 +1140,7 @@ tr:last-child td {
 </style>
 </head>
 <body>
-<div style="position:fixed;top:2px;left:4px;font-size:9px;color:rgba(255,255,255,0.35);z-index:99999;pointer-events:none;font-family:monospace;letter-spacing:.3px;">v2026.08.31-19(tab1-tab3-pdf-colwidth)</div>
+<div style="position:fixed;top:2px;left:4px;font-size:9px;color:rgba(255,255,255,0.35);z-index:99999;pointer-events:none;font-family:monospace;letter-spacing:.3px;">v2026.08.31-21(dot-to-dash)</div>
 <script>
 // ── 테스트 모드 데이터 ──────────────────────────────────────────────────────
 // 테스트 모드 ON: window.TEST_MODE = true
@@ -1628,7 +1628,7 @@ window.TEST_DATA = {"records": [{"저장일시": "2026-03-14", "주차": 3, "전
       <div style="display:flex;align-items:center;gap:8px;">
         <span class="tbl-head-sub" id="week-label-1">누적 집계</span>
         <button onclick="exportCsv('tb-gospel','tab1_복음참여현황')" style="background:#f5f5f5;border:1px solid #ddd;color:#555;border-radius:12px;padding:4px 10px;font-size:10px;font-weight:700;cursor:pointer;white-space:nowrap;">⬇ CSV</button>
-        <button onclick="exportPdf('tb-gospel','tab1_복음참여현황')" style="background:#2050c8;border:none;color:#fff;border-radius:12px;padding:4px 10px;font-size:10px;font-weight:700;cursor:pointer;white-space:nowrap;">⬇ PDF</button>
+        <button onclick="exportPdf('tb-gospel','tab1_복음참여현황','__no_summary__')" style="background:#2050c8;border:none;color:#fff;border-radius:12px;padding:4px 10px;font-size:10px;font-weight:700;cursor:pointer;white-space:nowrap;">⬇ PDF</button>
         <button onclick="openPdfPreviewSettings('tab1')" style="background:#eef1f8;border:none;color:var(--primary);border-radius:12px;padding:4px 10px;font-size:10px;font-weight:700;cursor:pointer;white-space:nowrap;">🧩 PDF설정</button>
         <button onclick="openColWidthEditor('tab1')" style="background:#eef1f8;border:none;color:var(--primary);border-radius:12px;padding:4px 10px;font-size:10px;font-weight:700;cursor:pointer;white-space:nowrap;">📐 폭설정</button>
       </div>
@@ -1775,7 +1775,7 @@ window.TEST_DATA = {"records": [{"저장일시": "2026-03-14", "주차": 3, "전
       <div style="display:flex;align-items:center;gap:8px;">
         <span style="font-size:10px;color:rgba(40,50,90,0.45);">※ 접촉횟수는 결신율 미포함</span>
         <button onclick="exportCsv('tb-weekly-acc','tab3_복음제시현황')" style="background:#f5f5f5;border:1px solid #ddd;color:#555;border-radius:10px;padding:6px 8px;font-size:9px;font-weight:700;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:2px;min-width:40px;"><span style="font-size:16px;line-height:1;">⬇</span>CSV</button>
-        <button onclick="exportPdf('tb-weekly-acc','tab3_복음제시현황')" style="background:#2050c8;border:none;color:#fff;border-radius:10px;padding:6px 8px;font-size:9px;font-weight:700;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:2px;min-width:40px;"><span style="font-size:16px;line-height:1;">⬇</span>PDF</button>
+        <button onclick="exportPdf('tb-weekly-acc','tab3_복음제시현황','__no_summary__')" style="background:#2050c8;border:none;color:#fff;border-radius:10px;padding:6px 8px;font-size:9px;font-weight:700;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:2px;min-width:40px;"><span style="font-size:16px;line-height:1;">⬇</span>PDF</button>
         <button onclick="openPdfPreviewSettings('tab3')" style="background:#eef1f8;border:none;color:var(--primary);border-radius:10px;padding:6px 8px;font-size:9px;font-weight:700;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:2px;min-width:40px;"><span style="font-size:16px;line-height:1;">🧩</span>PDF설정</button>
         <button onclick="openColWidthEditor('tab3')" style="background:#eef1f8;border:none;color:var(--primary);border-radius:10px;padding:6px 8px;font-size:9px;font-weight:700;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:2px;min-width:40px;"><span style="font-size:16px;line-height:1;">📐</span>폭설정</button>
       </div>
@@ -2091,7 +2091,7 @@ window.TEST_DATA = {"records": [{"저장일시": "2026-03-14", "주차": 3, "전
 // ── 빈 값 표시용 옅은 회색 대시 ─────────────────────────────────────────────
 var DASH = '<span style="color:#c8ccd6;">-</span>';
 // ── 조 구성 데이터 ─────────────────────────────────────────────────────────
-const ADMIN_VERSION = 'admin v2026.08.31-tab1tab3pdfcolwidth';
+const ADMIN_VERSION = 'admin v2026.08.31-dottodash';
 // 하드코딩 기준 데이터 (step 복원용)
 const HARDCODED_MEMBERS = [{
   jo: 1,
@@ -4259,7 +4259,7 @@ function renderWeekly2Html(data, w) {
           var isLast = pi===PARTS2.length-1;
           var border = isLast ? 'border-right:1px solid #c5cde8;' : '';
           var color = p==='서론' ? 'color:#222;' : 'color:#1565c0;';
-          var zeroDot = '<span style="display:inline-block;width:5px;height:5px;border-radius:50%;background:#b0c4de;vertical-align:middle;"></span>';
+          var zeroDot = '<span style="color:#c9ccd4;">-</span>';
           return '<td style="text-align:center;'+(cnt?'font-weight:700;'+color:'')+border+'">'+(cnt||zeroDot)+'</td>';
         }).join('') +
                 '<td style="text-align:center;border-right:1px solid #c5cde8;">'+gospelDoneCell+'</td>' +
@@ -4510,7 +4510,7 @@ function renderTab1(data, w) {
               var color = isFirst ? '#222' : '#1565c0';
               return '<td style="text-align:center;font-weight:700;color:' + color + ';' + borderStyle + '">' + cnt + '</td>';
             } else {
-              return '<td style="text-align:center;' + borderStyle + '"><span style="display:inline-block;width:5px;height:5px;border-radius:50%;background:#b0c4de;vertical-align:middle;"></span></td>';
+              return '<td style="text-align:center;' + borderStyle + '"><span style="color:#c9ccd4;">-</span></td>';
             }
           }).join('') +
           '<td style="font-size:10px;text-align:center;color:#666;">' + lastDate + '</td>' +
@@ -5874,9 +5874,10 @@ async function exportPdf(tbodyId, filename, summaryId) {
       }
     }
 
-    if (summaryEl) {
+    if (summaryId) {
       // 주간현황(요약+조별상세) PDF: "조" 단위 경계에서만 페이지를 나누고(조원 행이 잘리지 않도록),
       // 실제 렌더링 좌표를 측정해 페이지 용량에 맞춰 채운다. 2페이지부터는 표 헤더를 반복 포함.
+      // summaryEl이 없는 표(복음참여현황/복음제시현황 등 요약카드가 없는 탭)에서는 그 부분만 건너뛴다.
       var pdfUserSettings = loadPdfPreviewSettings(); // PDF 페이지 구성 설정(previewer_setting)에서 저장한 값
       var wrap = document.createElement('div');
       wrap.style.cssText = 'position:fixed;left:-9999px;top:0;background:#fff;padding:12px;z-index:-1;width:1400px;';
@@ -5886,10 +5887,12 @@ async function exportPdf(tbodyId, filename, summaryId) {
       titleDiv.textContent = filename.replace(/^tab\d+_/, '').replace(/_/g,' ');
       wrap.appendChild(titleDiv);
 
-      var clonedSummary = summaryEl.cloneNode(true);
-      clonedSummary.style.cssText = 'margin-bottom:16px;';
-      clonedSummary.querySelectorAll('[onclick]').forEach(function(el){ el.removeAttribute('onclick'); el.style.cursor = 'default'; });
-      wrap.appendChild(clonedSummary);
+      if (summaryEl) {
+        var clonedSummary = summaryEl.cloneNode(true);
+        clonedSummary.style.cssText = 'margin-bottom:16px;';
+        clonedSummary.querySelectorAll('[onclick]').forEach(function(el){ el.removeAttribute('onclick'); el.style.cursor = 'default'; });
+        wrap.appendChild(clonedSummary);
+      }
 
       var clonedTable = styleClonedTable(tbl.cloneNode(true));
       wrap.appendChild(clonedTable);
@@ -6072,9 +6075,11 @@ async function exportPdf(tbodyId, filename, summaryId) {
         curY = cutY;
       }
 
-      // "N주차 주간현황.pdf" 형식으로 바로 저장
+      // "N주차 <표 이름>.pdf" 형식으로 바로 저장 (표 이름은 filename에서 가져와 tab0 외의
+      // 탭(복음참여현황/복음제시현황 등)에서도 올바른 이름으로 저장되게 함)
       var wk = (typeof currentWeek !== 'undefined') ? currentWeek : null;
-      var wkName = (wk === 0 || wk === null || isNaN(wk)) ? '전체 주간현황' : (wk + '주차 주간현황');
+      var baseLabel = filename.replace(/^tab\d+_/, '').replace(/_/g, ' ');
+      var wkName = (wk === 0 || wk === null || isNaN(wk)) ? ('전체 ' + baseLabel) : (wk + '주차 ' + baseLabel);
       pdf.save(wkName + '.pdf');
       showToast('✅ ' + wkName + '.pdf 저장 완료');
       // 참고: 페이지 구성 확인 팝업은 이제 "조배치 저장" 시점(saveJoAssignment)으로 옮겨졌다.
