@@ -1159,7 +1159,7 @@ tr:last-child td {
 </style>
 </head>
 <body>
-<div style="position:fixed;top:2px;left:4px;font-size:9px;color:rgba(255,255,255,0.35);z-index:99999;pointer-events:none;font-family:monospace;letter-spacing:.3px;">v2026.08.31-35(tab3-title-note-move)</div>
+<div style="position:fixed;top:2px;left:4px;font-size:9px;color:rgba(255,255,255,0.35);z-index:99999;pointer-events:none;font-family:monospace;letter-spacing:.3px;">v2026.08.31-36(tab0-sectitle-added)</div>
 <script>
 // ── 테스트 모드 데이터 ──────────────────────────────────────────────────────
 // 테스트 모드 ON: window.TEST_MODE = true
@@ -1439,9 +1439,10 @@ window.TEST_DATA = {"records": [{"저장일시": "2026-03-14", "주차": 3, "전
   </div>
 
   <!-- 하단 상세 테이블 -->
+  <div class="sec-title">조별 상세 현황</div>
   <div class="tbl-wrap">
     <div class="tbl-head" style="display:flex;justify-content:space-between;align-items:center;">
-      <span class="tbl-head-title" style="line-height:1.7;white-space:nowrap;flex-shrink:0;">조별 상세 현황<br><span style="font-size:8px;font-weight:500;color:var(--text2);white-space:nowrap;"><span id="week-label-0"><span style="color:#c8ccd6;">-</span></span>주차&nbsp;<span id="week-period-0"></span></span></span>
+      <span class="tbl-head-sub" style="line-height:1.7;white-space:nowrap;flex-shrink:0;font-size:8px;font-weight:500;color:var(--text2);"><span id="week-label-0"><span style="color:#c8ccd6;">-</span></span>주차&nbsp;<span id="week-period-0"></span></span>
       <div style="display:flex;align-items:flex-end;gap:8px;">
         <button onclick="showRenumberPanel()" style="background:#fff8e1;border:1px solid #f57f17;color:#f57f17;border-radius:10px;padding:6px 8px;font-size:8px;white-space:nowrap;font-weight:700;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:2px;min-width:44px;"><span style="font-size:16px;line-height:1;">🔢</span>Re-No</button>
         <button onclick="exportCsv('tb-weekly','tab0_주간현황')" style="background:#f5f5f5;border:1px solid #ddd;color:#555;border-radius:10px;padding:6px 8px;font-size:8px;white-space:nowrap;font-weight:700;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:2px;min-width:44px;"><span style="font-size:16px;line-height:1;">⬇</span>CSV</button>
@@ -2113,7 +2114,7 @@ window.TEST_DATA = {"records": [{"저장일시": "2026-03-14", "주차": 3, "전
 // ── 빈 값 표시용 옅은 회색 대시 ─────────────────────────────────────────────
 var DASH = '<span style="color:#c8ccd6;">-</span>';
 // ── 조 구성 데이터 ─────────────────────────────────────────────────────────
-const ADMIN_VERSION = 'admin v2026.08.31-tab3titlenotemove';
+const ADMIN_VERSION = 'admin v2026.08.31-tab0sectitleadded';
 // 하드코딩 기준 데이터 (step 복원용)
 const HARDCODED_MEMBERS = [{
   jo: 1,
