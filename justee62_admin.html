@@ -1159,7 +1159,7 @@ tr:last-child td {
 </style>
 </head>
 <body>
-<div style="position:fixed;top:2px;left:4px;font-size:9px;color:rgba(255,255,255,0.35);z-index:99999;pointer-events:none;font-family:monospace;letter-spacing:.3px;">v2026.08.31-44(no-cache-fetch)</div>
+<div style="position:fixed;top:2px;left:4px;font-size:9px;color:rgba(255,255,255,0.35);z-index:99999;pointer-events:none;font-family:monospace;letter-spacing:.3px;">v2026.08.31-45(latest-record-datefix)</div>
 <script>
 // ── 테스트 모드 데이터 ──────────────────────────────────────────────────────
 // 테스트 모드 ON: window.TEST_MODE = true
@@ -2117,7 +2117,7 @@ window.TEST_DATA = {"records": [{"저장일시": "2026-03-14", "주차": 3, "전
 // ── 빈 값 표시용 옅은 회색 대시 ─────────────────────────────────────────────
 var DASH = '<span style="color:#c8ccd6;">-</span>';
 // ── 조 구성 데이터 ─────────────────────────────────────────────────────────
-const ADMIN_VERSION = 'admin v2026.08.31-nocachefetch';
+const ADMIN_VERSION = 'admin v2026.08.31-latestrecorddatefix';
 // 하드코딩 기준 데이터 (step 복원용)
 const HARDCODED_MEMBERS = [{
   jo: 1,
@@ -2976,7 +2976,7 @@ async function loadData() {
     parsed.forEach(function(r) {
       var key = r.docNumber || r.savedAt;
       if (!latestMap[key]) { latestMap[key] = r; }
-      else { if ((r.savedAt||'') > (latestMap[key].savedAt||'')) latestMap[key] = r; }
+      else { if (parseSavedAt(r.savedAt) > parseSavedAt(latestMap[key].savedAt)) latestMap[key] = r; }
     });
     allData = Object.values(latestMap).filter(function(r) { return String(r.jo) !== '12'; }); // 12조는 로직 점검용 테스트 조 <span style="color:#c8ccd6;">-</span> 집계 제외
     allData.sort(function(a,b){
@@ -3012,15 +3012,23 @@ async function loadData() {
     rawData = parsed.slice();
 
     // ── 문서번호 기준 최신 레코드만 유지 (이력은 시트에 보존) ──
-    // 동일 문서번호가 여러 개면 저장일시가 가장 최근인 것만 사용
+    // 동일 문서번호가 여러 개면 저장일시가 가장 최근인 것만 사용.
+    // 주의: 저장일시가 "2026-09-06 8:44:54"처럼 시/분/초가 0으로 안 채워진 경우가
+    // 실제로 있어서, 예전처럼 문자열만 비교하면 "9:00:00"이 "23:00:00"보다 사전순으로
+    // 더 크게 나와(문자 '9' > '2') 실제로는 더 이전 시각인데 "최신"으로 잘못 뽑힐 수 있다.
+    // 그래서 Date 객체로 정확히 변환해서 진짜 시간 순서로 비교하도록 고친다.
+    function parseSavedAt(s) {
+      if (!s) return 0;
+      var t = Date.parse(String(s).replace(' ', 'T'));
+      return isNaN(t) ? 0 : t;
+    }
     var latestMap = {};
     parsed.forEach(function(r) {
       var key = r.docNumber || r.savedAt; // 문서번호 없으면 저장일시로 구분
       if (!latestMap[key]) {
         latestMap[key] = r;
       } else {
-        // 저장일시 비교 (문자열 비교 — yyyy-MM-dd HH:mm:ss 형식이므로 사전순=시간순)
-        if ((r.savedAt || '') > (latestMap[key].savedAt || '')) {
+        if (parseSavedAt(r.savedAt) > parseSavedAt(latestMap[key].savedAt)) {
           latestMap[key] = r;
         }
       }
