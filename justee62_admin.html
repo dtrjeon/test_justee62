@@ -1159,7 +1159,7 @@ tr:last-child td {
 </style>
 </head>
 <body>
-<div style="position:fixed;top:2px;left:4px;font-size:9px;color:rgba(255,255,255,0.35);z-index:99999;pointer-events:none;font-family:monospace;letter-spacing:.3px;">v2026.08.31-40(tab3-formula-box)</div>
+<div style="position:fixed;top:2px;left:4px;font-size:9px;color:rgba(255,255,255,0.35);z-index:99999;pointer-events:none;font-family:monospace;letter-spacing:.3px;">v2026.08.31-41(dynamic-gospel-label)</div>
 <script>
 // ── 테스트 모드 데이터 ──────────────────────────────────────────────────────
 // 테스트 모드 ON: window.TEST_MODE = true
@@ -1287,7 +1287,7 @@ window.TEST_DATA = {"records": [{"저장일시": "2026-03-14", "주차": 3, "전
 
     <!-- 관계/질문지 결과 -->
     <div class="tbl-wrap" style="margin-bottom:0;display:grid;grid-template-rows:32px 1fr auto;">
-      <div class="stat-box-header">관계/질문지 결과</div>
+      <div class="stat-box-header" id="gospel-result-header-0">관계/질문지 결과</div>
       <table style="font-size:10px;width:100%;border-collapse:collapse;table-layout:fixed;">
         <colgroup><col style="width:70%"><col style="width:30%"></colgroup>
         <tbody>
@@ -1821,7 +1821,7 @@ window.TEST_DATA = {"records": [{"저장일시": "2026-03-14", "주차": 3, "전
             <th colspan="2" style="background:#1a3a9e;color:#fff;border-right:1px solid #c5cde8;">전체조</th>
             <th colspan="7" style="background:#2a5cd8;color:#fff;border-right:1px solid #c5cde8;">복음제시</th>
             <th colspan="7" style="background:#5c8ae0;color:#fff;border-right:1px solid #c5cde8;">대상자 구분</th>
-            <th colspan="6" style="background:#2a5cd8;color:#fff;border-right:1px solid #c5cde8;">관계/질문지 결과</th>
+            <th colspan="6" id="gospel-result-header-3" style="background:#2a5cd8;color:#fff;border-right:1px solid #c5cde8;">관계/질문지 결과</th>
             <th rowspan="2" style="border-right:1px solid #c5cde8;width:60px;min-width:60px;white-space:nowrap;">결신율</th>
           </tr>
           <tr>
@@ -2117,7 +2117,7 @@ window.TEST_DATA = {"records": [{"저장일시": "2026-03-14", "주차": 3, "전
 // ── 빈 값 표시용 옅은 회색 대시 ─────────────────────────────────────────────
 var DASH = '<span style="color:#c8ccd6;">-</span>';
 // ── 조 구성 데이터 ─────────────────────────────────────────────────────────
-const ADMIN_VERSION = 'admin v2026.08.31-tab3formulabox';
+const ADMIN_VERSION = 'admin v2026.08.31-dynamicgospellabel';
 // 하드코딩 기준 데이터 (step 복원용)
 const HARDCODED_MEMBERS = [{
   jo: 1,
@@ -2627,6 +2627,17 @@ function inGospelRateTypes(r) {
   return types.indexOf(r.evangType) > -1;
 }
 
+// "관계/질문지 결과" 같은 열 제목을, 설정에서 체크한 전도유형에 맞춰 동적으로 바꿔준다.
+// 예) 관계(팀)·질문지(팀)·개인 선택 → "관계/질문지/개인 결과"
+function updateGospelResultLabels() {
+  var types = (CFG && CFG.gospelTypes && CFG.gospelTypes.length) ? CFG.gospelTypes : ['관계(팀)', '질문지(팀)'];
+  var label = types.map(function(t) { return t.replace('(팀)', ''); }).join('/') + ' 결과';
+  ['gospel-result-header-0', 'gospel-result-header-3'].forEach(function(id) {
+    var el = document.getElementById(id);
+    if (el) el.textContent = label;
+  });
+}
+
 function calcCurrentWeek() {
   if (!CFG.trainStart) return 1;
   // 훈련 시작일의 월요일 기준으로 계산
@@ -3105,6 +3116,7 @@ function num(v) {
 
 // ── 렌더링 총괄 ──────────────────────────────────────────────────────────────
 function renderAll() {
+  updateGospelResultLabels();
   var w = currentWeek;
   var et  = (typeof currentEvangType !== 'undefined') ? currentEvangType : '';
   var jof = (typeof currentJo !== 'undefined') ? currentJo : '';
@@ -7297,6 +7309,7 @@ function saveSettings() {
   });
   CFG.gospelTypes = gospelChecked.length ? gospelChecked : ['관계(팀)', '질문지(팀)'];
   localStorage.setItem('mon_gospel_types', JSON.stringify(CFG.gospelTypes));
+  updateGospelResultLabels();
   // 반·그룹 저장
   var banEl = document.getElementById('set-ban');
   var grpEl = document.getElementById('set-group');
