@@ -1083,9 +1083,8 @@ select {
   flex: 0 0 40px;
   order: 100;
   height: 40px;
-  border: 1.5px solid #2050c8;
+  border: 1px solid rgba(32, 80, 200, 0.2);
   border-radius: 6px;
-  background: rgba(32, 80, 200, 0.06);
 }
 
 .search-bar input {
@@ -1140,9 +1139,8 @@ select {
 .search-clear {
   background: none;
   border: none;
-  color: #2050c8;
-  font-size: 20px;
-  font-weight: 700;
+  color: rgba(32, 80, 200, 0.5);
+  font-size: 18px;
   cursor: pointer;
   padding: 0 4px;
   line-height: 1;
@@ -1238,7 +1236,6 @@ select {
   display: none;
   max-width: 90vw;
   text-align: center;
-  white-space: pre-line;
   box-shadow: 0 4px 20px rgba(0, 0, 30, 0.25);
 }
 
@@ -3185,13 +3182,13 @@ function applyFormData(r) {
     }
 
     if (selMember) {
-      // 전도자 → 하였고, 나머지 → 불참하였고
+      // 전도자 → 제시하였고, 나머지 → 불참하였고
       // 개인전도는 제출 시 checkPersonalActionWarning()이 이 규칙을 강제하므로,
       // 저장값이 남아있어도(과거 오류로 '참관하였고' 등 저장된 경우 포함) 항상 규칙대로 재설정한다.
       MEMBERS.forEach(function(m) {
         var memberName = Object.keys(nameToId).find(function(n) { return nameToId[n] === m.id; });
         var isEvangelist = (memberName === selMember);
-        var radioEl = document.querySelector('input[name="' + m.id + '_action"][value="' + (isEvangelist ? '하였고' : '불참하였고') + '"]');
+        var radioEl = document.querySelector('input[name="' + m.id + '_action"][value="' + (isEvangelist ? '제시하였고' : '불참하였고') + '"]');
         if (radioEl) radioEl.checked = true;
       });
 
@@ -3217,12 +3214,12 @@ function applyFormData(r) {
         }
       }
 
-      // 역할배분 없고 전도자가 하였고 → 결과에 따라 파트 자동설정
+      // 역할배분 없고 전도자가 제시하였고 → 결과에 따라 파트 자동설정
       var evangMemberId = nameToId[selMember] || null;
       if (evangMemberId) {
         var evangAction = radio(evangMemberId + '_action');
         var existPart = v('q8_' + evangMemberId + '_part');
-        if (evangAction === '하였고' && !existPart) {
+        if (evangAction === '제시하였고' && !existPart) {
           var resultVal = r.result || '';
           var autoParts = [];
           if (resultVal === '결신' || resultVal === '확신') {
@@ -4216,11 +4213,11 @@ function onPersonalMemberChange() {
       if (found.trainee)  nameToId[found.trainee]  = 'trainee';
       if (found.trainee2) nameToId[found.trainee2] = 'trainee';
 
-      // ① 역할배분: 전도자 → 하였고, 나머지 → 불참하였고
+      // ① 역할배분: 전도자 → 제시하였고, 나머지 → 불참하였고
       MEMBERS.forEach(function(m) {
         var memberName = Object.keys(nameToId).find(function(n) { return nameToId[n] === m.id; });
         var isEvangelist = (memberName === member);
-        var radioEl = document.querySelector('input[name="' + m.id + '_action"][value="' + (isEvangelist ? '하였고' : '불참하였고') + '"]');
+        var radioEl = document.querySelector('input[name="' + m.id + '_action"][value="' + (isEvangelist ? '제시하였고' : '불참하였고') + '"]');
         if (radioEl) radioEl.checked = true;
       });
     }
@@ -4427,7 +4424,7 @@ function buildRoleSections() {
           'style="width:100%;height:38px;font-size:14px;border:1px solid rgba(198,80,0,0.35);border-radius:6px;padding:0 8px;background:#fff8f0;">' +
       '</div>' +
       '<div class="rg" style="margin-top:9px;">' +
-        '<div class="rb"><input type="radio" name="' + m.id + '_action" value="하였고" id="' + m.id + '_a1" onchange="syncPreview()"><label for="' + m.id + '_a1">하였고</label></div>' +
+        '<div class="rb"><input type="radio" name="' + m.id + '_action" value="제시하였고" id="' + m.id + '_a1" onchange="syncPreview()"><label for="' + m.id + '_a1">제시하였고</label></div>' +
         '<div class="rb"><input type="radio" name="' + m.id + '_action" value="참관하였고" id="' + m.id + '_a2" onchange="syncPreview()"><label for="' + m.id + '_a2">참관하였고</label></div>' +
         '<div class="rb"><input type="radio" name="' + m.id + '_action" value="불참하였고" id="' + m.id + '_a3" onchange="syncPreview()"><label for="' + m.id + '_a3">불참하였고</label></div>' +
       '</div>';
@@ -4454,8 +4451,8 @@ function onAllGospelChange(who) {
     if (dateEl && reportDate && !dateEl.value) {
       dateEl.value = reportDate.value || new Date().toISOString().split('T')[0];
     }
-    // ✦ 전체복음을 제시했다는 것은 곧 본인이 직접 "하였고"라는 뜻 —
-    // 행동(하였고/참관하였고)이 기본값(참관하였고)에 그대로 남아 잘못 저장되는 문제 방지
+    // ✦ 전체복음을 제시했다는 것은 곧 본인이 직접 "제시하였고"라는 뜻 —
+    // 행동(제시하였고/참관하였고)이 기본값(참관하였고)에 그대로 남아 잘못 저장되는 문제 방지
     var a1 = document.getElementById(who + '_a1');
     if (a1) a1.checked = true;
   }
@@ -4471,7 +4468,7 @@ function onRoleItemChange(who) {
   if (allCb) allCb.checked = allChecked;
   var wrap = document.getElementById(who + '-gospel-date-wrap');
   if (wrap) wrap.style.display = allChecked ? 'block' : 'none';
-  // ✦ 9개 항목을 하나씩 체크해서 전체복음이 완성된 경우에도 동일하게 "하였고" 자동 선택
+  // ✦ 9개 항목을 하나씩 체크해서 전체복음이 완성된 경우에도 동일하게 "제시하였고" 자동 선택
   if (allChecked) {
     var a1b = document.getElementById(who + '_a1');
     if (a1b) a1b.checked = true;
@@ -4734,31 +4731,6 @@ function removeFollowup(val) {
 
 function getDiagInfo(hv, rs) {
   return DIAG_MAP[hv + '_' + (rs === '믿음' ? '믿음' : 'etc')] || null;
-}
-
-// 제출 직전에 "진단결과"를 화면에 저장돼 있던 값(diag-saved-result)을 그대로 믿지 않고,
-// 지금 화면의 실제 선택 상태(heaven/reason/testimony6/yeopjeop)로부터 다시 계산해서 쓴다.
-// 예전에 어떤 이유로든 "머리신자 / 이미신자"처럼 두 갈래가 합쳐진 임시 라벨이 hidden
-// input에 남아있던 채로 제출되는 사고를 막기 위한 안전장치.
-function getFinalDiagResultForSubmit() {
-  var stored = v('diag-saved-result');
-  var hv = radio('heaven'), rs = radio('reason'), yj = radio('yeopjeop');
-  if (!hv || !rs || !yj) return stored; // 아직 답변이 다 안 채워졌으면 저장된 값 그대로(빈 값 등)
-
-  var info = getDiagInfo(hv, rs);
-  if (!info) return stored;
-
-  var t6 = radio('testimony6');
-  var diagLabel = info.diag;
-  if (t6 === '이미신자' || t6 === '머리신자') diagLabel = t6; // 실제 선택값이 있으면 그것만 사용(결합 라벨 방지)
-
-  var result = calcResult(hv, rs, yj);
-  var fresh = '진단: ' + diagLabel + ' | 영접: ' + yj + ' | 결과: ' + result;
-
-  if (stored && stored !== fresh) {
-    console.warn('[진단결과] 저장돼 있던 값과 재계산값이 달라 재계산값으로 대체합니다.', { stored: stored, fresh: fresh });
-  }
-  return fresh;
 }
 
 function diagBadgeHtml(info) {
@@ -5252,7 +5224,7 @@ function collectFormData() {
     heaven: radio('heaven'),
     reason: radio('reason'),
     yeopjeop: radio('yeopjeop'),
-    diag_result: getFinalDiagResultForSubmit(),
+    diag_result: v('diag-saved-result'),
     testimony6: radio('testimony6'),
     testimony7: radio('testimony7'),
     leader_part: v('q8_leader_part'),
@@ -5396,7 +5368,7 @@ function checkPersonalActionWarning() {
           problems.push(mName + '(' + m.label + ')');
         }
       } else {
-        // 개인전도: 전도자 1명만 [하였고], 나머지가 [참관하였고]로 선택되면 안됨
+        // 개인전도: 전도자 1명만 [제시하였고], 나머지가 [참관하였고]로 선택되면 안됨
         if (action === '참관하였고') {
           problems.push(mName + '(' + m.label + ')');
         }
@@ -5408,7 +5380,7 @@ function checkPersonalActionWarning() {
   if (isRelation) {
     return '⚠️ 관계전도는 훈련생이 [불참하였고]로 선택되어야 합니다.\n\n현재 다르게 선택된 조원:\n• ' + problems.join('\n• ');
   }
-  return '⚠️ 개인전도는 전도자 1명만 [하였고], 나머지는 [불참하였고]로 선택해야 합니다.\n\n현재 [참관하였고]로 선택된 조원:\n• ' + problems.join('\n• ');
+  return '⚠️ 개인전도는 전도자 1명만 [제시하였고], 나머지는 [불참하였고]로 선택해야 합니다.\n\n현재 [참관하였고]로 선택된 조원:\n• ' + problems.join('\n• ');
 }
 
 async function submitServer() {
@@ -5510,7 +5482,7 @@ function toggleSortMode() {
   var next = modes[(modes.indexOf(cur) + 1) % modes.length];
   window._historySortMode = next;
   updateSortBtnLabel();
-  if (window._historyRawRecords) renderHistory(window._historyRawRecords, window._historySrc || 'server', true);
+  if (window._historyRawRecords) renderHistory(window._historyRawRecords, window._historySrc || 'server');
 }
 function updateSortBtnLabel() {
   var btn = document.getElementById('sort-btn');
@@ -5965,7 +5937,7 @@ async function loadServerHistory() {
   }
 }
 
-function renderHistory(records, src, preserveFilter) {
+function renderHistory(records, src) {
   // 정렬 토글(toggleSortMode)이 재조회 없이 다시 그릴 수 있도록 원본 보관
   window._historyRawRecords = records;
   window._historySrc = src;
@@ -5973,9 +5945,7 @@ function renderHistory(records, src, preserveFilter) {
   var bar = document.getElementById('search-bar');
   if (bar && records && records.length > 0) bar.style.display = 'flex';
   else if (bar) bar.style.display = 'none';
-  // preserveFilter=true(정렬 변경 등으로 인한 재렌더링)일 때는 검색/필터 상태를
-  // 초기화하지 않고 그대로 유지한다. 그렇지 않으면(최초 로딩/새로고침) 기존처럼 초기화.
-  if (!preserveFilter) clearSearch();
+  clearSearch();
   var mpBtn = document.getElementById('multiprint-btn');
   if (mpBtn) mpBtn.style.display = (records && records.length > 0) ? '' : 'none';
   var list = document.getElementById('history-list');
@@ -6346,7 +6316,7 @@ function syncPreview() {
   MEMBERS.forEach(function(m) {
     setEl('p_' + m.id + '_part', v('q8_' + m.id + '_part'));
     var _ab = document.getElementById('p_' + m.id + '_action_bold');
-    if (_ab) _ab.textContent = radio(m.id + '_action') || '하였고 / 참관하였고';
+    if (_ab) _ab.textContent = radio(m.id + '_action') || '제시하였고 / 참관하였고';
   });
   setEl('p_result', v('q8_result'));
   // 9번: 양육
@@ -7399,7 +7369,7 @@ async function deleteSelectedRecords() {
     btn.innerHTML = '<span style="font-size:18px;line-height:1;">⏳</span><span style="font-size:9px;font-weight:700;color:#fff;white-space:nowrap;">삭제 중...</span>';
   }
 
-  var okCount = 0, failCount = 0, failDetails = [], authExpired = false;
+  var okCount = 0, failCount = 0;
   for (var i = 0; i < toDelete.length; i++) {
     try {
       var res = await fetch(scriptUrl, {
@@ -7408,26 +7378,10 @@ async function deleteSelectedRecords() {
         body: JSON.stringify({ action: 'delete_doc_row', rowIndex: toDelete[i].rowIndex, docNumber: toDelete[i].doc_number, adminToken: getAdminToken() })
       });
       var json = await res.json();
-      if (json.status === 'ok') {
-        okCount++;
-      } else {
-        failCount++;
-        var m = json.message || '서버에서 실패 응답';
-        failDetails.push((toDelete[i].doc_number || ('row' + toDelete[i].rowIndex)) + ': ' + m);
-        if (/권한|인증|만료|401|token/i.test(m)) authExpired = true;
-      }
+      if (json.status === 'ok') okCount++; else failCount++;
     } catch (e) {
       failCount++;
-      failDetails.push((toDelete[i].doc_number || ('row' + toDelete[i].rowIndex)) + ': ' + (e.message || '네트워크 오류'));
     }
-  }
-  if (failDetails.length) console.error('삭제 실패 상세:\n' + failDetails.join('\n'));
-  // 서버가 admin 세션 만료/권한 오류를 반환하면, 화면에 남아있는 잘못된
-  // "인증됨" 상태를 지워서 다음에는 정상적으로 재인증을 유도한다.
-  if (authExpired) {
-    localStorage.removeItem('index_admin_verified');
-    localStorage.removeItem('index_admin_token');
-    if (window._multiSelectMode) toggleMultiSelect(); // admin 표시로 남아있던 삭제 버튼 등을 즉시 되돌림
   }
 
   if (btn) {
@@ -7436,9 +7390,7 @@ async function deleteSelectedRecords() {
   }
   var msg = '🗑️ ' + okCount + '건 삭제 완료' + (failCount ? (' · ' + failCount + '건 실패') : '')
     + (kept.length ? (' · 🛡️ ' + kept.length + '건 최신본 보존') : '')
-    + (noRowIndex.length ? (' · ⚠️ ' + noRowIndex.length + '건은 행 정보가 없어 건너뜀(새로고침 후 다시 시도)') : '')
-    + (authExpired ? '\n🔒 admin 세션이 만료되었습니다. "내 조 설정" 화면에서 다시 인증해주세요.' : '')
-    + (failDetails.length && !authExpired ? ('\n' + failDetails.slice(0, 3).join('\n')) : '');
+    + (noRowIndex.length ? (' · ⚠️ ' + noRowIndex.length + '건은 행 정보가 없어 건너뜀(새로고침 후 다시 시도)') : '');
   showStatus(msg, (failCount || noRowIndex.length) ? 'warn' : 'success');
   clearMultiSelect();
   loadHistory(); // 목록 새로고침
@@ -7856,9 +7808,9 @@ window.onload = function() {
       testimony6: '',
       testimony7: '',
       leader_part: '결신',
-      leader_action: '하였고',
+      leader_action: '제시하였고',
       trainer_part: '믿음',
-      trainer_action: '하였고',
+      trainer_action: '제시하였고',
       trainee_part: '인간',
       trainee_action: '참관하였고',
       result: '결신',
@@ -7907,9 +7859,9 @@ window.onload = function() {
       testimony6: '',
       testimony7: '확신부족신자',
       leader_part: '믿음',
-      leader_action: '하였고',
+      leader_action: '제시하였고',
       trainer_part: '그리스도',
-      trainer_action: '하였고',
+      trainer_action: '제시하였고',
       trainee_part: '하나님',
       trainee_action: '참관하였고',
       result: '확신',
