@@ -1238,6 +1238,7 @@ select {
   display: none;
   max-width: 90vw;
   text-align: center;
+  white-space: pre-line;
   box-shadow: 0 4px 20px rgba(0, 0, 30, 0.25);
 }
 
@@ -7398,7 +7399,7 @@ async function deleteSelectedRecords() {
     btn.innerHTML = '<span style="font-size:18px;line-height:1;">⏳</span><span style="font-size:9px;font-weight:700;color:#fff;white-space:nowrap;">삭제 중...</span>';
   }
 
-  var okCount = 0, failCount = 0;
+  var okCount = 0, failCount = 0, failDetails = [];
   for (var i = 0; i < toDelete.length; i++) {
     try {
       var res = await fetch(scriptUrl, {
@@ -7407,11 +7408,18 @@ async function deleteSelectedRecords() {
         body: JSON.stringify({ action: 'delete_doc_row', rowIndex: toDelete[i].rowIndex, docNumber: toDelete[i].doc_number, adminToken: getAdminToken() })
       });
       var json = await res.json();
-      if (json.status === 'ok') okCount++; else failCount++;
+      if (json.status === 'ok') {
+        okCount++;
+      } else {
+        failCount++;
+        failDetails.push((toDelete[i].doc_number || ('row' + toDelete[i].rowIndex)) + ': ' + (json.message || '서버에서 실패 응답'));
+      }
     } catch (e) {
       failCount++;
+      failDetails.push((toDelete[i].doc_number || ('row' + toDelete[i].rowIndex)) + ': ' + (e.message || '네트워크 오류'));
     }
   }
+  if (failDetails.length) console.error('삭제 실패 상세:\n' + failDetails.join('\n'));
 
   if (btn) {
     btn.disabled = false;
@@ -7419,7 +7427,8 @@ async function deleteSelectedRecords() {
   }
   var msg = '🗑️ ' + okCount + '건 삭제 완료' + (failCount ? (' · ' + failCount + '건 실패') : '')
     + (kept.length ? (' · 🛡️ ' + kept.length + '건 최신본 보존') : '')
-    + (noRowIndex.length ? (' · ⚠️ ' + noRowIndex.length + '건은 행 정보가 없어 건너뜀(새로고침 후 다시 시도)') : '');
+    + (noRowIndex.length ? (' · ⚠️ ' + noRowIndex.length + '건은 행 정보가 없어 건너뜀(새로고침 후 다시 시도)') : '')
+    + (failDetails.length ? ('\n' + failDetails.slice(0, 3).join('\n')) : '');
   showStatus(msg, (failCount || noRowIndex.length) ? 'warn' : 'success');
   clearMultiSelect();
   loadHistory(); // 목록 새로고침
