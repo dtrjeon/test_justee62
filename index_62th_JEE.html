@@ -7399,7 +7399,7 @@ async function deleteSelectedRecords() {
     btn.innerHTML = '<span style="font-size:18px;line-height:1;">⏳</span><span style="font-size:9px;font-weight:700;color:#fff;white-space:nowrap;">삭제 중...</span>';
   }
 
-  var okCount = 0, failCount = 0, failDetails = [];
+  var okCount = 0, failCount = 0, failDetails = [], authExpired = false;
   for (var i = 0; i < toDelete.length; i++) {
     try {
       var res = await fetch(scriptUrl, {
@@ -7412,7 +7412,9 @@ async function deleteSelectedRecords() {
         okCount++;
       } else {
         failCount++;
-        failDetails.push((toDelete[i].doc_number || ('row' + toDelete[i].rowIndex)) + ': ' + (json.message || '서버에서 실패 응답'));
+        var m = json.message || '서버에서 실패 응답';
+        failDetails.push((toDelete[i].doc_number || ('row' + toDelete[i].rowIndex)) + ': ' + m);
+        if (/권한|인증|만료|401|token/i.test(m)) authExpired = true;
       }
     } catch (e) {
       failCount++;
@@ -7420,6 +7422,13 @@ async function deleteSelectedRecords() {
     }
   }
   if (failDetails.length) console.error('삭제 실패 상세:\n' + failDetails.join('\n'));
+  // 서버가 admin 세션 만료/권한 오류를 반환하면, 화면에 남아있는 잘못된
+  // "인증됨" 상태를 지워서 다음에는 정상적으로 재인증을 유도한다.
+  if (authExpired) {
+    localStorage.removeItem('index_admin_verified');
+    localStorage.removeItem('index_admin_token');
+    if (window._multiSelectMode) toggleMultiSelect(); // admin 표시로 남아있던 삭제 버튼 등을 즉시 되돌림
+  }
 
   if (btn) {
     btn.disabled = false;
@@ -7428,7 +7437,8 @@ async function deleteSelectedRecords() {
   var msg = '🗑️ ' + okCount + '건 삭제 완료' + (failCount ? (' · ' + failCount + '건 실패') : '')
     + (kept.length ? (' · 🛡️ ' + kept.length + '건 최신본 보존') : '')
     + (noRowIndex.length ? (' · ⚠️ ' + noRowIndex.length + '건은 행 정보가 없어 건너뜀(새로고침 후 다시 시도)') : '')
-    + (failDetails.length ? ('\n' + failDetails.slice(0, 3).join('\n')) : '');
+    + (authExpired ? '\n🔒 admin 세션이 만료되었습니다. "내 조 설정" 화면에서 다시 인증해주세요.' : '')
+    + (failDetails.length && !authExpired ? ('\n' + failDetails.slice(0, 3).join('\n')) : '');
   showStatus(msg, (failCount || noRowIndex.length) ? 'warn' : 'success');
   clearMultiSelect();
   loadHistory(); // 목록 새로고침
