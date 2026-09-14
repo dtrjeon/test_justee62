@@ -1167,7 +1167,7 @@ tr:last-child td {
 </style>
 </head>
 <body>
-<div style="position:fixed;top:2px;left:4px;font-size:9px;color:rgba(255,255,255,0.35);z-index:99999;pointer-events:none;font-family:monospace;letter-spacing:.3px;">v2026.09.14-52(team-pdf-colwidth)</div>
+<div style="position:fixed;top:2px;left:4px;font-size:9px;color:rgba(255,255,255,0.35);z-index:99999;pointer-events:none;font-family:monospace;letter-spacing:.3px;">v2026.09.14-53(team-pdf-unify-engine)</div>
 <script>
 // ── 테스트 모드 데이터 ──────────────────────────────────────────────────────
 // 테스트 모드 ON: window.TEST_MODE = true
@@ -1742,7 +1742,7 @@ window.TEST_DATA = {"records": [{"저장일시": "2026-03-14", "주차": 3, "전
       <div style="display:flex;align-items:center;gap:6px;">
         <button onclick="exportCsv('tb-weekly-2','tab2_팀전도현황')" style="background:#f5f5f5;border:1px solid #ddd;color:#555;border-radius:12px;padding:4px 10px;font-size:10px;font-weight:700;cursor:pointer;white-space:nowrap;">⬇ CSV</button>
         <button onclick="toggleSuryoChart()" id="suryo-chart-btn" style="background:#f0f4ff;border:1px solid #c5cde8;color:#1a3ab0;border-radius:12px;padding:4px 10px;font-size:10px;font-weight:700;cursor:pointer;white-space:nowrap;" title="조별 전도 현황 차트">📊</button>
-        <button onclick="printTab2Pdf()" style="background:#2050c8;border:none;color:#fff;border-radius:10px;padding:6px 8px;font-size:8px;white-space:nowrap;font-weight:700;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:2px;min-width:44px;"><span style="font-size:16px;line-height:1;">⬇</span>PDF</button>
+        <button onclick="printTab2PdfViaEngine()" style="background:#2050c8;border:none;color:#fff;border-radius:10px;padding:6px 8px;font-size:8px;white-space:nowrap;font-weight:700;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:2px;min-width:44px;"><span style="font-size:16px;line-height:1;">⬇</span>PDF</button>
         <button onclick="openPdfPreviewSettings('tab2')" style="background:#eef1f8;border:none;color:var(--primary);border-radius:10px;padding:6px 8px;font-size:8px;white-space:nowrap;font-weight:700;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:2px;min-width:44px;"><span style="font-size:16px;line-height:1;">🧩</span>PDF설정</button>
         <button onclick="openColWidthEditor('tab2')" style="background:#eef1f8;border:none;color:var(--primary);border-radius:10px;padding:6px 8px;font-size:8px;white-space:nowrap;font-weight:700;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:2px;min-width:44px;"><span style="font-size:16px;line-height:1;">📐</span>폭설정</button>
       </div>
@@ -2125,7 +2125,7 @@ window.TEST_DATA = {"records": [{"저장일시": "2026-03-14", "주차": 3, "전
 // ── 빈 값 표시용 옅은 회색 대시 ─────────────────────────────────────────────
 var DASH = '<span style="color:#c8ccd6;">-</span>';
 // ── 조 구성 데이터 ─────────────────────────────────────────────────────────
-const ADMIN_VERSION = 'admin v2026.09.14-teampdfcolwidth';
+const ADMIN_VERSION = 'admin v2026.09.14-teampdfunifyengine';
 // 하드코딩 기준 데이터 (step 복원용)
 const HARDCODED_MEMBERS = [{
   jo: 1,
@@ -4854,179 +4854,13 @@ function exportCsv(tbodyId, filename) {
 }
 
 // ── TAB2 전용 인쇄 PDF ───────────────────────────────────────────────────────
-function printTab2Pdf() {
-  // 현재 선택된 주차
-  var w = currentWeek;
-  var accData = allData.filter(function(r) { return Number(r.week) <= w; });
-
-  // 인쇄용 HTML 생성
-  var title = CFG.title + ' 팀전도 현황';
-  var period = '1주 ~ ' + w + '주 누적';
-
-  // 결신율 계산 — 7일후(팀) 제외
-  var rD=0, rR=0, rC=0, rB=0;
-  accData.forEach(function(r){
-    if (is7ilhu(r)) return;
-    rD+=Number(r.decision||0); rR+=Number(r.reject||0);
-    rC+=Number(r.confirm||0); rB+=Number(r.believer||0);
-  });
-  // 결신율 = 결신 ÷ (결신 + 보류/거절)
-  var rateDenom = rD + rR;
-  var rate = rateDenom > 0 ? Math.round(rD / rateDenom * 1000) / 10 : 0;
-
-  // 단계별 인원 집계
-  var stepCounts = {};
-  MEMBERS.forEach(function(m){
-    var s = String(m.step||'').toUpperCase().trim();
-    stepCounts[s] = (stepCounts[s]||0)+1;
-  });
-  var totalMembers = MEMBERS.length;
-
-  // 수료요건 텍스트
-  var suryoTxt = '수료요건(팀전도): (관계전도 6회↑, 질문지 3회↑, 7일후 1회↑) 또는 (관계 7회↑, 질문지 2회↑, 7일후 1회↑)';
-
-  // 그룹/조별 테이블 행 생성 — 화면과 동일: 조원 전체 행 + 복음참여 숫자
-  var PARTS = ['간증','서론','은혜','인간','하나님','그리스도','믿음','결신','즉석양육'];
-  var rows = '';
-  CFG.groups.forEach(function(grp) {
-    var joList = Object.keys(CFG.joGroup).filter(function(j){
-      return CFG.joGroup[j]===grp.id;
-    }).map(Number).sort();
-    if (!joList.length) return;
-
-    rows += '<tr class="grp-row"><td colspan="' + (8 + PARTS.length + 2) + '">' + grp.name + ' (' + grp.leader + ')</td></tr>';
-
-    joList.forEach(function(jo) {
-      var joRecs = accData.filter(function(r){ return String(r.jo)===String(jo); });
-      var members = MEMBERS.filter(function(m){ return m.jo===jo; })
-                           .sort(function(a,b){
-                             var order = {'리더':0,'훈련자':1,'훈련생':2};
-                             return (order[a.role]||0) - (order[b.role]||0);
-                           });
-
-      var relCnt  = joRecs.filter(function(r){ return r.evangType==='관계(팀)'; }).length;
-      var _qRecs2  = joRecs.filter(function(r){ return r.evangType==='질문지(팀)'; });
-      var quesRawCnt = _qRecs2.length; // 횟수
-      var quesCnt  = new Set(_qRecs2.map(function(r){ return r.date; }).filter(Boolean)).size; // 고유 날짜 수
-      var day7Cnt = joRecs.filter(function(r){ return r.evangType === '7일후(팀)'; }).length;
-      var suryoOk = isSuryoComplete(relCnt, quesCnt, day7Cnt);
-
-      var rel6  = relCnt  >= 6 ? '✓'+relCnt  : (relCnt  >= 1 ? relCnt  : DASH);
-      var ques3 = quesCnt >= 3 ? '✓'+quesCnt : (quesCnt >= 2 ? '△'+quesCnt : (quesCnt >= 1 ? quesCnt : DASH));
-      var w7ok  = day7Cnt >= 1 ? '✓'+day7Cnt : DASH;
-      var suryo = suryoOk ? '완료' : '미완료';
-      var suryoColor = suryoOk ? '#2e7d32' : '#e65100';
-      var suryoBg    = suryoOk ? '#e8f5e9' : '#fff3e0';
-
-      var rowspan = members.length;
-
-      members.forEach(function(m, mi) {
-        var roleLabel = m.role==='리더'?'조장':m.role==='훈련자'?'훈련자':'훈련생';
-        var mRecs = joRecs.filter(function(r){
-          if (r.evangType !== '관계(팀)') return false; // 복음참여 파트 집계 <span style="color:#c8ccd6;">-</span> 관계(팀) 레코드만 반영
-          var act = m.role==='리더' ? r.leaderAction : m.role==='훈련자' ? r.trainerAction : r.traineeAction;
-          return act==='하였고' || act==='참관하였고';
-        });
-        var partCells = PARTS.map(function(p){
-          var cnt = mRecs.filter(function(r){
-            var pt = m.role==='리더' ? r.leaderPart : m.role==='훈련자' ? r.trainerPart : r.traineePart;
-            return pt && pt.split(',').map(function(x){return x.trim();}).indexOf(p)>-1;
-          }).length;
-          return '<td class="pc">' + (cnt||DASH) + '</td>';
-        }).join('');
-
-        // 개인전도 횟수: 전도자 선택(조원) = relationMember 필드와 이름 일치 여부로 집계
-        // (개인전도 레코드는 action이 비어있는 경우가 많아, 다른 화면들과 동일하게
-        //  relationMember 기준으로 맞춰야 정확하다 — 기존엔 action 기준이라 숫자가 어긋났다)
-        var indivCnt = joRecs.filter(function(r){
-          if (r.evangType !== '개인') return false;
-          var evangName = (r.relationMember || '').replace(/\(.*?\)/g, '').trim();
-          return evangName === m.name;
-        }).length;
-
-        rows += '<tr>' +
-          (mi===0 ? '<td class="jo-cell" rowspan="'+rowspan+'">' + jo + '조</td>' : '') +
-          '<td>' + m.name + '</td>' +
-          '<td class="c">' + roleLabel + '</td>' +
-          '<td class="c">' + (m.step||DASH) + '</td>' +
-          (mi===0 ? '<td class="c" rowspan="'+rowspan+'">' + rel6  + '</td>' : '') +
-          (mi===0 ? '<td class="c" rowspan="'+rowspan+'">' + (quesRawCnt||DASH) + '</td>' : '') +
-          (mi===0 ? '<td class="c" rowspan="'+rowspan+'">' + ques3 + '</td>' : '') +
-          (mi===0 ? '<td class="c" rowspan="'+rowspan+'">' + w7ok  + '</td>' : '') +
-          (mi===0 ? '<td class="c suryo-cell" rowspan="'+rowspan+'" style="background:'+suryoBg+';color:'+suryoColor+';font-weight:700;">' + suryo + '</td>' : '') +
-          '<td class="c">' + (indivCnt||DASH) + '</td>' +
-          partCells +
-          '</tr>';
-      });
-    });
-  });
-
-  var html = '<!DOCTYPE html><html><head><meta charset="UTF-8">' +
-    '<title>' + title + '</title>' +
-    '<style>' +
-    'body{font-family:"Malgun Gothic","맑은 고딕",sans-serif;font-size:12px;margin:0;padding:10px;}' +
-    'h2{font-size:16px;margin:0 0 4px;} .sub{font-size:11px;color:#555;margin-bottom:6px;}' +
-    '.meta{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;}' +
-    '.rate-box{border:2px solid #1a3a9e;padding:6px 16px;text-align:center;border-radius:4px;}' +
-    '.rate-box .rl{font-size:11px;color:#555;} .rate-box .rv{font-size:24px;font-weight:900;color:#1a3a9e;}' +
-    '.suryo{font-size:10px;color:#333;margin-bottom:8px;background:#f5f5f5;padding:5px 10px;border-radius:4px;}' +
-    'table{border-collapse:collapse;width:100%;table-layout:fixed;}' +
-    'th{background:#1a3a9e;color:#fff;padding:5px 6px;text-align:center;font-size:11px;border:1px solid #aaa;word-break:keep-all;}' +
-    'th.sub-hd{background:#3060c8;}' +
-    'td{padding:4px 6px;border:1px solid #ccc;font-size:11px;vertical-align:middle;word-break:keep-all;overflow-wrap:break-word;}' +
-    'td.c{text-align:center;} td.pc{text-align:center;width:26px;}' +
-    'td.jo-cell{text-align:center;font-weight:700;font-size:13px;background:#f0f4ff;}' +
-    'td.suryo-cell{text-align:center;font-size:11px;}' +
-    'tr.grp-row td{background:#e8eaf6;font-weight:700;font-size:11px;padding:4px 8px;color:#1a3a9e;}' +
-    '@media print{body{padding:4px;} @page{size:A4 landscape;margin:8mm;}}' +
-    '</style></head><body>' +
-    '<div class="meta">' +
-    '<div><h2>■ ' + title + '</h2>' +
-    '<div class="sub">【누적집계기준: ' + period + '】</div></div>' +
-    '<div class="rate-box"><div class="rl">결신율</div><div class="rv">' + (rateDenom>0?rate.toFixed(1)+'%':DASH) + '</div></div>' +
-    '</div>' +
-    '<div class="suryo">※ ' + suryoTxt + '</div>' +
-    '<table>' +
-    '<colgroup>' +
-      '<col style="width:3%;">' +   /* 조 */
-      '<col style="width:6%;">' +   /* 이름 */
-      '<col style="width:6%;">' +   /* 역할 */
-      '<col style="width:3%;">' +   /* 단계 */
-      '<col style="width:7%;">' +   /* 관계(팀) 6회↑ */
-      '<col style="width:7%;">' +   /* 질문지(팀) 횟수 */
-      '<col style="width:7%;">' +   /* 질문지(팀) 2일↑ */
-      '<col style="width:6%;">' +   /* 7일후(팀) 1회↑ */
-      '<col style="width:6%;">' +   /* 수료요건 */
-      '<col style="width:4%;">' +   /* 개인전도 */
-      '<col style="width:5%;"><col style="width:5%;"><col style="width:5%;"><col style="width:5%;"><col style="width:5%;"><col style="width:5%;"><col style="width:5%;"><col style="width:5%;"><col style="width:5%;">' + /* 간증~즉석양육 9개 */
-    '</colgroup>' +
-    '<thead><tr>' +
-    '<th rowspan="2">조</th>' +
-    '<th rowspan="2">이름</th>' +
-    '<th rowspan="2">역할</th>' +
-    '<th rowspan="2">단계</th>' +
-    '<th rowspan="2">관계(팀)<br>6회↑</th>' +
-    '<th rowspan="2">질문지(팀)<br>횟수</th>' +
-    '<th rowspan="2">질문지(팀)<br>2일↑</th>' +
-    '<th rowspan="2">7일후(팀)<br>1회↑</th>' +
-    '<th rowspan="2">수료요건</th>' +
-    '<th rowspan="2">개인전도</th>' +
-    '<th colspan="9" class="sub-hd">관계전도(팀) 복음참여 현황</th>' +
-    '</tr><tr>' +
-    '<th class="sub-hd">간증</th><th class="sub-hd">서론</th><th class="sub-hd">은혜</th>' +
-    '<th class="sub-hd">인간</th><th class="sub-hd">하나님</th><th class="sub-hd">그리스도</th>' +
-    '<th class="sub-hd">믿음</th><th class="sub-hd">결신</th><th class="sub-hd">즉석양육</th>' +
-    '</tr></thead>' +
-    '<tbody>' + rows + '</tbody>' +
-    '</table>' +
-    '</body></html>';
-
-  var win = window.open('', '_blank');
-  if (!win) { alert('팝업이 차단되었습니다. 허용 후 다시 시도해주세요.'); return; }
-  win.document.write(html);
-  win.document.close();
-  win.focus();
-  setTimeout(function(){ win.print(); }, 600);
+// 메인 "PDF" 버튼(팀전도현황) — 예전엔 손으로 짠 별도 HTML 표(printTab2Pdf)를 썼는데,
+// 화면 폭·폰트를 바꿀 때마다 이 표와 따로 관리해야 해서 서로 어긋나는 문제가 있었다.
+// 지금은 "PDF설정 → ③PDF생성"과 완전히 같은 엔진(quickGeneratePdf)을 써서, 모달을 열지
+// 않고 버튼 한 번만 눌러도 화면에 보이는 그대로(html2canvas 캡처) PDF가 만들어지도록 한다.
+function printTab2PdfViaEngine() {
+  PDF_TARGET = 'tab2';
+  quickGeneratePdf();
 }
 
 // ── 주간현황 PDF 페이지 구성 설정(previewer_setting) ────────────────────────
