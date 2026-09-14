@@ -441,9 +441,9 @@ body {
 .gospel-tbl td:nth-child(4) {
   position: sticky;
   left: 0;
-  width: 50px;
-  min-width: 50px;
-  max-width: 50px;
+  width: var(--gospel-sticky-w, 50px);
+  min-width: var(--gospel-sticky-w, 50px);
+  max-width: var(--gospel-sticky-w, 50px);
   z-index: 4;
   background: #f0f4ff;
   border-right: 1px solid #c5cde8 !important;
@@ -465,7 +465,7 @@ body {
 .gospel-tbl th:nth-child(5),
 .gospel-tbl td:nth-child(5) {
   position: sticky;
-  left: 50px;
+  left: var(--gospel-sticky-w, 50px);
   z-index: 4;
   background: #f0f4ff;
   box-shadow: 2px 0 4px rgba(26, 58, 176, 0.08);
@@ -502,9 +502,9 @@ body {
 .team-tbl .td-name {
   position: sticky;
   left: 0;
-  width: 60px;
-  min-width: 60px;
-  max-width: 60px;
+  width: var(--team-sticky-w, 60px);
+  min-width: var(--team-sticky-w, 60px);
+  max-width: var(--team-sticky-w, 60px);
   z-index: 4;
   background: #f0f4ff;
   border-right: 1px solid #c5cde8 !important;
@@ -526,7 +526,7 @@ body {
 
 .team-tbl .td-role {
   position: sticky;
-  left: 60px;
+  left: var(--team-sticky-w, 60px);
   z-index: 4;
   background: #f0f4ff;
   box-shadow: 2px 0 4px rgba(26, 58, 176, 0.08);
@@ -1165,7 +1165,7 @@ tr:last-child td {
 </style>
 </head>
 <body>
-<div style="position:fixed;top:2px;left:4px;font-size:9px;color:rgba(255,255,255,0.35);z-index:99999;pointer-events:none;font-family:monospace;letter-spacing:.3px;">v2026.09.14-47(sticky-fix)</div>
+<div style="position:fixed;top:2px;left:4px;font-size:9px;color:rgba(255,255,255,0.35);z-index:99999;pointer-events:none;font-family:monospace;letter-spacing:.3px;">v2026.09.14-48(sticky-offset-sync)</div>
 <script>
 // ── 테스트 모드 데이터 ──────────────────────────────────────────────────────
 // 테스트 모드 ON: window.TEST_MODE = true
@@ -2123,7 +2123,7 @@ window.TEST_DATA = {"records": [{"저장일시": "2026-03-14", "주차": 3, "전
 // ── 빈 값 표시용 옅은 회색 대시 ─────────────────────────────────────────────
 var DASH = '<span style="color:#c8ccd6;">-</span>';
 // ── 조 구성 데이터 ─────────────────────────────────────────────────────────
-const ADMIN_VERSION = 'admin v2026.09.14-stickyfix';
+const ADMIN_VERSION = 'admin v2026.09.14-stickyoffsetsync';
 // 하드코딩 기준 데이터 (step 복원용)
 const HARDCODED_MEMBERS = [{
   jo: 1,
@@ -5028,6 +5028,8 @@ var COLWIDTH_CONFIGS = {
   tab1: {
     colPrefix: 'gospel-col',
     tableSelector: '.gospel-tbl',
+    stickyVar: '--gospel-sticky-w',
+    stickyColIndex: 3, // gospel-col-4("이름") 폭 = 그 다음 고정열("훈련자(조장)")의 left 오프셋
     storageKey: 'gospelTblColWidths_v1',
     fontStorageKey: 'gospelTblColFonts_v1',
     modalTitle: '📐 컬럼 폭·폰트 설정 — 복음참여현황',
@@ -5042,6 +5044,8 @@ var COLWIDTH_CONFIGS = {
   tab2: {
     colPrefix: 'team-col',
     tableSelector: '.team-tbl',
+    stickyVar: '--team-sticky-w',
+    stickyColIndex: 1, // team-col-2("이름") 폭 = 그 다음 고정열("역할")의 left 오프셋
     storageKey: 'teamTblColWidths_v1',
     fontStorageKey: 'teamTblColFonts_v1',
     modalTitle: '📐 컬럼 폭·폰트 설정 — 팀전도현황',
@@ -5120,6 +5124,13 @@ function applyColWidths(target, arr) {
   // 화면에 맞추는 건 fitTableToContainer()의 scale()이 담당한다.)
   var table = document.querySelector(cfg.tableSelector);
   if (table) table.style.width = sumPx + 'px';
+  // 고정열(position:sticky) 폭/위치는 CSS에 숫자로 못박혀 있으면 컬럼폭이 바뀔 때(폭설정
+  // 조절이든, 화면맞춤 축소든) 실제 폭과 어긋나 겹치거나 틈이 생긴다 — 그래서 CSS 변수로
+  // 빼두고, 폭을 적용할 때마다 여기서 그 값을 실시간으로 같이 갱신한다.
+  if (cfg.stickyVar && typeof cfg.stickyColIndex === 'number') {
+    var stickyW = arr[cfg.stickyColIndex];
+    if (stickyW) document.documentElement.style.setProperty(cfg.stickyVar, stickyW + 'px');
+  }
 }
 
 // ── 화면(태블릿/PC) 크기와 무관하게 표 전체가 한 화면에 보이도록 자동 축소·확대 ──
