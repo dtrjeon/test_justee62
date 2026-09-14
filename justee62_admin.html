@@ -1167,7 +1167,7 @@ tr:last-child td {
 </style>
 </head>
 <body>
-<div style="position:fixed;top:2px;left:4px;font-size:9px;color:rgba(255,255,255,0.35);z-index:99999;pointer-events:none;font-family:monospace;letter-spacing:.3px;">v2026.09.14-50(min-scale-70)</div>
+<div style="position:fixed;top:2px;left:4px;font-size:9px;color:rgba(255,255,255,0.35);z-index:99999;pointer-events:none;font-family:monospace;letter-spacing:.3px;">v2026.09.14-51(mobile-no-shrink)</div>
 <script>
 // ── 테스트 모드 데이터 ──────────────────────────────────────────────────────
 // 테스트 모드 ON: window.TEST_MODE = true
@@ -2125,7 +2125,7 @@ window.TEST_DATA = {"records": [{"저장일시": "2026-03-14", "주차": 3, "전
 // ── 빈 값 표시용 옅은 회색 대시 ─────────────────────────────────────────────
 var DASH = '<span style="color:#c8ccd6;">-</span>';
 // ── 조 구성 데이터 ─────────────────────────────────────────────────────────
-const ADMIN_VERSION = 'admin v2026.09.14-minscale70';
+const ADMIN_VERSION = 'admin v2026.09.14-mobilenoshrink';
 // 하드코딩 기준 데이터 (step 복원용)
 const HARDCODED_MEMBERS = [{
   jo: 1,
@@ -5144,8 +5144,10 @@ function applyColWidths(target, arr) {
 //  작아진다.)
 // 너무 좁은 화면에서 지나치게 작아지면 글자를 읽을 수 없으니 최소 배율 밑으로는 더 줄이지
 // 않고, 그 이하는 기존처럼 옆으로 스크롤(.tbl-scroll)해서 보게 둔다.
-var FIT_MIN_SCALE = 0.7; // 이보다 더 줄이면 한글 단어가 한 글자씩 쪼개져 세로로 쌓이며
-                          // 읽을 수 없게 됨 — 그 지점부턴 축소 대신 가로 스크롤에 맡긴다.
+var FIT_MIN_SCALE = 1; // 화면이 좁다고 억지로 축소하지 않는다 — 축소해도 어차피 최소치(예전 0.7)
+                        // 로는 화면에 다 안 들어가서 스크롤이 필요했는데, 글자만 작아지고 얻는 게
+                        // 없었다. 그래서 tab0(조별 상세현황)처럼 "좁으면 원래 크기 그대로 두고
+                        // 옆으로 스크롤"하는 방식으로 통일한다. 넓은 화면에서 확대해주는 동작만 유지.
 var FIT_MAX_SCALE = 1.15; // 아주 넓은 PC 모니터에서 글자가 과도하게 커지는 것 방지
 
 function fitTableToContainer(target) {
