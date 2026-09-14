@@ -1167,7 +1167,7 @@ tr:last-child td {
 </style>
 </head>
 <body>
-<div style="position:fixed;top:2px;left:4px;font-size:9px;color:rgba(255,255,255,0.35);z-index:99999;pointer-events:none;font-family:monospace;letter-spacing:.3px;">v2026.09.14-51(mobile-no-shrink)</div>
+<div style="position:fixed;top:2px;left:4px;font-size:9px;color:rgba(255,255,255,0.35);z-index:99999;pointer-events:none;font-family:monospace;letter-spacing:.3px;">v2026.09.14-52(team-pdf-colwidth)</div>
 <script>
 // ── 테스트 모드 데이터 ──────────────────────────────────────────────────────
 // 테스트 모드 ON: window.TEST_MODE = true
@@ -2125,7 +2125,7 @@ window.TEST_DATA = {"records": [{"저장일시": "2026-03-14", "주차": 3, "전
 // ── 빈 값 표시용 옅은 회색 대시 ─────────────────────────────────────────────
 var DASH = '<span style="color:#c8ccd6;">-</span>';
 // ── 조 구성 데이터 ─────────────────────────────────────────────────────────
-const ADMIN_VERSION = 'admin v2026.09.14-mobilenoshrink';
+const ADMIN_VERSION = 'admin v2026.09.14-teampdfcolwidth';
 // 하드코딩 기준 데이터 (step 복원용)
 const HARDCODED_MEMBERS = [{
   jo: 1,
@@ -4970,10 +4970,10 @@ function printTab2Pdf() {
     '.rate-box{border:2px solid #1a3a9e;padding:6px 16px;text-align:center;border-radius:4px;}' +
     '.rate-box .rl{font-size:11px;color:#555;} .rate-box .rv{font-size:24px;font-weight:900;color:#1a3a9e;}' +
     '.suryo{font-size:10px;color:#333;margin-bottom:8px;background:#f5f5f5;padding:5px 10px;border-radius:4px;}' +
-    'table{border-collapse:collapse;width:100%;}' +
-    'th{background:#1a3a9e;color:#fff;padding:5px 6px;text-align:center;font-size:11px;border:1px solid #aaa;}' +
+    'table{border-collapse:collapse;width:100%;table-layout:fixed;}' +
+    'th{background:#1a3a9e;color:#fff;padding:5px 6px;text-align:center;font-size:11px;border:1px solid #aaa;word-break:keep-all;}' +
     'th.sub-hd{background:#3060c8;}' +
-    'td{padding:4px 6px;border:1px solid #ccc;font-size:11px;vertical-align:middle;}' +
+    'td{padding:4px 6px;border:1px solid #ccc;font-size:11px;vertical-align:middle;word-break:keep-all;overflow-wrap:break-word;}' +
     'td.c{text-align:center;} td.pc{text-align:center;width:26px;}' +
     'td.jo-cell{text-align:center;font-weight:700;font-size:13px;background:#f0f4ff;}' +
     'td.suryo-cell{text-align:center;font-size:11px;}' +
@@ -4988,11 +4988,17 @@ function printTab2Pdf() {
     '<div class="suryo">※ ' + suryoTxt + '</div>' +
     '<table>' +
     '<colgroup>' +
-      '<col><col><col><col>' +
-      '<col><col><col><col>' +
-      '<col>' +
-      '<col style="width:3.68%;">' +
-      '<col style="width:6.32%;"><col style="width:6.32%;"><col style="width:6.32%;"><col style="width:6.32%;"><col style="width:6.32%;"><col style="width:6.32%;"><col style="width:6.32%;"><col style="width:6.32%;"><col style="width:6.32%;">' +
+      '<col style="width:3%;">' +   /* 조 */
+      '<col style="width:6%;">' +   /* 이름 */
+      '<col style="width:6%;">' +   /* 역할 */
+      '<col style="width:3%;">' +   /* 단계 */
+      '<col style="width:7%;">' +   /* 관계(팀) 6회↑ */
+      '<col style="width:7%;">' +   /* 질문지(팀) 횟수 */
+      '<col style="width:7%;">' +   /* 질문지(팀) 2일↑ */
+      '<col style="width:6%;">' +   /* 7일후(팀) 1회↑ */
+      '<col style="width:6%;">' +   /* 수료요건 */
+      '<col style="width:4%;">' +   /* 개인전도 */
+      '<col style="width:5%;"><col style="width:5%;"><col style="width:5%;"><col style="width:5%;"><col style="width:5%;"><col style="width:5%;"><col style="width:5%;"><col style="width:5%;"><col style="width:5%;">' + /* 간증~즉석양육 9개 */
     '</colgroup>' +
     '<thead><tr>' +
     '<th rowspan="2">조</th>' +
