@@ -565,11 +565,9 @@ body {
   table-layout: fixed;
 }
 
-/* fitTableToContainer()가 만드는 스케일 래퍼 — 실제 크기(scale 적용 후 크기)만큼만
-   차지하도록 JS가 width/height를 지정한다. */
-.tbl-fit-wrap {
-  overflow: hidden;
-}
+/* (예전: tbl-fit-wrap + transform:scale 방식 — position:sticky 고정열이 깨져서 폐기.
+   지금은 fitTableToContainer()가 <col> 폭·폰트 크기 자체를 화면 비율만큼 다시 계산해서
+   적용하는 방식으로 바뀌었고, 이 래퍼는 더 이상 필요 없다.) */
 
 /* 1열(주차) 고정 */
 .weekly-acc-tbl th:nth-child(1),
@@ -1167,7 +1165,7 @@ tr:last-child td {
 </style>
 </head>
 <body>
-<div style="position:fixed;top:2px;left:4px;font-size:9px;color:rgba(255,255,255,0.35);z-index:99999;pointer-events:none;font-family:monospace;letter-spacing:.3px;">v2026.09.14-46(colwidth-fit-scale)</div>
+<div style="position:fixed;top:2px;left:4px;font-size:9px;color:rgba(255,255,255,0.35);z-index:99999;pointer-events:none;font-family:monospace;letter-spacing:.3px;">v2026.09.14-47(sticky-fix)</div>
 <script>
 // ── 테스트 모드 데이터 ──────────────────────────────────────────────────────
 // 테스트 모드 ON: window.TEST_MODE = true
@@ -1666,7 +1664,6 @@ window.TEST_DATA = {"records": [{"저장일시": "2026-03-14", "주차": 3, "전
       </div>
     </div>
     <div class="tbl-scroll">
-      <div class="tbl-fit-wrap" id="gospel-fit-wrap">
       <table class="gospel-tbl" style="table-layout:fixed;">
         <colgroup>
           <col id="gospel-col-1" style="width:50px;"><col id="gospel-col-2" style="width:40px;"><col id="gospel-col-3" style="width:35px;"><col id="gospel-col-4" style="width:70px;"><col id="gospel-col-5" style="width:55px;"><col id="gospel-col-6" style="width:55px;">
@@ -1700,7 +1697,6 @@ window.TEST_DATA = {"records": [{"저장일시": "2026-03-14", "주차": 3, "전
         <tbody id="tb-gospel"></tbody>
         <tfoot><tr class="total-row" id="tf-gospel"></tr></tfoot>
       </table>
-      </div>
     </div>
   </div>
 </div>
@@ -1750,7 +1746,6 @@ window.TEST_DATA = {"records": [{"저장일시": "2026-03-14", "주차": 3, "전
       </div>
     </div>
     <div class="tbl-scroll">
-      <div class="tbl-fit-wrap" id="team-fit-wrap">
       <table class="team-tbl" style="table-layout:fixed;">
         <colgroup>
           <col id="team-col-1" style="width:40px;"><col id="team-col-2" style="width:90px;"><col id="team-col-3" style="width:70px;"><col id="team-col-4" style="width:40px;">
@@ -1786,7 +1781,6 @@ window.TEST_DATA = {"records": [{"저장일시": "2026-03-14", "주차": 3, "전
         </thead>
         <tbody id="tb-weekly-2"></tbody>
       </table>
-      </div>
     </div>
   </div>
 </div>
@@ -1818,7 +1812,6 @@ window.TEST_DATA = {"records": [{"저장일시": "2026-03-14", "주차": 3, "전
       </div>
     </div>
     <div class="tbl-scroll" style="overflow-x:auto;border-radius:0 0 10px 10px;">
-      <div class="tbl-fit-wrap" id="wacc-fit-wrap">
       <table class="weekly-acc-tbl" style="table-layout:fixed;">
         <colgroup>
           <col id="wacc-col-1" style="width:50px;">
@@ -1849,7 +1842,6 @@ window.TEST_DATA = {"records": [{"저장일시": "2026-03-14", "주차": 3, "전
         <tbody id="tb-weekly-acc"></tbody>
         <tfoot><tr class="total-row" id="tf-weekly-acc"></tr></tfoot>
       </table>
-      </div>
     </div>
   </div>
   <div style="text-align:left;padding:4px 4px 2px;"><span style="font-size:10px;color:rgba(40,50,90,0.45);">※ 접촉횟수는 결신율 미포함</span></div>
@@ -2131,7 +2123,7 @@ window.TEST_DATA = {"records": [{"저장일시": "2026-03-14", "주차": 3, "전
 // ── 빈 값 표시용 옅은 회색 대시 ─────────────────────────────────────────────
 var DASH = '<span style="color:#c8ccd6;">-</span>';
 // ── 조 구성 데이터 ─────────────────────────────────────────────────────────
-const ADMIN_VERSION = 'admin v2026.09.14-colwidthfitscale';
+const ADMIN_VERSION = 'admin v2026.09.14-stickyfix';
 // 하드코딩 기준 데이터 (step 복원용)
 const HARDCODED_MEMBERS = [{
   jo: 1,
@@ -5036,7 +5028,6 @@ var COLWIDTH_CONFIGS = {
   tab1: {
     colPrefix: 'gospel-col',
     tableSelector: '.gospel-tbl',
-    fitWrapId: 'gospel-fit-wrap',
     storageKey: 'gospelTblColWidths_v1',
     fontStorageKey: 'gospelTblColFonts_v1',
     modalTitle: '📐 컬럼 폭·폰트 설정 — 복음참여현황',
@@ -5051,7 +5042,6 @@ var COLWIDTH_CONFIGS = {
   tab2: {
     colPrefix: 'team-col',
     tableSelector: '.team-tbl',
-    fitWrapId: 'team-fit-wrap',
     storageKey: 'teamTblColWidths_v1',
     fontStorageKey: 'teamTblColFonts_v1',
     modalTitle: '📐 컬럼 폭·폰트 설정 — 팀전도현황',
@@ -5068,7 +5058,6 @@ var COLWIDTH_CONFIGS = {
   tab3: {
     colPrefix: 'wacc-col',
     tableSelector: '.weekly-acc-tbl',
-    fitWrapId: 'wacc-fit-wrap',
     storageKey: 'waccTblColWidths_v1',
     fontStorageKey: 'waccTblColFonts_v1',
     modalTitle: '📐 컬럼 폭·폰트 설정 — 복음제시현황',
@@ -5134,9 +5123,12 @@ function applyColWidths(target, arr) {
 }
 
 // ── 화면(태블릿/PC) 크기와 무관하게 표 전체가 한 화면에 보이도록 자동 축소·확대 ──
-// 컬럼폭 합으로 정해진 "원래 크기"를, 지금 표를 보여줄 수 있는 실제 가로 공간에 맞춰
-// transform:scale()로 통째로 줄이거나 늘린다. (컬럼 비율·글자 크기 비율은 그대로 유지된 채
-// 전체가 같은 비율로 축소/확대되므로, 태블릿 기종이나 PC 창 크기가 달라도 항상 한 화면에 다 보임)
+// (예전엔 transform:scale()로 표를 통째로 줄이는 방식을 썼는데, 이러면 브라우저가
+//  <table>을 새로운 스크롤 기준으로 착각해서 조/이름 등 position:sticky 고정열이
+//  깨지는 부작용이 있었다. 그래서 지금은 transform을 전혀 쓰지 않고, 폭설정에서
+//  저장한 "기준" 컬럼폭·폰트 크기에 화면 비율(scale)을 곱한 실제 px 값을 각 컬럼에
+//  그대로 적용하는 방식으로 바꿨다 — sticky는 그대로 살아있고, 표만 화면에 맞게 커지거나
+//  작아진다.)
 // 너무 좁은 화면에서 지나치게 작아지면 글자를 읽을 수 없으니 최소 배율 밑으로는 더 줄이지
 // 않고, 그 이하는 기존처럼 옆으로 스크롤(.tbl-scroll)해서 보게 둔다.
 var FIT_MIN_SCALE = 0.45;
@@ -5145,30 +5137,28 @@ var FIT_MAX_SCALE = 1.15; // 아주 넓은 PC 모니터에서 글자가 과도�
 function fitTableToContainer(target) {
   var cfg = COLWIDTH_CONFIGS[target];
   var table = document.querySelector(cfg.tableSelector);
-  var wrap = document.getElementById(cfg.fitWrapId);
-  if (!table || !wrap) return;
-  var scrollBox = wrap.parentElement; // .tbl-scroll — 실제 보여줄 수 있는 가로 공간
+  if (!table) return;
+  var scrollBox = table.closest('.tbl-scroll'); // 실제 보여줄 수 있는 가로 공간
   if (!scrollBox) return;
 
-  // 원본 크기를 다시 재기 위해 일단 스케일을 초기화
-  table.style.transform = 'none';
-  wrap.style.width = '';
-  wrap.style.height = '';
-
   var available = scrollBox.clientWidth;
-  var naturalWidth = table.scrollWidth;
-  var naturalHeight = table.scrollHeight;
   // 탭이 숨겨져 있거나(page 비활성) 아직 렌더 전이면 측정값이 0 — 이땐 건드리지 않는다.
-  if (!available || !naturalWidth || !naturalHeight) return;
+  if (!available) return;
+
+  var baseWidths = loadColWidths(target); // 폭설정에서 저장한 "기준"(스케일 적용 전) 폭
+  var baseFonts  = loadColFonts(target);  // 기준 폰트 크기
+  var naturalWidth = baseWidths.reduce(function(a, b) { return a + (b || 0); }, 0);
+  if (!naturalWidth) return;
 
   var scale = available / naturalWidth;
   if (scale > FIT_MAX_SCALE) scale = FIT_MAX_SCALE;
   if (scale < FIT_MIN_SCALE) scale = FIT_MIN_SCALE;
 
-  table.style.transformOrigin = 'top left';
-  table.style.transform = 'scale(' + scale + ')';
-  wrap.style.width = (naturalWidth * scale) + 'px';
-  wrap.style.height = (naturalHeight * scale) + 'px';
+  var scaledWidths = baseWidths.map(function(w) { return Math.max(1, Math.round(w * scale)); });
+  var scaledFonts  = baseFonts.map(function(f) { return Math.max(6, Math.round(f * scale)); });
+
+  applyColWidths(target, scaledWidths); // <col> 각각 + <table> 전체 폭에 실제 px로 반영
+  applyColFonts(target, scaledFonts);   // 폰트 크기도 같은 비율로
 }
 
 function fitAllTablesToContainer() {
