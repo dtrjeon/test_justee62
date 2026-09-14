@@ -554,13 +554,21 @@ body {
   border-left: 1px solid #c5cde8;
 }
 
-/* 복음참여/팀전도/복음제시 세 테이블 전체 폭 통일 (컬럼 수가 달라도 동일한 폭으로 렌더링) */
-/* table-layout:fixed 필수 — auto면 컬럼이 많을 때 지정한 width를 무시하고 내용에 맞춰 늘어남 */
+/* 복음참여/팀전도/복음제시 세 테이블 — table-layout:fixed 필수(auto면 컬럼이 많을 때
+   지정한 width를 무시하고 내용에 맞춰 늘어남). 표의 실제 폭(width)은 더 이상 여기서
+   고정하지 않는다 — JS(applyColWidths)가 컬럼폭 합만큼 <table>에 직접 지정하고,
+   이어서 fitTableToContainer()가 화면(컨테이너) 폭에 맞게 scale()로 축소·확대한다.
+   그래야 태블릿 기종이나 PC 창 크기가 달라져도 항상 표 전체가 한 화면에 보인다. */
 .gospel-tbl,
 .team-tbl,
 .weekly-acc-tbl {
-  width: 1000px;
   table-layout: fixed;
+}
+
+/* fitTableToContainer()가 만드는 스케일 래퍼 — 실제 크기(scale 적용 후 크기)만큼만
+   차지하도록 JS가 width/height를 지정한다. */
+.tbl-fit-wrap {
+  overflow: hidden;
 }
 
 /* 1열(주차) 고정 */
@@ -1159,7 +1167,7 @@ tr:last-child td {
 </style>
 </head>
 <body>
-<div style="position:fixed;top:2px;left:4px;font-size:9px;color:rgba(255,255,255,0.35);z-index:99999;pointer-events:none;font-family:monospace;letter-spacing:.3px;">v2026.08.31-45(latest-record-datefix)</div>
+<div style="position:fixed;top:2px;left:4px;font-size:9px;color:rgba(255,255,255,0.35);z-index:99999;pointer-events:none;font-family:monospace;letter-spacing:.3px;">v2026.09.14-46(colwidth-fit-scale)</div>
 <script>
 // ── 테스트 모드 데이터 ──────────────────────────────────────────────────────
 // 테스트 모드 ON: window.TEST_MODE = true
@@ -1658,7 +1666,8 @@ window.TEST_DATA = {"records": [{"저장일시": "2026-03-14", "주차": 3, "전
       </div>
     </div>
     <div class="tbl-scroll">
-      <table class="gospel-tbl" style="table-layout:fixed;width:100%;">
+      <div class="tbl-fit-wrap" id="gospel-fit-wrap">
+      <table class="gospel-tbl" style="table-layout:fixed;">
         <colgroup>
           <col id="gospel-col-1" style="width:50px;"><col id="gospel-col-2" style="width:40px;"><col id="gospel-col-3" style="width:35px;"><col id="gospel-col-4" style="width:70px;"><col id="gospel-col-5" style="width:55px;"><col id="gospel-col-6" style="width:55px;">
           <col id="gospel-col-7" style="width:60px;"><col id="gospel-col-8" style="width:60px;"><col id="gospel-col-9" style="width:60px;"><col id="gospel-col-10" style="width:60px;"><col id="gospel-col-11" style="width:60px;"><col id="gospel-col-12" style="width:60px;"><col id="gospel-col-13" style="width:60px;"><col id="gospel-col-14" style="width:60px;"><col id="gospel-col-15" style="width:60px;">
@@ -1691,6 +1700,7 @@ window.TEST_DATA = {"records": [{"저장일시": "2026-03-14", "주차": 3, "전
         <tbody id="tb-gospel"></tbody>
         <tfoot><tr class="total-row" id="tf-gospel"></tr></tfoot>
       </table>
+      </div>
     </div>
   </div>
 </div>
@@ -1740,6 +1750,7 @@ window.TEST_DATA = {"records": [{"저장일시": "2026-03-14", "주차": 3, "전
       </div>
     </div>
     <div class="tbl-scroll">
+      <div class="tbl-fit-wrap" id="team-fit-wrap">
       <table class="team-tbl" style="table-layout:fixed;">
         <colgroup>
           <col id="team-col-1" style="width:40px;"><col id="team-col-2" style="width:90px;"><col id="team-col-3" style="width:70px;"><col id="team-col-4" style="width:40px;">
@@ -1775,6 +1786,7 @@ window.TEST_DATA = {"records": [{"저장일시": "2026-03-14", "주차": 3, "전
         </thead>
         <tbody id="tb-weekly-2"></tbody>
       </table>
+      </div>
     </div>
   </div>
 </div>
@@ -1806,7 +1818,8 @@ window.TEST_DATA = {"records": [{"저장일시": "2026-03-14", "주차": 3, "전
       </div>
     </div>
     <div class="tbl-scroll" style="overflow-x:auto;border-radius:0 0 10px 10px;">
-      <table class="weekly-acc-tbl" style="table-layout:fixed;width:100%;">
+      <div class="tbl-fit-wrap" id="wacc-fit-wrap">
+      <table class="weekly-acc-tbl" style="table-layout:fixed;">
         <colgroup>
           <col id="wacc-col-1" style="width:50px;">
           <col id="wacc-col-2" style="width:45px;"><col id="wacc-col-3" style="width:50px;">
@@ -1836,6 +1849,7 @@ window.TEST_DATA = {"records": [{"저장일시": "2026-03-14", "주차": 3, "전
         <tbody id="tb-weekly-acc"></tbody>
         <tfoot><tr class="total-row" id="tf-weekly-acc"></tr></tfoot>
       </table>
+      </div>
     </div>
   </div>
   <div style="text-align:left;padding:4px 4px 2px;"><span style="font-size:10px;color:rgba(40,50,90,0.45);">※ 접촉횟수는 결신율 미포함</span></div>
@@ -2117,7 +2131,7 @@ window.TEST_DATA = {"records": [{"저장일시": "2026-03-14", "주차": 3, "전
 // ── 빈 값 표시용 옅은 회색 대시 ─────────────────────────────────────────────
 var DASH = '<span style="color:#c8ccd6;">-</span>';
 // ── 조 구성 데이터 ─────────────────────────────────────────────────────────
-const ADMIN_VERSION = 'admin v2026.08.31-latestrecorddatefix';
+const ADMIN_VERSION = 'admin v2026.09.14-colwidthfitscale';
 // 하드코딩 기준 데이터 (step 복원용)
 const HARDCODED_MEMBERS = [{
   jo: 1,
@@ -3170,6 +3184,7 @@ function renderAll() {
   renderTab2(accData, w);
   renderTab3(w);
   checkMismatch(allData);
+  fitAllTablesToContainer();
 }
 
 function updatePeriodTxt(w) {
@@ -5021,6 +5036,7 @@ var COLWIDTH_CONFIGS = {
   tab1: {
     colPrefix: 'gospel-col',
     tableSelector: '.gospel-tbl',
+    fitWrapId: 'gospel-fit-wrap',
     storageKey: 'gospelTblColWidths_v1',
     fontStorageKey: 'gospelTblColFonts_v1',
     modalTitle: '📐 컬럼 폭·폰트 설정 — 복음참여현황',
@@ -5035,6 +5051,7 @@ var COLWIDTH_CONFIGS = {
   tab2: {
     colPrefix: 'team-col',
     tableSelector: '.team-tbl',
+    fitWrapId: 'team-fit-wrap',
     storageKey: 'teamTblColWidths_v1',
     fontStorageKey: 'teamTblColFonts_v1',
     modalTitle: '📐 컬럼 폭·폰트 설정 — 팀전도현황',
@@ -5051,6 +5068,7 @@ var COLWIDTH_CONFIGS = {
   tab3: {
     colPrefix: 'wacc-col',
     tableSelector: '.weekly-acc-tbl',
+    fitWrapId: 'wacc-fit-wrap',
     storageKey: 'waccTblColWidths_v1',
     fontStorageKey: 'waccTblColFonts_v1',
     modalTitle: '📐 컬럼 폭·폰트 설정 — 복음제시현황',
@@ -5100,12 +5118,71 @@ function saveColWidthsToStorage(target, arr) {
   try { localStorage.setItem(COLWIDTH_CONFIGS[target].storageKey, JSON.stringify(arr)); } catch (e) {}
 }
 function applyColWidths(target, arr) {
-  var prefix = COLWIDTH_CONFIGS[target].colPrefix;
+  var cfg = COLWIDTH_CONFIGS[target];
+  var prefix = cfg.colPrefix;
+  var sumPx = 0;
   for (var i = 0; i < arr.length; i++) {
     var col = document.getElementById(prefix + '-' + (i + 1));
     if (col) col.style.width = arr[i] + 'px';
+    sumPx += (arr[i] || 0);
   }
+  // 표의 실제 폭 = 컬럼폭의 합. (예전엔 CSS로 1000px/100%를 고정해서 값을 조절해도
+  // 브라우저가 억지로 늘리거나 줄이는 문제가 있었음 — 이제는 지정한 값 그대로 렌더링되고,
+  // 화면에 맞추는 건 fitTableToContainer()의 scale()이 담당한다.)
+  var table = document.querySelector(cfg.tableSelector);
+  if (table) table.style.width = sumPx + 'px';
 }
+
+// ── 화면(태블릿/PC) 크기와 무관하게 표 전체가 한 화면에 보이도록 자동 축소·확대 ──
+// 컬럼폭 합으로 정해진 "원래 크기"를, 지금 표를 보여줄 수 있는 실제 가로 공간에 맞춰
+// transform:scale()로 통째로 줄이거나 늘린다. (컬럼 비율·글자 크기 비율은 그대로 유지된 채
+// 전체가 같은 비율로 축소/확대되므로, 태블릿 기종이나 PC 창 크기가 달라도 항상 한 화면에 다 보임)
+// 너무 좁은 화면에서 지나치게 작아지면 글자를 읽을 수 없으니 최소 배율 밑으로는 더 줄이지
+// 않고, 그 이하는 기존처럼 옆으로 스크롤(.tbl-scroll)해서 보게 둔다.
+var FIT_MIN_SCALE = 0.45;
+var FIT_MAX_SCALE = 1.15; // 아주 넓은 PC 모니터에서 글자가 과도하게 커지는 것 방지
+
+function fitTableToContainer(target) {
+  var cfg = COLWIDTH_CONFIGS[target];
+  var table = document.querySelector(cfg.tableSelector);
+  var wrap = document.getElementById(cfg.fitWrapId);
+  if (!table || !wrap) return;
+  var scrollBox = wrap.parentElement; // .tbl-scroll — 실제 보여줄 수 있는 가로 공간
+  if (!scrollBox) return;
+
+  // 원본 크기를 다시 재기 위해 일단 스케일을 초기화
+  table.style.transform = 'none';
+  wrap.style.width = '';
+  wrap.style.height = '';
+
+  var available = scrollBox.clientWidth;
+  var naturalWidth = table.scrollWidth;
+  var naturalHeight = table.scrollHeight;
+  // 탭이 숨겨져 있거나(page 비활성) 아직 렌더 전이면 측정값이 0 — 이땐 건드리지 않는다.
+  if (!available || !naturalWidth || !naturalHeight) return;
+
+  var scale = available / naturalWidth;
+  if (scale > FIT_MAX_SCALE) scale = FIT_MAX_SCALE;
+  if (scale < FIT_MIN_SCALE) scale = FIT_MIN_SCALE;
+
+  table.style.transformOrigin = 'top left';
+  table.style.transform = 'scale(' + scale + ')';
+  wrap.style.width = (naturalWidth * scale) + 'px';
+  wrap.style.height = (naturalHeight * scale) + 'px';
+}
+
+function fitAllTablesToContainer() {
+  Object.keys(COLWIDTH_CONFIGS).forEach(function(t) {
+    // 다음 프레임에 재기 — 방금 innerHTML로 채운 표의 실제 렌더 크기를 정확히 읽기 위함
+    requestAnimationFrame(function() { fitTableToContainer(t); });
+  });
+}
+
+var fitResizeTimer = null;
+window.addEventListener('resize', function() {
+  clearTimeout(fitResizeTimer);
+  fitResizeTimer = setTimeout(fitAllTablesToContainer, 150);
+});
 
 // 폰트 크기는 <col>에는 적용이 안 되는 CSS 특성이라(폭과 달리), 컬럼 위치 기준 CSS 규칙을
 // <style> 태그로 직접 주입해서 적용한다. 주의: rowspan으로 셀이 합쳐지는 표(팀전도현황의
@@ -5214,6 +5291,7 @@ function saveColWidths() {
   saveColFontsToStorage(COLWIDTH_TARGET, fonts);
   applyColWidths(COLWIDTH_TARGET, widths);
   applyColFonts(COLWIDTH_TARGET, fonts);
+  requestAnimationFrame(function() { fitTableToContainer(COLWIDTH_TARGET); });
   showToast('✅ 컬럼 폭·폰트가 저장되었습니다.');
   closeColWidthEditor();
 }
@@ -7723,6 +7801,10 @@ function switchTab(idx) {
   });
   if (idx === 4) renderTab4();
   if (idx === 5) renderTab5();
+  // tab1(복음참여)·tab2(팀전도)·tab3(복음제시)는 숨겨져 있는 동안 폭을 잴 수 없어서
+  // (화면에 없으면 크기가 0으로 측정됨) 화면에 보이게 된 지금 다시 계산해야 한다.
+  var fitTarget = { 1: 'tab1', 2: 'tab2', 3: 'tab3' }[idx];
+  if (fitTarget) requestAnimationFrame(function() { fitTableToContainer(fitTarget); });
 }
 
 // ── 유틸 ────────────────────────────────────────────────────────────────────
