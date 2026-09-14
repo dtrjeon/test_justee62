@@ -1750,7 +1750,7 @@ pre.code-block {
         <div style="width:28px;height:28px;background:linear-gradient(135deg,#1565c0,#0d47a1);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:15px;position:relative;">📷
           <span id="ocr-gemini-dot" style="position:absolute;bottom:1px;right:1px;width:8px;height:8px;border-radius:50%;background:#ef4444;border:1.5px solid #fff;display:none;"></span>
         </div>
-        <input type="file" id="ocr-file-input" accept="image/*"
+        <input type="file" id="ocr-file-input" accept="image/*" capture="environment"
           style="position:absolute;top:0;left:0;width:100%;height:100%;opacity:0;cursor:pointer;z-index:99;font-size:16px;margin:0;padding:0;">
       </div>
     </div>
@@ -6836,77 +6836,51 @@ function initOcrInput() {
     });
   }
 }
-// OCR.space: 브라우저 직접 호출 방식 — 서버 연결 불필요
+// GAS 백엔드(action:'ocrFieldInfo') 경유 Claude 비전 인식 — 서버에 ANTHROPIC_API_KEY 등록 필요
 function updateGeminiDot() {
   var dot = document.getElementById('ocr-gemini-dot');
   if (!dot) return;
-  dot.style.display = 'none'; // OCR.space API 키 내장 → 항상 사용 가능
+  dot.style.display = 'none';
 }
 
-// OCR.space API 키 (브라우저에서 직접 호출)
-var OCR_SPACE_KEY = 'K83219514388957';
-
-// OCR 인식 텍스트 → 폼 필드 파싱
-function parseOcrText(text) {
-  var p = {};
-  var lines = text.split(/\r?\n/).map(function(l){ return l.trim(); }).filter(Boolean);
-  var full = text;
-
-  // ── 거주지역 ─────────────────────────────────────
-  var locMatch = full.match(/거주[지역]*[:\s]*([가-힣a-zA-Z0-9\s]{1,20})/);
-  if (!locMatch) locMatch = full.match(/지역[:\s]*([가-힣a-zA-Z0-9\s]{1,20})/);
-  if (locMatch) p.location = locMatch[1].trim().split(/\s/)[0];
-
-  // ── 이름 ──────────────────────────────────────────
-  var nameMatch = full.match(/이름[:\s]*([가-힣]{2,5})/);
-  if (!nameMatch) nameMatch = full.match(/성씨[:\s]*([가-힣]{1,3})/);
-  if (nameMatch) p.name = nameMatch[1];
-
-  // ── 나이 ──────────────────────────────────────────
-  var ageMatch = full.match(/나이[:\s]*(\d{1,3})/);
-  if (!ageMatch) ageMatch = full.match(/(\d{1,3})\s*세/);
-  if (ageMatch) p.age = ageMatch[1];
-
-  // ── 결혼여부 ──────────────────────────────────────
-  if (/미혼|독신|싱글/.test(full)) p.marriage = '미혼';
-  else if (/기혼|결혼|유부/.test(full)) p.marriage = '기혼';
-
-  // ── 성별 ──────────────────────────────────────────
-  if (/여자|여성/.test(full)) p.gender = '여자';
-  else if (/남자|남성/.test(full)) p.gender = '남자';
-
-  // ── 만난장소 ──────────────────────────────────────
-  var mpMatch = full.match(/만난[곳장소]*[:\s]*([가-힣a-zA-Z0-9\s]{1,30})/);
-  if (mpMatch) p.meet_place = mpMatch[1].trim().split(/\n/)[0];
-
-  // ── 직업 ──────────────────────────────────────────
-  var jobMatch = full.match(/직업[:\s]*([가-힣a-zA-Z\s]{1,20})/);
-  if (jobMatch) p.job = jobMatch[1].trim().split(/\s/)[0];
-
-  // ── 종교 ──────────────────────────────────────────
-  var religions = ['기독교','천주교','카톨릭','불교','무교','이슬람','천부교','대순진리교','유교'];
-  religions.forEach(function(rel){
-    if (full.indexOf(rel) > -1) p.religion = rel === '카톨릭' ? '천주교' : rel;
+// 업로드 전 이미지 리사이즈/압축 (전송 용량/속도 최적화)
+// 긴 변 1600px, JPEG 품질 0.82로 축소 — 원본이 이미 작으면 그대로 반환
+function compressImageForOcr(file) {
+  return new Promise(function(resolve) {
+    var MAX_DIM = 1600;
+    var img = new Image();
+    var url = URL.createObjectURL(file);
+    img.onload = function() {
+      URL.revokeObjectURL(url);
+      var w = img.width, h = img.height;
+      var scale = Math.min(1, MAX_DIM / Math.max(w, h));
+      var cw = Math.round(w * scale), ch = Math.round(h * scale);
+      var canvas = document.createElement('canvas');
+      canvas.width = cw;
+      canvas.height = ch;
+      var ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0, cw, ch);
+      canvas.toBlob(function(blob) {
+        if (!blob) { resolve(file); return; } // 변환 실패 시 원본 그대로 사용
+        resolve(new File([blob], 'ocr-upload.jpg', { type: 'image/jpeg' }));
+      }, 'image/jpeg', 0.82);
+    };
+    img.onerror = function() {
+      URL.revokeObjectURL(url);
+      resolve(file); // 이미지 디코딩 실패 시 원본 그대로 시도
+    };
+    img.src = url;
   });
+}
 
-  // ── 천국확신 ──────────────────────────────────────
-  if (/확신\s*(없|없었|없다)/.test(full)||/없었고/.test(full)) p.heaven = '없었고';
-  else if (/확신\s*(있|있었|있다)/.test(full)||/있었고/.test(full)) p.heaven = '있었고';
-
-  // ── 이유대답 ──────────────────────────────────────
-  if (/행위|선행|착한/.test(full)) p.reason = '행위';
-  else if (/믿음|믿어/.test(full)) p.reason = '믿음';
-  else if (/불확실|모른/.test(full)) p.reason = '불확실';
-
-  // ── 전도일/날짜 ───────────────────────────────────
-  var dateMatch = full.match(/(\d{4})[.\-\/](\d{1,2})[.\-\/](\d{1,2})/);
-  if (dateMatch) p.date = dateMatch[1]+'-'+('0'+dateMatch[2]).slice(-2)+'-'+('0'+dateMatch[3]).slice(-2);
-
-  // ── 기도제목 ──────────────────────────────────────
-  var q12Match = full.match(/기도제목[:\s]*([\s\S]{1,200}?)(?=\n\n|$)/);
-  if (q12Match) p.q12 = q12Match[1].trim();
-
-  return p;
+// 이미지 파일 → base64 data URL 변환 (GAS 백엔드로 전송하기 위함)
+function fileToDataUrl(file) {
+  return new Promise(function(resolve, reject) {
+    var reader = new FileReader();
+    reader.onload = function() { resolve(reader.result); };
+    reader.onerror = function() { reject(new Error('이미지를 읽지 못했습니다.')); };
+    reader.readAsDataURL(file);
+  });
 }
 
 async function handleOcrImage(event) {
@@ -6921,30 +6895,30 @@ async function handleOcrImage(event) {
   statusEl.textContent = '⏳ OCR 문자 인식 중...';
 
   try {
-    // ── STEP 1: OCR.space로 텍스트 추출 ──────────────────────
-    var formData = new FormData();
-    formData.append('file', file);
-    formData.append('apikey', OCR_SPACE_KEY);
-    formData.append('language', 'kor');        // 한국어 우선
-    formData.append('OCREngine', '2');          // Engine 2 = 정확도 높음
-    formData.append('isTable', 'false');
-    formData.append('scale', 'true');
+    // ── STEP 0: 업로드 전 리사이즈/압축 (전송 용량/속도 최적화) ──
+    statusEl.textContent = '🖼️ 이미지 준비 중...';
+    var uploadFile = await compressImageForOcr(file);
+    var dataUrl = await fileToDataUrl(uploadFile);
 
-    var ocrResp = await fetch('https://api.ocr.space/parse/image', {
-      method: 'POST',
-      body: formData
-    });
-    var ocrJson = await ocrResp.json();
-    if (ocrJson.IsErroredOnProcessing) throw new Error('OCR 처리 실패: ' + (ocrJson.ErrorMessage || '알 수 없는 오류'));
-
-    var text = ((ocrJson.ParsedResults || [])[0] || {}).ParsedText || '';
-    if (!text.trim()) throw new Error('텍스트를 인식하지 못했습니다. 이미지를 더 밝고 선명하게 찍어주세요.');
-
-    statusEl.textContent = '🧠 인식된 텍스트 분석 중...';
-
-    // ── STEP 2: 인식된 텍스트에서 필드값 파싱 ────────────────
-    var parsed = parseOcrText(text);
-    var json = { status: 'ok', parsed: parsed, ocrText: text };
+    // ── STEP 1~2: GAS 백엔드(action:'ocrFieldInfo') 경유 Claude 비전 인식+파싱 ──
+    statusEl.textContent = '🧠 인식 및 분석 중...';
+    var resp;
+    try {
+      resp = await fetch(scriptUrl, {
+        method: 'POST',
+        body: JSON.stringify({ action: 'ocrFieldInfo', imageDataUrl: dataUrl })
+      });
+    } catch (netErr) {
+      throw new Error('네트워크 오류로 인식에 실패했습니다. 인터넷 연결을 확인해주세요.');
+    }
+    if (!resp.ok) {
+      throw new Error('서버 오류(코드 ' + resp.status + ')가 발생했습니다. 잠시 후 다시 시도해주세요.');
+    }
+    var json = await resp.json();
+    if (json.status !== 'ok') {
+      throw new Error(json.message || '텍스트를 인식하지 못했습니다. 인적정보가 잘 보이도록 밝고 선명하게 다시 찍어주세요.');
+    }
+    var parsed = json.parsed || {};
 
     // ── STEP 3: 폼 자동 입력 ──
     var filled = 0;
@@ -6971,7 +6945,6 @@ async function handleOcrImage(event) {
     sv2('q3_age', parsed.age);
     sv2('meet_place', parsed.meet_place);
     sv2('q4_job', parsed.job);
-    sv2('q10', parsed.q10);
     sv2('q12', parsed.q12);
 
     // 전도일 자동입력 (YYYY-MM-DD 형식 검증)
@@ -6983,20 +6956,6 @@ async function handleOcrImage(event) {
     if (parsed.gender) sr2('gender', parsed.gender);
     if (parsed.heaven) sr2('heaven', parsed.heaven);
     if (parsed.reason) sr2('reason', parsed.reason);
-
-    // 대상자 구분
-    if (parsed.target_type) {
-      var ttSel = document.getElementById('q3_target_type');
-      if (ttSel) {
-        for (var i = 0; i < ttSel.options.length; i++) {
-          if (ttSel.options[i].value && (ttSel.options[i].value.indexOf(parsed.target_type) > -1 || parsed.target_type.indexOf(ttSel.options[i].value) > -1)) {
-            ttSel.value = ttSel.options[i].value;
-            filled++;
-            break;
-          }
-        }
-      }
-    }
 
     // 종교
     if (parsed.religion) {
@@ -7019,23 +6978,6 @@ async function handleOcrImage(event) {
             filled++;
           }
         }
-      }
-    }
-
-    // 결과 (결신/보류거절/확신/이미신자)
-    if (parsed.result) {
-      var resInput = document.getElementById('q8_result');
-      if (resInput) {
-        // 값 정규화
-        var resVal = parsed.result;
-        if (resVal.indexOf('보류') > -1 || resVal.indexOf('거절') > -1) resVal = '보류/거절';
-        else if (resVal === '결신') resVal = '결신';
-        else if (resVal === '확신') resVal = '확신';
-        else if (resVal.indexOf('이미신자') > -1) resVal = '이미신자';
-        resInput.value = resVal;
-        filled++;
-        if (typeof updateDiagFromSubResult === 'function') updateDiagFromSubResult();
-        syncPreview();
       }
     }
 
