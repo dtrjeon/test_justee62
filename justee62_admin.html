@@ -3140,6 +3140,12 @@ function num(v) {
   return parseInt(v) || 0;
 }
 
+// 신청서(index_62th_JEE.html)는 참여 행동 값을 '제시하였고'로 저장하지만
+// (예전 데이터/테스트 데이터는 '하였고'로 저장된 경우가 있어) 두 값 모두 "실제로 제시함"으로 인정한다.
+function isDidAction(v) {
+  return v === '제시하였고' || v === '하였고';
+}
+
 // ── 렌더링 총괄 ──────────────────────────────────────────────────────────────
 function renderAll() {
   updateGospelResultLabels();
@@ -3865,7 +3871,7 @@ function renderTab0(data, w) {
       var action = m.role === '리더' ? (joRecs[0] ? joRecs[0].leaderAction : '') :
         m.role === '훈련자' ? (joRecs[0] ? joRecs[0].trainerAction : '') :
         (joRecs[0] ? joRecs[0].traineeAction : '');
-      if (action === '하였고') {
+      if (isDidAction(action)) {
         if (m.role === '리더') leaderCnt++;
         else if (m.role === '훈련자') trainerCnt++;
         else traineeCnt++;
@@ -4035,7 +4041,7 @@ function renderTab0(data, w) {
         // 개인전도: action이 비어있으면 relationMember(전도자)와 이름 비교로 판별
         if (isPersonal && !action) {
           var evangName = rec ? (rec.relationMember || '').replace(/\(.*?\)/g, '').trim() : '';
-          action = (evangName && m.name === evangName) ? '하였고' : '';
+          action = (evangName && m.name === evangName) ? '제시하였고' : '';
         }
         var roleCls = m.role === '리더' ? 'color:#111111;font-weight:700;' : m.role === '훈련자' ? 'color:#1565c0;' : 'color:#666;';
         var roleBadge = m.role === '리더' ? '<span class="badge b-blue" style="white-space:normal;text-align:center;line-height:1.3;font-size:8px;display:inline-block;">훈련자<br>(조장)</span>' : m.role === '훈련자' ? '<span class="badge b-green">훈련자</span>' : '<span class="badge b-gray">훈련생</span>';
@@ -4050,7 +4056,7 @@ function renderTab0(data, w) {
         // 이름~불참자 열: 다른 조 경계 OR 같은 조 레코드 경계
         var nameBorderStyle = joBorderFull || extraBorderStyle;
 
-        var absentClass = (isPersonal && action !== '하였고') ? ' personal-absent' : (action === '불참하였고' ? ' team-absent' : '');
+        var absentClass = (isPersonal && !isDidAction(action)) ? ' personal-absent' : (action === '불참하였고' ? ' team-absent' : '');
         html += '<tr class="jo-row active-row' + (isFirst ? ' jo-row-first' : '') + (isRecFirst ? ' rec-row-first' : '') + absentClass + '" data-rec-idx="' + ri + '">' +
           // 조번호: 첫 번째 건의 첫 번째 조원에만 전체 rowspan (다른 조 경계선만)
           (!joNumRendered ? '<td class="td-jo" rowspan="' + totalRowspan + '" style="position:sticky;left:0;z-index:2;background:#fff;box-shadow:1px 0 0 #c5cde8;' + joBorderStyle + '">' + jo + '</td>' : '') +
@@ -4090,7 +4096,7 @@ function renderTab0(data, w) {
         var partArr = mPart ? mPart.split(',').map(function(s) { return s.trim(); }).filter(Boolean) : [];
 
         // 역할배분 없음 + 개인전도 → 결과에 따라 파트 자동 설정
-        if (isPersonal && action === '하였고' && !partArr.length) {
+        if (isPersonal && isDidAction(action) && !partArr.length) {
           var resultVal = rec ? (rec.result || '') : '';
           if (resultVal === '결신' || resultVal === '확신') {
             partArr = ['서론', '은혜', '인간', '하나님', '그리스도', '믿음', '결신'];
@@ -4114,7 +4120,7 @@ function renderTab0(data, w) {
           for (var pi2 = 0; pi2 < 9; pi2++) {
             html += '<td style="' + (pi2 === 8 ? 'border-right:1px solid #c5cde8;' : '') + nameBorderStyle + '"></td>';
           }
-        } else if (isPersonal && action !== '하였고') {
+        } else if (isPersonal && !isDidAction(action)) {
           // 개인전도 — 전도자(하였고) 외 나머지는 모두 빈칸
           for (var pi3 = 0; pi3 < 9; pi3++) {
             html += '<td style="' + (pi3 === 8 ? 'border-right:1px solid #c5cde8;' : '') + nameBorderStyle + '"></td>';
@@ -4123,7 +4129,7 @@ function renderTab0(data, w) {
           PARTS.forEach(function(p, pi) {
             var isLast = pi === PARTS.length - 1;
             var borderStyle = (isLast ? 'border-right:1px solid #c5cde8;' : '') + nameBorderStyle;
-            if (action !== '하였고') { html += '<td style="' + borderStyle + '"></td>'; return; }
+            if (!isDidAction(action)) { html += '<td style="' + borderStyle + '"></td>'; return; }
             if (partArr.indexOf(p) > -1) { html += '<td style="text-align:center;' + borderStyle + '">' + dot + '</td>'; return; }
             html += '<td style="text-align:center;color:#e0e0e0;font-size:10px;' + borderStyle + '">·</td>';
           });
@@ -4148,9 +4154,9 @@ function renderTab0(data, w) {
             (rec ? rec.traineeAction : '');
           if (!mmAction) {
             var evangName = rec ? (rec.relationMember || '').replace(/\(.*?\)/g, '').trim() : '';
-            mmAction = (evangName && m.name === evangName) ? '하였고' : '';
+            mmAction = (evangName && m.name === evangName) ? '제시하였고' : '';
           }
-          if (mmAction === '하였고') {
+          if (isDidAction(mmAction)) {
             absentType = '';           // 전도자 <span style="color:#c8ccd6;">-</span> 정상
           } else if (mmAction === '참관하였고') {
             absentType = 'error';      // 개인전도에서 참관하였고 → 오류
@@ -4278,7 +4284,7 @@ function renderWeekly2Html(data, w) {
       var actRecs = myRecs.filter(function(r){
         if (r.evangType !== '관계(팀)') return false;
         var act = m.role==='리더' ? r.leaderAction : m.role==='훈련자' ? r.trainerAction : r.traineeAction;
-        return act==='하였고';
+        return isDidAction(act);
       });
       var partCounts = {};
       PARTS2.forEach(function(p){ partCounts[p]=0; });
@@ -4491,7 +4497,7 @@ function renderTab1(data, w) {
         var actRecs = allRecs.filter(function(r) {
           if (r.evangType !== '관계(팀)') return false; // 관계전도(팀) 파트 집계 — 관계(팀) 레코드만 반영
           var act = m.role === '리더' ? r.leaderAction : m.role === '훈련자' ? r.trainerAction : r.traineeAction;
-          return act === '하였고';
+          return isDidAction(act);
         });
 
         var partCounts = {};
