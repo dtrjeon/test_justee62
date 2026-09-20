@@ -2367,21 +2367,11 @@ pre.code-block {
         <option value="doc_number">문서번호</option>
         <option value="jo">조</option>
         <option value="week" selected>주차</option>
-        <option value="evang_type">복음제시유형</option>
         <option value="leader">훈련자(조장)</option>
         <option value="trainer">훈련자</option>
         <option value="trainee1">훈련생</option>
       </select>
       <input type="text" id="search-input" placeholder="검색어 입력..." onkeydown="if(event.key==='Enter')filterHistory()">
-      <select id="search-evang-type" onchange="filterHistory()" style="display:none;">
-        <option value="">전체</option>
-        <option value="관계(팀)">관계(팀)</option>
-        <option value="질문지(팀)">질문지(팀)</option>
-        <option value="7일후(팀)">7일후(팀)</option>
-        <option value="개인">개인</option>
-        <option value="관계">관계</option>
-        <option value="QQ">QQ</option>
-      </select>
       <select id="search-jo-sel" onchange="filterHistory()" style="display:none;">
         <option value="">전체</option>
       </select>
@@ -2390,6 +2380,15 @@ pre.code-block {
       </select>
       <select id="search-member-sel" onchange="filterHistory()" style="display:none;">
         <option value="">전체</option>
+      </select>
+      <select id="search-evang-type" onchange="filterHistory()">
+        <option value="">전체</option>
+        <option value="관계(팀)">관계(팀)</option>
+        <option value="질문지(팀)">질문지(팀)</option>
+        <option value="7일후(팀)">7일후(팀)</option>
+        <option value="개인">개인</option>
+        <option value="관계">관계</option>
+        <option value="QQ">QQ</option>
       </select>
       <button type="button" class="search-go-btn" onclick="filterHistory()">🔍 조회</button>
       <button type="button" class="search-clear" onclick="clearSearch()" title="초기화">↺</button>
@@ -5050,20 +5049,16 @@ function toggleSearch() {
 function onSearchTypeChange() {
   var type = document.getElementById('search-type').value;
   var input       = document.getElementById('search-input');
-  var evangSel    = document.getElementById('search-evang-type');
   var joSel       = document.getElementById('search-jo-sel');
   var weekSel     = document.getElementById('search-week-sel');
   var memberSel   = document.getElementById('search-member-sel');
 
-  // 모두 숨기고 input도 숨김
-  [input, evangSel, joSel, weekSel, memberSel].forEach(function(el) {
+  // 전도유형(search-evang-type)은 항상 노출되는 별도 필터이므로 여기서 건드리지 않는다
+  [input, joSel, weekSel, memberSel].forEach(function(el) {
     if (el) { el.style.display = 'none'; el.value = el.tagName === 'SELECT' ? '' : ''; }
   });
 
-  if (type === 'evang_type') {
-    if (evangSel) evangSel.style.display = '';
-
-  } else if (type === 'jo') {
+  if (type === 'jo') {
     // 조 셀렉트 빌드
     if (joSel) {
       joSel.innerHTML = '<option value="">전체</option>';
@@ -5157,28 +5152,31 @@ function filterHistory() {
     }
     // 검색어 필터
     var selMap = {
-      evang_type: 'search-evang-type',
       jo:         'search-jo-sel',
       week:       'search-week-sel',
       leader:     'search-member-sel',
       trainer:    'search-member-sel',
       trainee1:   'search-member-sel'
     };
+    var typeMatch = true;
     if (selMap[type]) {
       var selEl = document.getElementById(selMap[type]);
       var selVal = selEl ? selEl.value : '';
       if (selVal) {
         var rVal = (r[type] || '').toString();
-        c.style.display = (rVal === selVal) ? '' : 'none';
-      } else {
-        c.style.display = '';
+        typeMatch = (rVal === selVal);
       }
     } else if (q) {
       var val = (r[type] || '').toString().toLowerCase();
-      c.style.display = val.includes(q) ? '' : 'none';
-    } else {
-      c.style.display = '';
+      typeMatch = val.includes(q);
     }
+
+    // 전도유형 필터 — 주차/조/훈련자 등 위 필터와 항상 함께(AND) 적용되는 별도 필터
+    var evangEl  = document.getElementById('search-evang-type');
+    var evangVal = evangEl ? evangEl.value : '';
+    var evangMatch = !evangVal || (r.evang_type || '').toString() === evangVal;
+
+    c.style.display = (typeMatch && evangMatch) ? '' : 'none';
   });
 }
 
