@@ -4826,6 +4826,18 @@ async function handleSubmit() {
     showStatus('🔒 본인이 작성했거나 관할 그룹 소속 조의 보고서만 수정할 수 있습니다.', 'error');
     return;
   }
+  // 주차 선택 필수 체크
+  var weekEl = document.getElementById('report-week');
+  if (!weekEl || !weekEl.value) {
+    showStatus('⚠️ 주차를 선택해 주세요.', 'warn');
+    if (weekEl) {
+      weekEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      weekEl.style.outline = '2px solid #e65100';
+      weekEl.style.borderRadius = '6px';
+      setTimeout(function() { weekEl.style.outline = ''; }, 2500);
+    }
+    return;
+  }
   // 영접여부 필수 체크
   var yeopjeop = document.querySelector('input[name="yeopjeop"]:checked');
   if (!yeopjeop) {
