@@ -2325,7 +2325,7 @@ pre.code-block {
       <button type="button" class="h-btn icon-only outline server" id="refresh-btn" onclick="loadHistory()" title="새로고침">🔄</button>
       <button type="button" class="h-btn icon-only outline server" id="search-btn" onclick="toggleSearch()" title="검색">🔍</button>
       <button type="button" class="h-btn icon-only outline server" id="multiprint-btn" onclick="toggleMultiSelect()" title="선택출력" style="display:none;">☑️</button>
-      <button type="button" class="h-btn icon-only outline server" id="sort-btn" onclick="toggleSortMode()" title="정렬: 최신순">🕒</button>
+      <button type="button" class="h-btn icon-only outline server" id="search-clear" onclick="clearSearch()" title="초기화">↺</button>
     </div>
   </div>
   <div id="multiprint-bar" style="display:none;background:#f0f4ff;border:1.5px solid rgba(32,80,200,0.2);border-radius:8px;padding:8px 10px;margin-bottom:10px;flex-direction:column;gap:8px;">
@@ -2391,7 +2391,7 @@ pre.code-block {
         <option value="QQ">QQ</option>
       </select>
       <button type="button" class="search-go-btn" onclick="filterHistory()">🔍 조회</button>
-      <button type="button" class="search-clear" onclick="clearSearch()" title="초기화">↺</button>
+      <button type="button" class="h-btn icon-only outline server" id="sort-btn" onclick="toggleSortMode()" title="정렬: 최신순" style="order:100;">🕒</button>
     </div>
   </div>
   <div id="history-list"><div class="empty-state"><span class="es-icon">📄</span><p>아직 제출된 보고서가 없습니다.</p></div></div>
