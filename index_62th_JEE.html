@@ -5526,20 +5526,27 @@ function renderHistory(records, src, preserveFilter) {
   // ── 정렬 모드 적용(🔃 버튼으로 순환) ──────────────────────
   // latest(기본, 위에서 이미 최신순 정렬됨) / jo_desc(조 내림차순) /
   // week_jo_desc(주차 오름차순 + 같은 주차 안에서는 조 내림차순)
+  // ※ 같은 조(또는 같은 주차+조) 안에서는 항상 횟수(관-1,2,3…) 오름차순으로 2차 정렬한다
   var sortMode = window._historySortMode || 'latest';
   if (sortMode === 'jo_desc') {
     displayRecords = displayRecords.slice().sort(function(a, b) {
-      return (parseInt(b.jo, 10) || 0) - (parseInt(a.jo, 10) || 0);
+      var jd = (parseInt(b.jo, 10) || 0) - (parseInt(a.jo, 10) || 0);
+      if (jd !== 0) return jd;
+      return (parseInt(a.evang_count, 10) || 0) - (parseInt(b.evang_count, 10) || 0);
     });
   } else if (sortMode === 'jo_asc') {
     displayRecords = displayRecords.slice().sort(function(a, b) {
-      return (parseInt(a.jo, 10) || 0) - (parseInt(b.jo, 10) || 0);
+      var jd = (parseInt(a.jo, 10) || 0) - (parseInt(b.jo, 10) || 0);
+      if (jd !== 0) return jd;
+      return (parseInt(a.evang_count, 10) || 0) - (parseInt(b.evang_count, 10) || 0);
     });
   } else if (sortMode === 'week_jo_desc') {
     displayRecords = displayRecords.slice().sort(function(a, b) {
       var wa = parseInt(a.week, 10) || 0, wb = parseInt(b.week, 10) || 0;
       if (wa !== wb) return wa - wb;
-      return (parseInt(b.jo, 10) || 0) - (parseInt(a.jo, 10) || 0);
+      var jd = (parseInt(b.jo, 10) || 0) - (parseInt(a.jo, 10) || 0);
+      if (jd !== 0) return jd;
+      return (parseInt(a.evang_count, 10) || 0) - (parseInt(b.evang_count, 10) || 0);
     });
   }
 
