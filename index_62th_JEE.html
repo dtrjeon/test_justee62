@@ -2335,7 +2335,7 @@ pre.code-block {
     <button type="button" class="search-preset-btn" id="preset-filter-btn" onclick="togglePresetFilter()" title="내 조 설정 기준으로 필터">👤 내 조</button>
     <div class="history-actions">
       <button type="button" class="h-btn icon-only outline server" id="refresh-btn" onclick="loadHistory()" title="새로고침">🔄</button>
-      <button type="button" class="h-btn icon-only outline server" id="search-btn" onclick="toggleSearch()" title="검색">🔍</button>
+      <button type="button" class="h-btn icon-only outline server" id="search-btn" onclick="toggleSearch()" title="검색바 보이기">➕</button>
       <button type="button" class="h-btn icon-only outline server" id="multiprint-btn" onclick="toggleMultiSelect()" title="선택출력" style="display:none;">☑️</button>
       <button type="button" class="h-btn icon-only outline server" id="search-clear" onclick="clearSearch()" title="초기화">↺</button>
     </div>
@@ -5050,12 +5050,11 @@ function toggleSearch() {
   var bar = document.getElementById('search-bar');
   var btn = document.getElementById('search-btn');
   var visible = bar.style.display !== 'none';
-  bar.style.display = visible ? 'none' : 'grid';
-  if (!visible) {
-    // 검색바 열릴 때 현재 선택된 타입 적용
-    onSearchTypeChange();
-  } else {
-    clearSearch();
+  // 순수하게 검색바를 보이기/숨기기만 한다 — 조건 초기화 등 부수효과 없음
+  bar.style.display = visible ? 'none' : 'flex';
+  if (btn) {
+    btn.textContent = visible ? '➕' : '➖';
+    btn.title = visible ? '검색바 보이기' : '검색바 숨기기';
   }
 }
 
@@ -5483,7 +5482,7 @@ async function loadServerHistory() {
       };
     });
     updateScbState('ok');
-    renderHistory(records, 'server');
+    renderHistory(records, 'server', true);
   } catch (e) {
     list.innerHTML = '<div class="empty-state"><span class="es-icon">❌</span><p>불러오기 실패: ' + e.message + '<br><span style="font-size:11px;color:#888;">네트워크 연결 후 🔄 새로고침을 눌러주세요.</span></p></div>';
     updateScbState('error');
@@ -5496,8 +5495,14 @@ function renderHistory(records, src, preserveFilter) {
   window._historySrc = src;
 
   var bar = document.getElementById('search-bar');
-  if (bar && records && records.length > 0) bar.style.display = 'flex';
-  else if (bar) bar.style.display = 'none';
+  var searchBtn = document.getElementById('search-btn');
+  if (bar && records && records.length > 0) {
+    bar.style.display = 'flex';
+    if (searchBtn) { searchBtn.textContent = '➖'; searchBtn.title = '검색바 숨기기'; }
+  } else if (bar) {
+    bar.style.display = 'none';
+    if (searchBtn) { searchBtn.textContent = '➕'; searchBtn.title = '검색바 보이기'; }
+  }
   // preserveFilter가 true면(=정렬 아이콘으로 인한 재렌더) 현재 주차/전도유형 조회 조건을 그대로 유지한다
   if (!preserveFilter) clearSearch();
   var mpBtn = document.getElementById('multiprint-btn');
