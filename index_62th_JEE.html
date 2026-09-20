@@ -5023,7 +5023,8 @@ function toggleSortMode() {
   var next = modes[(modes.indexOf(cur) + 1) % modes.length];
   window._historySortMode = next;
   updateSortBtnLabel();
-  if (window._historyRawRecords) renderHistory(window._historyRawRecords, window._historySrc || 'server');
+  // 조회 조건(주차/전도유형 등)은 유지한 채, 조회된 결과 안에서만 정렬 순서를 바꾼다
+  if (window._historyRawRecords) renderHistory(window._historyRawRecords, window._historySrc || 'server', true);
 }
 function updateSortBtnLabel() {
   var btn = document.getElementById('sort-btn');
@@ -5477,7 +5478,7 @@ async function loadServerHistory() {
   }
 }
 
-function renderHistory(records, src) {
+function renderHistory(records, src, preserveFilter) {
   // 정렬 토글(toggleSortMode)이 재조회 없이 다시 그릴 수 있도록 원본 보관
   window._historyRawRecords = records;
   window._historySrc = src;
@@ -5485,7 +5486,8 @@ function renderHistory(records, src) {
   var bar = document.getElementById('search-bar');
   if (bar && records && records.length > 0) bar.style.display = 'flex';
   else if (bar) bar.style.display = 'none';
-  clearSearch();
+  // preserveFilter가 true면(=정렬 아이콘으로 인한 재렌더) 현재 주차/전도유형 조회 조건을 그대로 유지한다
+  if (!preserveFilter) clearSearch();
   var mpBtn = document.getElementById('multiprint-btn');
   if (mpBtn) mpBtn.style.display = (records && records.length > 0) ? '' : 'none';
   var list = document.getElementById('history-list');
