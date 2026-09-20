@@ -5180,7 +5180,14 @@ function filterHistory() {
       }
     } else if (q) {
       var val = (r[type] || '').toString().toLowerCase();
-      typeMatch = val.includes(q);
+      // 문서번호처럼 숫자로 끝나는 검색어는 "62-1"이 "62-10","62-11"에도
+      // 걸리지 않도록, 숫자로 시작/끝나는 부분에는 앞뒤로 숫자가 더 붙지 않을 때만 매칭한다
+      var esc = q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      var prefix = /^[0-9]/.test(q) ? '(?<![0-9])' : '';
+      var suffix = /[0-9]$/.test(q) ? '(?![0-9])' : '';
+      var re;
+      try { re = new RegExp(prefix + esc + suffix, 'i'); } catch (e) { re = null; }
+      typeMatch = re ? re.test(val) : val.includes(q);
     }
 
     // 전도유형 필터 — 주차/조/훈련자 등 위 필터와 항상 함께(AND) 적용되는 별도 필터
