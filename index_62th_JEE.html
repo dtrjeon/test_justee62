@@ -3455,6 +3455,21 @@ function apply7ilhu() {
   // 주차칸 노출 + 결신자 이름 드롭다운 전환/목록로드를 직접 호출해준다
   if (typeof onRelationChange === 'function') onRelationChange();
 
+  // 1.5 확신 및 이유 질문 → 있었고 + 믿음(예수님) + 이미신자로 자동 설정
+  //     (7일후(팀) 방문 대상자는 이미 지난주에 결신한 사람이므로)
+  var hEl = document.getElementById('h2'); // 있었고
+  var rEl = document.getElementById('r1'); // 믿음
+  if (hEl) hEl.checked = true;
+  if (rEl) rEl.checked = true;
+  if (typeof onQ5Change === 'function') onQ5Change();
+  var t61 = document.getElementById('t61'); // 이미신자
+  if (t61) t61.checked = true;
+  if (typeof onTestimony6Change === 'function') onTestimony6Change();
+  // 영접여부: 세 버튼 모두 노출한 뒤 "영접"으로 표시(이미 지난주에 영접한 것으로 간주)
+  if (typeof updateYeopjeopOptions === 'function') updateYeopjeopOptions('normal');
+  var yj1 = document.getElementById('yj1');
+  if (yj1) yj1.checked = true;
+
   // 2. 대상자 구분 → 7일후
   var ttSel = document.getElementById('q3_target_type');
   if (ttSel) ttSel.value = '7일후';
