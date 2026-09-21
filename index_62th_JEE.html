@@ -5224,7 +5224,8 @@ function onSearchTypeChange() {
       jd.forEach(function(j) {
         var opt = document.createElement('option');
         opt.value = String(j.jo);
-        opt.textContent = j.jo + '조';
+        var names = [j.leader, j.trainer, j.trainee].filter(Boolean);
+        opt.textContent = j.jo + '조' + (names.length ? ' (' + names.join(', ') + ')' : '');
         joSel.appendChild(opt);
       });
       joSel.style.display = '';
