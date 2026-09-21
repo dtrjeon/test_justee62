@@ -5559,9 +5559,10 @@ async function loadServerHistory() {
   updateScbState('warn'); // 요청 시작 전 미연결로 리셋
   list.innerHTML = '<div class="empty-state"><span class="es-icon">⏳</span><p>불러오는 중...</p></div>';
   try {
-    var res = await fetch(scriptUrl, {
+    var res = await fetch(scriptUrl + (scriptUrl.indexOf('?') > -1 ? '&' : '?') + '_ts=' + Date.now(), {
       method: 'GET',
-      redirect: 'follow'
+      redirect: 'follow',
+      cache: 'no-store'
     });
     var json = await res.json();
     if (json.status !== 'ok') throw new Error(json.message);
