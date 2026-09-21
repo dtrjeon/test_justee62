@@ -2035,6 +2035,7 @@ pre.code-block {
   <div class="suju-notice">
     📋 수주반 양식 (A4 · 210×297mm)
     <button class="suju-print-btn" onclick="printSuju()">🖨 인쇄 / PDF 저장</button>
+    <button class="suju-print-btn" style="background:linear-gradient(135deg,#2e9e5b,#1f7a44);" onclick="saveSujuAsJpg()">🖼 JPG 저장</button>
   </div>
   <div class="suju-paper" id="suju-paper">
 
@@ -6085,15 +6086,22 @@ function syncSuju() {
   var dgEl = document.getElementById('sj_diag');
   if (hvEl) hvEl.textContent = hvVal ? '(' + hvVal + ')' : '[있었고/없었고]';
   if (rsEl) rsEl.textContent = rsVal ? '(' + rsVal + ')' : '[믿음/행위/모름/대답안함]';
-  // 진단명: 저장값 우선, 없으면 heaven+reason으로 직접 계산
+  // 진단명: 실제 화면에 선택된 확신/이유/개인간증(6번·7번) 값을 최우선으로 사용
+  // (저장 문자열이 갱신되기 전이라도 항상 현재 선택 상태와 일치하도록)
   var diagName = '';
-  var diagRaw = v('diag-saved-result') || '';
-  var m = diagRaw.match(/진단:\s*([^|]+)/);
-  if (m) {
-    diagName = m[1].trim();
+  var t6Val = radio('testimony6');
+  var t7Val = radio('testimony7');
+  if (t6Val === '이미신자' || t6Val === '머리신자') {
+    diagName = t6Val;
+  } else if (t7Val) {
+    diagName = t7Val === '비신자' ? '비신자' : '확신부족신자';
   } else if (hvVal && rsVal) {
     var info = getDiagInfo(hvVal, rsVal);
     if (info) diagName = info.diag;
+  } else {
+    var diagRaw = v('diag-saved-result') || '';
+    var m = diagRaw.match(/진단:\s*([^|]+)/);
+    if (m) diagName = m[1].trim();
   }
   if (dgEl) dgEl.textContent = diagName ? '(' + diagName + ')' : '[①비신자 ②착각비신자 ③확신부족 ④이미신자/머리신자]';
   // 진단질문 체크마크
@@ -6257,6 +6265,57 @@ async function printSuju() {
   var r = collectFormData();
   var fname = r.doc_number ? r.doc_number : ('수주반_공개보고서_' + new Date().toISOString().slice(0, 10));
   await renderSujuRecordsToPdf([r], fname);
+}
+
+// ── 수주반 A5 내용을 JPG 이미지 한 장으로 저장 ──────────────
+async function saveSujuAsJpg() {
+  syncSuju();
+  var r = collectFormData();
+  var fname = (r.doc_number ? r.doc_number : ('수주반_공개보고서_' + new Date().toISOString().slice(0, 10))) + '.jpg';
+
+  showStatus('⏳ JPG 생성 중...', 'info');
+  try {
+    await _loadScript('https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js');
+  } catch (e) {
+    showStatus('⚠️ 이미지 생성 라이브러리 로드 실패', 'error');
+    return;
+  }
+
+  try {
+    var SRC_W = 148, SRC_H = 210; // A5 기준(원본 디자인)
+    var PX_PER_MM = 3.7795;
+    var SCALE = 6; // 선명도 유지를 위해 PDF와 동일한 배율 사용
+
+    var container = document.createElement('div');
+    container.style.cssText = 'position:fixed;left:-9999px;top:0;width:' + SRC_W + 'mm;background:#fff;z-index:-1;';
+    document.body.appendChild(container);
+    container.innerHTML = buildSujuHtml(r);
+    container.style.minHeight = SRC_H + 'mm';
+    await new Promise(function(res) { setTimeout(res, 120); });
+
+    var capturePx = Math.max(container.scrollHeight, Math.round(SRC_H * PX_PER_MM));
+    var canvas = await html2canvas(container, {
+      scale: SCALE,
+      useCORS: true,
+      backgroundColor: '#ffffff',
+      windowWidth: Math.round(SRC_W * PX_PER_MM),
+      windowHeight: capturePx,
+      width: Math.round(SRC_W * PX_PER_MM),
+      height: capturePx
+    });
+    document.body.removeChild(container);
+
+    var imgData = canvas.toDataURL('image/jpeg', 0.95);
+    var a = document.createElement('a');
+    a.href = imgData;
+    a.download = fname;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    showStatus('✅ JPG로 저장했습니다.', 'success');
+  } catch (e) {
+    showStatus('⚠️ JPG 생성 중 오류: ' + (e.message || e), 'error');
+  }
 }
 
 // ── 수주반 A5 PDF 생성 공통 로직 (단건/다중 공용) ──────────
