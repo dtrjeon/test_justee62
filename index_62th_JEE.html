@@ -1148,16 +1148,6 @@ select {
   border-color: #1a3a9e;
 }
 
-.search-clear {
-  background: none;
-  border: none;
-  color: rgba(32, 80, 200, 0.5);
-  font-size: 18px;
-  cursor: pointer;
-  padding: 0 4px;
-  line-height: 1;
-}
-
 .load-btn {
   position: absolute;
   right: 12px;
@@ -3455,8 +3445,8 @@ function apply7ilhu() {
   // 주차칸 노출 + 결신자 이름 드롭다운 전환/목록로드를 직접 호출해준다
   if (typeof onRelationChange === 'function') onRelationChange();
 
-  // 1.5 확신 및 이유 질문 → 있었고 + 믿음(예수님) + 이미신자로 자동 설정
-  //     (7일후(팀) 방문 대상자는 이미 지난주에 결신한 사람이므로)
+  // 1.5 확신 및 이유 질문 → 있었고 + 믿음(예수님) + 이미신자로 기본값 자동 설정
+  //     (대부분 이미 지난주에 결신한 사람이므로 기본값일 뿐, 아래에서 자유롭게 변경 가능)
   var hEl = document.getElementById('h2'); // 있었고
   var rEl = document.getElementById('r1'); // 믿음
   if (hEl) hEl.checked = true;
@@ -3465,7 +3455,7 @@ function apply7ilhu() {
   var t61 = document.getElementById('t61'); // 이미신자
   if (t61) t61.checked = true;
   if (typeof onTestimony6Change === 'function') onTestimony6Change();
-  // 영접여부: 세 버튼 모두 노출한 뒤 "영접"으로 표시(이미 지난주에 영접한 것으로 간주)
+  // 영접여부: 세 버튼 모두 노출한 뒤 기본값 "영접"으로 표시(필요시 변경 가능)
   if (typeof updateYeopjeopOptions === 'function') updateYeopjeopOptions('normal');
   var yj1 = document.getElementById('yj1');
   if (yj1) yj1.checked = true;
@@ -3474,17 +3464,12 @@ function apply7ilhu() {
   var ttSel = document.getElementById('q3_target_type');
   if (ttSel) ttSel.value = '7일후';
 
-  // 3. 진단결과 최종결과 → 7일후
-  var fv = document.getElementById('diag-final-val');
-  var fr = document.getElementById('diag-final-row');
-  if (fv) { fv.textContent = '7일후'; fv.className = 'diag-final-val'; fv.style.color = '#2050c8'; fv.style.fontWeight = '700'; }
-  if (fr) fr.style.display = 'flex';
-  var savedEl = document.getElementById('diag-saved-result');
-  if (savedEl) savedEl.value = '진단: — | 영접: — | 결과: 7일후';
-
-  // 4. 역할배분 결과 → 7일후
+  // 3~4. 위 확신/이유/개인간증/영접여부는 기본값일 뿐 자유롭게 바꿀 수 있고,
+  //      실제로 결신 등 다른 최종결과가 나와도 "결과"(q8_result)는
+  //      syncPreview()에서 항상 "7일후"로 고정 반영한다.
   var q8 = document.getElementById('q8_result');
   if (q8) q8.value = '7일후';
+
 
   // 5. 통계 결신·보류/거절·확신·이미신자 → 0 고정
   ['t_decision', 't_reject', 't_confirm', 't_believer'].forEach(function(id) {
@@ -4032,63 +4017,6 @@ function onRelationWeekInput() {
     preview.textContent = '→ __주차 결신자 (주차 입력)';
   }
   syncPreview();
-}
-
-// 같은 조 안에서 이름으로 결신 기록을 찾아 "N주차 결신자"의 N을 자동 입력
-async function findDecisionWeek() {
-  var jo = v('q1_jo');
-  var name = v('q3_name').trim();
-  if (!jo) { showStatus('⚠️ 조를 먼저 선택해 주세요.', 'error'); return; }
-  if (!name) { showStatus('⚠️ 이름을 먼저 입력해 주세요.', 'error'); return; }
-  if (!scriptUrl) { showStatus('⚠️ 구글 시트가 연결되지 않았습니다.', 'error'); return; }
-
-  showStatus('⏳ ' + name + '님의 결신 기록 조회 중...', 'info');
-  try {
-    var res = await fetch(scriptUrl, { method: 'GET', redirect: 'follow' });
-    var json = await res.json();
-    if (json.status !== 'ok') throw new Error(json.message || '조회 실패');
-
-    var weeks = [];
-    (json.records || []).forEach(function(r) {
-      var rJo = String(r['조'] || '').trim();
-      var rName = String(r['성씨'] || '').trim();
-      var rDecision = parseInt(r['결신'], 10) || 0;
-      var rWeek = String(r['주차'] || '').trim();
-      if (rJo === String(jo) && rName === name && rDecision > 0 && rWeek) {
-        if (weeks.indexOf(rWeek) === -1) weeks.push(rWeek);
-      }
-    });
-    weeks.sort(function(a, b) { return (parseInt(a, 10) || 0) - (parseInt(b, 10) || 0); });
-
-    if (!weeks.length) {
-      showStatus('🔍 ' + jo + '조에서 "' + name + '"님의 결신 기록을 찾지 못했습니다.', 'error');
-      return;
-    }
-
-    var chosen = weeks[0];
-    if (weeks.length > 1) {
-      var pick = window.prompt(
-        '"' + name + '"님(' + jo + '조)의 결신 기록이 ' + weeks.length + '건 있습니다: ' + weeks.join(', ') + '주차\n적용할 주차 번호를 입력하세요.',
-        weeks[0]
-      );
-      if (pick === null) return; // 취소
-      pick = pick.trim();
-      if (weeks.indexOf(pick) === -1) {
-        showStatus('⚠️ 목록에 없는 주차입니다: ' + weeks.join(', '), 'error');
-        return;
-      }
-      chosen = pick;
-    }
-
-    var weekNumEl = document.getElementById('relation_week_num');
-    if (weekNumEl) {
-      weekNumEl.value = chosen;
-      onRelationWeekInput();
-    }
-    showStatus('✅ ' + chosen + '주차 결신자로 자동 입력했습니다.', 'success');
-  } catch (e) {
-    showStatus('⚠️ 조회 중 오류: ' + (e.message || e), 'error');
-  }
 }
 
 // 관계 필드의 실제 저장값 반환 (결신자면 N주차 결신자 형태로)
@@ -5274,7 +5202,7 @@ function onSearchTypeChange() {
 
   // 전도유형(search-evang-type)은 항상 노출되는 별도 필터이므로 여기서 건드리지 않는다
   [input, joSel, weekSel, memberSel].forEach(function(el) {
-    if (el) { el.style.display = 'none'; el.value = el.tagName === 'SELECT' ? '' : ''; }
+    if (el) { el.style.display = 'none'; el.value = ''; }
   });
 
   if (type === 'jo') {
@@ -6031,7 +5959,21 @@ function resetForm() {
 
 // 임상(A4) 양식 삭제로 내부 로직은 제거됨 — 폼 전반의 다른 이벤트 핸들러들이
 // 여전히 이 함수를 호출하므로(오류 방지를 위해) 빈 함수로 유지
-function syncPreview() {}
+function syncPreview() {
+  // 7일후(팀)는 실제 진단(확신/이유/개인간증 등 최종결과)이 무엇으로 나오든
+  // 강제로 미리 채우지 않고 사용자가 직접 답하게 두되, 시트에 저장되는
+  // "결과"(q8_result) 값만은 항상 "7일후"로 고정한다. (최종결과·진단은 그대로 둠)
+  if (v('evang_type') === '7일후(팀)') {
+    var q8 = document.getElementById('q8_result');
+    if (q8 && q8.value !== '7일후') q8.value = '7일후';
+    var savedEl = document.getElementById('diag-saved-result');
+    if (savedEl && savedEl.value && !/결과\s*:\s*7일후\s*$/.test(savedEl.value)) {
+      savedEl.value = /결과\s*:/.test(savedEl.value)
+        ? savedEl.value.replace(/결과\s*:\s*[^|]*$/, '결과: 7일후')
+        : savedEl.value;
+    }
+  }
+}
 
 // ── 수주반 A5 미리보기 동기화 ────────────────────────
 function setEl2(id, val) {
