@@ -2221,9 +2221,8 @@ pre.code-block {
       </div>
 
       <!-- 5번 -->
-      <div style="margin-bottom:var(--suju-gap,4mm);display:flex;align-items:baseline;gap:1mm;flex-wrap:wrap;line-height:var(--suju-wrap-lh,1.6);">
-        <span style="font-weight:700;white-space:nowrap;">5.</span>
-        <span>천국에 들어갈 확신은 <b id="sj_heaven">[있었고/없었고]</b>, 이유 질문에 대한 대답은 <b id="sj_reason">[믿음/행위/모름/대답안함]</b>이며, 진단은 <b id="sj_diag">[①비신자 ②착각비신자 ③확신부족 ④이미신자/머리신자]</b>입니다.</span>
+      <div style="margin-bottom:var(--suju-gap,4mm);line-height:var(--suju-wrap-lh,1.6);">
+        <b>5.</b> 천국에 들어갈 확신은 <b id="sj_heaven">[있었고/없었고]</b>, 이유 질문에 대한 대답은 <b id="sj_reason">[믿음/행위/모름/대답안함]</b>이며, 진단은 <b id="sj_diag">[①비신자 ②착각비신자 ③확신부족 ④이미신자/머리신자]</b>입니다.
       </div>
 
       <!-- 6번 -->
@@ -2254,10 +2253,8 @@ pre.code-block {
       </div>
 
       <!-- 7번 -->
-      <div style="margin-bottom:var(--suju-gap,4mm);display:flex;align-items:baseline;gap:1mm;flex-wrap:wrap;line-height:var(--suju-wrap-lh,1.6);">
-        <span style="font-weight:700;white-space:nowrap;">7.</span>
-        <span id="sj_item7_text">즉석 양육을(<b id="sj_immed">[했고/안했고]</b>), 후속 양육을(<b id="sj_followup">7일후 재방문 약속/24시간 내외 전화 약속/예배참석 약속/새생명반 연결/목장 연결/하지 못</b>)했습니다.</span>
-        <span id="sj_reason_wrap" style="display:none;align-items:baseline;gap:1mm;flex-wrap:nowrap;">(못한 이유는 <span style="border-bottom:0.5pt solid #333;min-width:20mm;display:inline-block;font-weight:700;" id="sj_followup_reason">&nbsp;</span>)</span>
+      <div style="margin-bottom:var(--suju-gap,4mm);line-height:var(--suju-wrap-lh,1.6);">
+        <b>7.</b> <span id="sj_item7_text">즉석 양육을(<b id="sj_immed">[했고/안했고]</b>), 후속 양육을(<b id="sj_followup">7일후 재방문 약속/24시간 내외 전화 약속/예배참석 약속/새생명반 연결/목장 연결/하지 못</b>)했습니다.</span><span id="sj_reason_wrap" style="display:none;align-items:baseline;gap:1mm;flex-wrap:nowrap;">(못한 이유는 <span style="border-bottom:0.5pt solid #333;min-width:20mm;display:inline-block;font-weight:700;" id="sj_followup_reason">&nbsp;</span>)</span>
       </div>
 
       <!-- 8번 -->
@@ -7002,9 +6999,8 @@ function buildSujuHtml(r) {
     '<span style="border-bottom:0.5pt solid #333;min-width:22mm;display:inline-block;text-align:center;font-weight:700;">' + (r.job || '') + '</span>' +
     '<span>이었습니다.</span>' +
     '</div>' +
-    '<div style="margin-bottom:var(--suju-gap,4mm);display:flex;align-items:baseline;gap:1mm;flex-wrap:wrap;line-height:var(--suju-wrap-lh,1.6);">' +
-    '<span style="font-weight:700;white-space:nowrap;">5.</span>' +
-    '<span>천국에 들어갈 확신은 <b>' + (r.heaven || '[있었고/없었고]') + '</b>, 이유 질문에 대한 대답은 <b>' + (r.reason || '[믿음/행위/모름/대답안함]') + '</b>이며, 진단은 <b>' + (diagName ? '(' + diagName + ')' : '[①비신자 ②착각비신자 ③확신부족 ④이미신자/머리신자]') + '</b>입니다.</span>' +
+    '<div style="margin-bottom:var(--suju-gap,4mm);line-height:var(--suju-wrap-lh,1.6);">' +
+    '<b>5.</b> 천국에 들어갈 확신은 <b>' + (r.heaven || '[있었고/없었고]') + '</b>, 이유 질문에 대한 대답은 <b>' + (r.reason || '[믿음/행위/모름/대답안함]') + '</b>이며, 진단은 <b>' + (diagName ? '(' + diagName + ')' : '[①비신자 ②착각비신자 ③확신부족 ④이미신자/머리신자]') + '</b>입니다.' +
     '</div>' +
     '<div style="margin-bottom:var(--suju-gap,4mm);display:flex;align-items:baseline;gap:1mm;flex-wrap:wrap;">' +
     '<span style="font-weight:700;white-space:nowrap;">6.</span>' +
@@ -7029,9 +7025,8 @@ function buildSujuHtml(r) {
     '<span style="white-space:nowrap;">부분을 <b>' + (r.leader_action || '[제시하였고/참관하였고]') + '</b>,</span>' +
     '</div>' +
     '<div style="margin-bottom:var(--suju-gap,4mm);padding-left:4mm;">결과는 [<b>' + (r.result || '결신/보류·거절/확신/이미신자') + '</b>]입니다.</div>' +
-    '<div style="margin-bottom:var(--suju-gap,4mm);display:flex;align-items:baseline;gap:1mm;flex-wrap:wrap;line-height:var(--suju-wrap-lh,1.6);">' +
-    '<span style="font-weight:700;white-space:nowrap;">7.</span>' +
-    '<span>즉석 양육을(<b>' + (r.immed_nurture || '[했고/안했고]') + '</b>), 후속 양육을(<b>' + fuText + '</b>)했습니다.</span>' +
+    '<div style="margin-bottom:var(--suju-gap,4mm);line-height:var(--suju-wrap-lh,1.6);">' +
+    '<b>7.</b> <span>즉석 양육을(<b>' + (r.immed_nurture || '[했고/안했고]') + '</b>), 후속 양육을(<b>' + fuText + '</b>)했습니다.</span>' +
     (fuReason ? '<span>' + fuReason + '</span>' : '') +
     '</div>' +
     (function() {
