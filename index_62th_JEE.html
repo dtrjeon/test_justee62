@@ -4619,9 +4619,19 @@ function onQ5Change() {
       typeof document.activeElement.blur === 'function') {
     document.activeElement.blur();
   }
-  document.getElementById('cond6-section').style.display = (hv === '있었고' && rs === '믿음') ? 'block' : 'none';
-  document.getElementById('cond7-section').style.display = (hv === '없었고' && rs === '믿음') ? 'block' : 'none';
+  var showCond6 = (hv === '있었고' && rs === '믿음');
+  var showCond7 = (hv === '없었고' && rs === '믿음');
+  document.getElementById('cond6-section').style.display = showCond6 ? 'block' : 'none';
+  document.getElementById('cond7-section').style.display = showCond7 ? 'block' : 'none';
   document.getElementById('cond8-section').style.display = (hv && rs) ? 'block' : 'none';
+  // 현재 해당하지 않는 분기의 6번/7번 선택은 남겨두면 미리보기·PDF의 진단명이
+  // 예전 값(예: 이미신자)으로 고정되는 문제가 생기므로, 해당 없는 라디오는 즉시 해제한다
+  if (!showCond6) {
+    document.querySelectorAll('input[name="testimony6"]').forEach(function(r) { r.checked = false; });
+  }
+  if (!showCond7) {
+    document.querySelectorAll('input[name="testimony7"]').forEach(function(r) { r.checked = false; });
+  }
   // 렌더링 후 스크롤 복원 (display 전환으로 인한 자동 이동 방지)
   requestAnimationFrame(function() {
     window.scrollTo(0, scrollY);
@@ -6034,7 +6044,9 @@ function syncSuju() {
   setEl2('sj_t_imsin', v('t_believer'));    // 6번째 칸 = "이미신자" 헤더 → t_believer 값
   // 인적정보
   setEl2('sj_location', v('q3_location'));
-  setEl2('sj_age', v('q3_age'));
+  // 나이: 숫자만 입력됐으면 "세"를 붙이고, 이미 "세"/"대"로 끝나면 그대로 둠
+  var ageVal = v('q3_age');
+  setEl2('sj_age', ageVal ? (/[세대]$/.test(ageVal) ? ageVal : ageVal + '세') : '');
   // 관계: "훈련자(조장)의 가족" 형태로 조합 (이름→역할 변환)
   var relMember = getRelationValue();
   var targetType = v('q3_target_type');
@@ -6088,9 +6100,10 @@ function syncSuju() {
   if (rsEl) rsEl.textContent = rsVal ? '(' + rsVal + ')' : '[믿음/행위/모름/대답안함]';
   // 진단명: 실제 화면에 선택된 확신/이유/개인간증(6번·7번) 값을 최우선으로 사용
   // (저장 문자열이 갱신되기 전이라도 항상 현재 선택 상태와 일치하도록)
+  // — 단, 현재 확신/이유 조합과 맞지 않는 분기의 값(예: 이전에 선택했다가 남은 값)은 무시한다
   var diagName = '';
-  var t6Val = radio('testimony6');
-  var t7Val = radio('testimony7');
+  var t6Val = (hvVal === '있었고' && rsVal === '믿음') ? radio('testimony6') : '';
+  var t7Val = (hvVal === '없었고' && rsVal === '믿음') ? radio('testimony7') : '';
   if (t6Val === '이미신자' || t6Val === '머리신자') {
     diagName = t6Val;
   } else if (t7Val) {
@@ -6655,9 +6668,12 @@ function buildSujuHtml(r) {
     var info = getDiagInfo(r.heaven, r.reason);
     if (info) diagName = info.diag;
   }
-  if (r.testimony6 === '이미신자') diagName = '이미신자';
-  else if (r.testimony6 === '머리신자') diagName = '머리신자';
-  else if (r.testimony7) diagName = r.testimony7 === '비신자' ? '비신자' : '확신부족신자';
+  if (r.heaven === '있었고' && r.reason === '믿음') {
+    if (r.testimony6 === '이미신자') diagName = '이미신자';
+    else if (r.testimony6 === '머리신자') diagName = '머리신자';
+  } else if (r.heaven === '없었고' && r.reason === '믿음' && r.testimony7) {
+    diagName = r.testimony7 === '비신자' ? '비신자' : '확신부족신자';
+  }
 
   // 진단질문 체크
   var dqMap = {
@@ -6808,7 +6824,7 @@ function buildSujuHtml(r) {
     '<span style="white-space:nowrap;">저희들은</span>' +
     '<span style="border-bottom:0.5pt solid #333;min-width:24mm;display:inline-block;text-align:center;font-weight:700;">' + (r.location || '') + '</span>' +
     '<span style="white-space:nowrap;">에 사시는</span>' +
-    '<span style="border-bottom:0.5pt solid #333;min-width:10mm;display:inline-block;text-align:center;font-weight:700;">' + (r.age || '') + '</span>' +
+    '<span style="border-bottom:0.5pt solid #333;min-width:10mm;display:inline-block;text-align:center;font-weight:700;">' + (r.age ? (/[세대]$/.test(r.age) ? r.age : r.age + '세') : '') + '</span>' +
     '<span>되신 <b>' + (r.marriage || '[미혼/기혼]') + '</b>의 <b>' + (r.gender || '[남자/여자]') + '</b>분을</span>' +
     '<div style="width:100%;"></div>' +
     '<span style="border-bottom:0.5pt solid #333;min-width:24mm;display:inline-block;text-align:center;font-weight:700;">' + (r.meet_place || '') + '</span>' +
