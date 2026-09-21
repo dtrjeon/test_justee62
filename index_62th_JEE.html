@@ -2204,8 +2204,7 @@ pre.code-block {
         <div style="width:100%;"></div>
         <span style="border-bottom:0.5pt solid #333;min-width:24mm;display:inline-block;text-align:center;font-weight:700;vertical-align:baseline;" id="sj_meet_place">&nbsp;</span>
         <span>에서 만났습니다.</span>
-        <div style="width:100%;"></div>
-        <span style="white-space:nowrap;">관계는</span>
+        <span style="white-space:nowrap;">&nbsp;관계는</span>
         <span style="border-bottom:0.5pt solid #333;min-width:24mm;display:inline-block;font-weight:700;text-align:center;" id="sj_relation">&nbsp;</span>
         <span>입니다.</span>
       </div>
@@ -6452,9 +6451,12 @@ async function saveSujuAsJpg() {
   }
 
   try {
-    var SRC_W = 148, SRC_H = 210; // A5 기준(원본 디자인)
+    // 원본 디자인(SRC) = A5, 최종 이미지(DST) = A4 — PDF와 동일한 √2배 확대 배치
+    var SRC_W = 148, SRC_H = 210;
+    var DST_W = 210, DST_H = 297;
+    var SCALE_RATIO = DST_W / SRC_W; // ≈1.4142
     var PX_PER_MM = 3.7795;
-    var SCALE = 6; // 선명도 유지를 위해 PDF와 동일한 배율 사용
+    var SCALE = 6;
 
     var container = document.createElement('div');
     container.style.cssText = 'position:fixed;left:-9999px;top:0;width:' + SRC_W + 'mm;background:#fff;z-index:-1;';
@@ -6464,7 +6466,7 @@ async function saveSujuAsJpg() {
     await new Promise(function(res) { setTimeout(res, 120); });
 
     var capturePx = Math.max(container.scrollHeight, Math.round(SRC_H * PX_PER_MM));
-    var canvas = await html2canvas(container, {
+    var srcCanvas = await html2canvas(container, {
       scale: SCALE,
       useCORS: true,
       backgroundColor: '#ffffff',
@@ -6475,14 +6477,43 @@ async function saveSujuAsJpg() {
     });
     document.body.removeChild(container);
 
-    var imgData = canvas.toDataURL('image/jpeg', 0.95);
+    // 내용이 A5 높이(210mm)를 넘으면 한 장에 맞게 축소(PDF와 동일한 규칙)
+    var contentHmm = capturePx / PX_PER_MM;
+    var drawWsrc = SRC_W, drawHsrc = contentHmm;
+    if (contentHmm > SRC_H) {
+      var shrink = SRC_H / contentHmm;
+      drawWsrc = SRC_W * shrink;
+      drawHsrc = SRC_H;
+    }
+    var drawWmm = drawWsrc * SCALE_RATIO;
+    var drawHmm = drawHsrc * SCALE_RATIO;
+    var offsetXmm = (DST_W - drawWmm) / 2;
+    var offsetYmm = (DST_H - drawHmm) / 2;
+
+    // A4 캔버스를 만들어 그 위에 A5 캡처본을 같은 배율로 가운데 배치
+    var pxPerMmOut = PX_PER_MM * SCALE;
+    var a4Canvas = document.createElement('canvas');
+    a4Canvas.width = Math.round(DST_W * pxPerMmOut);
+    a4Canvas.height = Math.round(DST_H * pxPerMmOut);
+    var ctx = a4Canvas.getContext('2d');
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, a4Canvas.width, a4Canvas.height);
+    ctx.drawImage(
+      srcCanvas,
+      Math.round(offsetXmm * pxPerMmOut),
+      Math.round(offsetYmm * pxPerMmOut),
+      Math.round(drawWmm * pxPerMmOut),
+      Math.round(drawHmm * pxPerMmOut)
+    );
+
+    var imgData = a4Canvas.toDataURL('image/jpeg', 0.95);
     var a = document.createElement('a');
     a.href = imgData;
     a.download = fname;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
-    showStatus('✅ JPG로 저장했습니다.', 'success');
+    showStatus('✅ JPG(A4)로 저장했습니다.', 'success');
   } catch (e) {
     showStatus('⚠️ JPG 생성 중 오류: ' + (e.message || e), 'error');
   }
@@ -6986,8 +7017,7 @@ function buildSujuHtml(r) {
     '<div style="width:100%;"></div>' +
     '<span style="border-bottom:0.5pt solid #333;min-width:24mm;display:inline-block;text-align:center;font-weight:700;">' + (r.meet_place || '') + '</span>' +
     '<span>에서 만났습니다.</span>' +
-    '<div style="width:100%;"></div>' +
-    '<span style="white-space:nowrap;">관계는</span>' +
+    '<span style="white-space:nowrap;">&nbsp;관계는</span>' +
     '<span style="border-bottom:0.5pt solid #333;min-width:24mm;display:inline-block;font-weight:700;text-align:center;">' + relText + '</span>' +
     '<span>입니다.</span>' +
     '</div>' +
