@@ -2067,6 +2067,13 @@ pre.code-block {
       <button type="button" onclick="adjustSujuAnsLh(1)" style="width:32px;height:32px;border:1px solid rgba(0,0,0,0.15);border-radius:6px;background:#f5f5f5;font-size:16px;font-weight:700;cursor:pointer;">＋</button>
       <button type="button" onclick="resetSujuAnsLh()" style="margin-left:auto;padding:6px 10px;border:1px solid rgba(0,0,0,0.15);border-radius:6px;background:#fff;font-size:12px;color:#666;cursor:pointer;white-space:nowrap;">기본값</button>
     </div>
+    <div style="display:flex;align-items:center;gap:10px;margin-top:8px;">
+      <span style="font-size:13px;color:#333;white-space:nowrap;width:78px;">서술형 글자</span>
+      <button type="button" onclick="adjustSujuAnsFont(-1)" style="width:32px;height:32px;border:1px solid rgba(0,0,0,0.15);border-radius:6px;background:#f5f5f5;font-size:16px;font-weight:700;cursor:pointer;">－</button>
+      <span id="suju-ans-font-label" style="min-width:44px;text-align:center;font-size:14px;font-weight:700;color:#1a3a9e;">8pt</span>
+      <button type="button" onclick="adjustSujuAnsFont(1)" style="width:32px;height:32px;border:1px solid rgba(0,0,0,0.15);border-radius:6px;background:#f5f5f5;font-size:16px;font-weight:700;cursor:pointer;">＋</button>
+      <button type="button" onclick="resetSujuAnsFont()" style="margin-left:auto;padding:6px 10px;border:1px solid rgba(0,0,0,0.15);border-radius:6px;background:#fff;font-size:12px;color:#666;cursor:pointer;white-space:nowrap;">기본값</button>
+    </div>
     <div style="font-size:10px;color:#999;margin-top:8px;">화면 미리보기와 인쇄/PDF/JPG 저장에 모두 적용됩니다.</div>
   </div>
   <div class="suju-paper" id="suju-paper">
@@ -2263,11 +2270,11 @@ pre.code-block {
       <div id="sj_q8_block" style="width:100%;font-size:7.5pt;font-weight:700;border-left:none;">
         <div id="sj_q8_inganse" style="display:none;padding:0 2mm 0 2mm;">
           <div style="color:#555;font-size:6.5pt;font-weight:700;margin-bottom:0.5mm;">(성령의 인도하심)</div>
-          <div id="sj_q10_text" style="white-space:pre-wrap;word-break:break-all;border-bottom:0.5pt solid #bbb;padding-bottom:1.5mm;margin-bottom:1.5mm;line-height:var(--suju-ans-lh,5mm);"></div>
+          <div id="sj_q10_text" style="white-space:pre-wrap;word-break:break-all;border-bottom:0.5pt solid #bbb;padding-bottom:1.5mm;margin-bottom:1.5mm;font-size:var(--suju-ans-font-size,8pt);line-height:var(--suju-ans-lh,5mm);"></div>
         </div>
         <div id="sj_q8_improve" style="display:none;padding:0 2mm 0 2mm;">
           <div style="color:#555;font-size:6.5pt;font-weight:700;margin-bottom:0.5mm;">(개선점)</div>
-          <div id="sj_q11_text" style="white-space:pre-wrap;word-break:break-all;border-bottom:0.5pt solid #bbb;padding-bottom:1.5mm;margin-bottom:1.5mm;line-height:var(--suju-ans-lh,5mm);"></div>
+          <div id="sj_q11_text" style="white-space:pre-wrap;word-break:break-all;border-bottom:0.5pt solid #bbb;padding-bottom:1.5mm;margin-bottom:1.5mm;font-size:var(--suju-ans-font-size,8pt);line-height:var(--suju-ans-lh,5mm);"></div>
         </div>
         <!-- 내용 없을 때 기본 빈 줄 4개 -->
         <div id="sj_q8_empty">
@@ -2284,7 +2291,7 @@ pre.code-block {
         <span style="white-space:nowrap;">기도제목은</span>
       </div>
       <div id="sj_q9_block" style="width:100%;font-size:7.5pt;font-weight:700;">
-        <div id="sj_q9_text" style="display:none;white-space:pre-wrap;word-break:break-all;border-bottom:0.5pt solid #bbb;padding:0 2mm 1.5mm;margin-bottom:1.5mm;line-height:var(--suju-ans-lh,5mm);"></div>
+        <div id="sj_q9_text" style="display:none;white-space:pre-wrap;word-break:break-all;border-bottom:0.5pt solid #bbb;padding:0 2mm 1.5mm;margin-bottom:1.5mm;font-size:var(--suju-ans-font-size,8pt);line-height:var(--suju-ans-lh,5mm);"></div>
         <!-- 내용 없을 때 기본 빈 줄 2개 -->
         <div id="sj_q9_empty">
           <div style="border-bottom:0.5pt solid #bbb;min-height:5.5mm;margin-bottom:1.5mm;width:100%;"></div>
@@ -6358,6 +6365,24 @@ function toggleSujuSettings() {
 var SUJU_GAP_KEY = 'suju_gap_mm', SUJU_GAP_DEFAULT = 2, SUJU_GAP_MIN = 1, SUJU_GAP_MAX = 8;
 var SUJU_WRAP_LH_KEY = 'suju_wrap_lh', SUJU_WRAP_LH_DEFAULT = 1.5, SUJU_WRAP_LH_MIN = 1.0, SUJU_WRAP_LH_MAX = 2.4, SUJU_WRAP_LH_STEP = 0.1;
 var SUJU_ANS_LH_KEY = 'suju_ans_lh_mm', SUJU_ANS_LH_DEFAULT = 5, SUJU_ANS_LH_MIN = 3, SUJU_ANS_LH_MAX = 8;
+var SUJU_ANS_FONT_KEY = 'suju_ans_font_pt', SUJU_ANS_FONT_DEFAULT = 8, SUJU_ANS_FONT_MIN = 6, SUJU_ANS_FONT_MAX = 14;
+
+function getSujuAnsFont() {
+  var v = parseInt(localStorage.getItem(SUJU_ANS_FONT_KEY), 10);
+  if (!v || v < SUJU_ANS_FONT_MIN || v > SUJU_ANS_FONT_MAX) return SUJU_ANS_FONT_DEFAULT;
+  return v;
+}
+function adjustSujuAnsFont(delta) {
+  var v = getSujuAnsFont() + delta;
+  if (v < SUJU_ANS_FONT_MIN) v = SUJU_ANS_FONT_MIN;
+  if (v > SUJU_ANS_FONT_MAX) v = SUJU_ANS_FONT_MAX;
+  localStorage.setItem(SUJU_ANS_FONT_KEY, String(v));
+  applySujuLayoutSettings();
+}
+function resetSujuAnsFont() {
+  localStorage.setItem(SUJU_ANS_FONT_KEY, String(SUJU_ANS_FONT_DEFAULT));
+  applySujuLayoutSettings();
+}
 
 function getSujuGap() {
   var v = parseInt(localStorage.getItem(SUJU_GAP_KEY), 10);
@@ -6378,11 +6403,12 @@ function getSujuAnsLh() {
 function applySujuLayoutSettings() {
   applySujuFontSize();
   var paper = document.getElementById('suju-paper');
-  var gap = getSujuGap(), wrapLh = getSujuWrapLh(), ansLh = getSujuAnsLh();
+  var gap = getSujuGap(), wrapLh = getSujuWrapLh(), ansLh = getSujuAnsLh(), ansFont = getSujuAnsFont();
   if (paper) {
     paper.style.setProperty('--suju-gap', gap + 'mm');
     paper.style.setProperty('--suju-wrap-lh', wrapLh);
     paper.style.setProperty('--suju-ans-lh', ansLh + 'mm');
+    paper.style.setProperty('--suju-ans-font-size', ansFont + 'pt');
   }
   var gapLabel = document.getElementById('suju-gap-label');
   if (gapLabel) gapLabel.textContent = gap + 'mm';
@@ -6390,6 +6416,8 @@ function applySujuLayoutSettings() {
   if (wrapLhLabel) wrapLhLabel.textContent = String(wrapLh);
   var ansLhLabel = document.getElementById('suju-ans-lh-label');
   if (ansLhLabel) ansLhLabel.textContent = ansLh + 'mm';
+  var ansFontLabel = document.getElementById('suju-ans-font-label');
+  if (ansFontLabel) ansFontLabel.textContent = ansFont + 'pt';
 }
 
 function adjustSujuGap(delta) {
@@ -6921,7 +6949,7 @@ function buildSujuHtml(r) {
 
   var targetNameDisplay = maskName(r.name || '');
 
-  return '<div class="suju-paper" style="width:148mm;min-height:210mm;background:#fff;padding:6mm 7mm 7mm;font-size:' + getSujuFontSize() + 'pt;color:#111;line-height:1.55;box-sizing:border-box;font-family:\'Malgun Gothic\',\'Apple SD Gothic Neo\',sans-serif;--suju-gap:' + getSujuGap() + 'mm;--suju-wrap-lh:' + getSujuWrapLh() + ';--suju-ans-lh:' + getSujuAnsLh() + 'mm;">' +
+  return '<div class="suju-paper" style="width:148mm;min-height:210mm;background:#fff;padding:6mm 7mm 7mm;font-size:' + getSujuFontSize() + 'pt;color:#111;line-height:1.55;box-sizing:border-box;font-family:\'Malgun Gothic\',\'Apple SD Gothic Neo\',sans-serif;--suju-gap:' + getSujuGap() + 'mm;--suju-wrap-lh:' + getSujuWrapLh() + ';--suju-ans-lh:' + getSujuAnsLh() + 'mm;--suju-ans-font-size:' + getSujuAnsFont() + 'pt;">' +
     '<div style="display:flex;gap:3mm;margin-bottom:2.5mm;align-items:stretch;">' +
     '<div style="flex:0 0 42%;display:flex;flex-direction:column;">' +
     '<div style="font-size:6.5pt;margin-bottom:0.5mm;">(훈련생용)</div>' +
@@ -7070,7 +7098,7 @@ function buildSujuHtml(r) {
         '<span style="white-space:nowrap;">현장실습에서 느낀점(성령의 인도하심/개선점)은</span>' +
         '</div>';
       if (q10 || q11) {
-        q8html += '<div style="font-size:7.5pt;font-weight:700;">';
+        q8html += '<div style="font-size:var(--suju-ans-font-size,8pt);font-weight:700;">';
         if (q10) q8html +=
           '<div style="padding:0 2mm 0 2mm;">' +
           '<div style="color:#555;font-size:6.5pt;font-weight:700;margin-bottom:0.5mm;">(성령의 인도하심)</div>' +
@@ -7083,14 +7111,14 @@ function buildSujuHtml(r) {
           '</div>';
         q8html += '</div>';
       } else {
-        q8html += '<div style="font-size:7.5pt;">' + emptyLines + '</div>';
+        q8html += '<div style="font-size:var(--suju-ans-font-size,8pt);">' + emptyLines + '</div>';
       }
       var q9html = '<div style="margin-top:2mm;margin-bottom:1.5mm;display:flex;align-items:baseline;gap:1mm;">' +
         '<span style="font-weight:700;white-space:nowrap;">9.</span>' +
         '<span style="white-space:nowrap;">기도제목은</span>' +
         '</div>';
       if (q12) {
-        q9html += '<div style="font-size:7.5pt;font-weight:700;white-space:pre-wrap;word-break:break-all;border-bottom:0.5pt solid #bbb;padding:0 2mm 1.5mm;margin-bottom:1.5mm;line-height:var(--suju-ans-lh,5mm);">' + q12 + '</div>';
+        q9html += '<div style="font-size:var(--suju-ans-font-size,8pt);font-weight:700;white-space:pre-wrap;word-break:break-all;border-bottom:0.5pt solid #bbb;padding:0 2mm 1.5mm;margin-bottom:1.5mm;line-height:var(--suju-ans-lh,5mm);">' + q12 + '</div>';
       } else {
         q9html += '<div style="' + lineStyle + '"></div><div style="' + lineStyle + '"></div>';
       }
