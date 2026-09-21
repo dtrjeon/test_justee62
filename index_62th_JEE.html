@@ -2040,13 +2040,34 @@ pre.code-block {
   <div id="suju-settings-panel" style="display:none;width:100%;max-width:148mm;margin:0 auto 10px;background:#fff;border:1px solid rgba(96,125,139,0.3);border-radius:8px;padding:12px 14px;box-shadow:0 4px 16px rgba(0,0,0,0.08);">
     <div style="font-weight:700;font-size:13px;color:#455a64;margin-bottom:8px;">⚙️ 미리보기 설정</div>
     <div style="display:flex;align-items:center;gap:10px;">
-      <span style="font-size:13px;color:#333;white-space:nowrap;">글자 크기</span>
+      <span style="font-size:13px;color:#333;white-space:nowrap;width:78px;">글자 크기</span>
       <button type="button" onclick="adjustSujuFontSize(-1)" style="width:32px;height:32px;border:1px solid rgba(0,0,0,0.15);border-radius:6px;background:#f5f5f5;font-size:16px;font-weight:700;cursor:pointer;">－</button>
       <span id="suju-font-size-label" style="min-width:44px;text-align:center;font-size:14px;font-weight:700;color:#1a3a9e;">8pt</span>
       <button type="button" onclick="adjustSujuFontSize(1)" style="width:32px;height:32px;border:1px solid rgba(0,0,0,0.15);border-radius:6px;background:#f5f5f5;font-size:16px;font-weight:700;cursor:pointer;">＋</button>
       <button type="button" onclick="resetSujuFontSize()" style="margin-left:auto;padding:6px 10px;border:1px solid rgba(0,0,0,0.15);border-radius:6px;background:#fff;font-size:12px;color:#666;cursor:pointer;white-space:nowrap;">기본값</button>
     </div>
-    <div style="font-size:10px;color:#999;margin-top:6px;">화면 미리보기와 인쇄/PDF/JPG 저장에 모두 적용됩니다.</div>
+    <div style="display:flex;align-items:center;gap:10px;margin-top:8px;">
+      <span style="font-size:13px;color:#333;white-space:nowrap;width:78px;">항목 간격</span>
+      <button type="button" onclick="adjustSujuGap(-1)" style="width:32px;height:32px;border:1px solid rgba(0,0,0,0.15);border-radius:6px;background:#f5f5f5;font-size:16px;font-weight:700;cursor:pointer;">－</button>
+      <span id="suju-gap-label" style="min-width:44px;text-align:center;font-size:14px;font-weight:700;color:#1a3a9e;">4mm</span>
+      <button type="button" onclick="adjustSujuGap(1)" style="width:32px;height:32px;border:1px solid rgba(0,0,0,0.15);border-radius:6px;background:#f5f5f5;font-size:16px;font-weight:700;cursor:pointer;">＋</button>
+      <button type="button" onclick="resetSujuGap()" style="margin-left:auto;padding:6px 10px;border:1px solid rgba(0,0,0,0.15);border-radius:6px;background:#fff;font-size:12px;color:#666;cursor:pointer;white-space:nowrap;">기본값</button>
+    </div>
+    <div style="display:flex;align-items:center;gap:10px;margin-top:8px;">
+      <span style="font-size:13px;color:#333;white-space:nowrap;width:78px;">줄바꿈 줄간격</span>
+      <button type="button" onclick="adjustSujuWrapLh(-1)" style="width:32px;height:32px;border:1px solid rgba(0,0,0,0.15);border-radius:6px;background:#f5f5f5;font-size:16px;font-weight:700;cursor:pointer;">－</button>
+      <span id="suju-wrap-lh-label" style="min-width:44px;text-align:center;font-size:14px;font-weight:700;color:#1a3a9e;">1.6</span>
+      <button type="button" onclick="adjustSujuWrapLh(1)" style="width:32px;height:32px;border:1px solid rgba(0,0,0,0.15);border-radius:6px;background:#f5f5f5;font-size:16px;font-weight:700;cursor:pointer;">＋</button>
+      <button type="button" onclick="resetSujuWrapLh()" style="margin-left:auto;padding:6px 10px;border:1px solid rgba(0,0,0,0.15);border-radius:6px;background:#fff;font-size:12px;color:#666;cursor:pointer;white-space:nowrap;">기본값</button>
+    </div>
+    <div style="display:flex;align-items:center;gap:10px;margin-top:8px;">
+      <span style="font-size:13px;color:#333;white-space:nowrap;width:78px;">서술형 줄간격</span>
+      <button type="button" onclick="adjustSujuAnsLh(-1)" style="width:32px;height:32px;border:1px solid rgba(0,0,0,0.15);border-radius:6px;background:#f5f5f5;font-size:16px;font-weight:700;cursor:pointer;">－</button>
+      <span id="suju-ans-lh-label" style="min-width:44px;text-align:center;font-size:14px;font-weight:700;color:#1a3a9e;">5mm</span>
+      <button type="button" onclick="adjustSujuAnsLh(1)" style="width:32px;height:32px;border:1px solid rgba(0,0,0,0.15);border-radius:6px;background:#f5f5f5;font-size:16px;font-weight:700;cursor:pointer;">＋</button>
+      <button type="button" onclick="resetSujuAnsLh()" style="margin-left:auto;padding:6px 10px;border:1px solid rgba(0,0,0,0.15);border-radius:6px;background:#fff;font-size:12px;color:#666;cursor:pointer;white-space:nowrap;">기본값</button>
+    </div>
+    <div style="font-size:10px;color:#999;margin-top:8px;">화면 미리보기와 인쇄/PDF/JPG 저장에 모두 적용됩니다.</div>
   </div>
   <div class="suju-paper" id="suju-paper">
 
@@ -2143,7 +2164,7 @@ pre.code-block {
       <div style="margin-bottom:4mm;"></div>
 
       <!-- 1번 -->
-      <div style="margin-bottom:4mm;display:flex;align-items:baseline;gap:1mm;flex-wrap:wrap;">
+      <div style="margin-bottom:var(--suju-gap,4mm);display:flex;align-items:baseline;gap:1mm;flex-wrap:wrap;">
         <span style="font-weight:700;white-space:nowrap;">1.</span>
         <span style="border-bottom:0.5pt solid #333;min-width:12mm;display:inline-block;text-align:center;font-weight:700;" id="sj_jo">&nbsp;</span>
         <span style="white-space:nowrap;">조 공개 보고 드리겠습니다. (제</span>
@@ -2155,7 +2176,7 @@ pre.code-block {
       </div>
 
       <!-- 2번 -->
-      <div style="margin-bottom:4mm;display:flex;align-items:baseline;gap:1mm;flex-wrap:wrap;">
+      <div style="margin-bottom:var(--suju-gap,4mm);display:flex;align-items:baseline;gap:1mm;flex-wrap:wrap;">
         <span style="font-weight:700;white-space:nowrap;">2.</span>
         <span style="white-space:nowrap;">훈련자(조장)는</span>
         <span style="border-bottom:0.5pt solid #333;min-width:18mm;display:inline-block;text-align:center;font-weight:700;" id="sj_leader">&nbsp;</span>
@@ -2169,7 +2190,7 @@ pre.code-block {
       </div>
 
       <!-- 3번 -->
-      <div style="margin-bottom:4mm;display:flex;align-items:baseline;gap:1mm;flex-wrap:wrap;line-height:1.6;">
+      <div style="margin-bottom:var(--suju-gap,4mm);display:flex;align-items:baseline;gap:1mm;flex-wrap:wrap;line-height:var(--suju-wrap-lh,1.6);">
         <span style="font-weight:700;white-space:nowrap;">3.</span>
         <span style="white-space:nowrap;">저희들은</span>
         <span style="border-bottom:0.5pt solid #333;min-width:24mm;display:inline-block;text-align:center;font-weight:700;" id="sj_location">&nbsp;</span>
@@ -2190,7 +2211,7 @@ pre.code-block {
       </div>
 
       <!-- 4번 -->
-      <div style="margin-bottom:4mm;display:flex;align-items:baseline;gap:1mm;flex-wrap:wrap;">
+      <div style="margin-bottom:var(--suju-gap,4mm);display:flex;align-items:baseline;gap:1mm;flex-wrap:wrap;">
         <span style="font-weight:700;white-space:nowrap;">4.</span>
         <span style="white-space:nowrap;">그분의 종교 배경은</span>
         <span style="border-bottom:0.5pt solid #333;min-width:22mm;display:inline-block;text-align:center;font-weight:700;" id="sj_religion">&nbsp;</span>
@@ -2200,13 +2221,13 @@ pre.code-block {
       </div>
 
       <!-- 5번 -->
-      <div style="margin-bottom:4mm;display:flex;align-items:baseline;gap:1mm;flex-wrap:wrap;line-height:1.6;">
+      <div style="margin-bottom:var(--suju-gap,4mm);display:flex;align-items:baseline;gap:1mm;flex-wrap:wrap;line-height:var(--suju-wrap-lh,1.6);">
         <span style="font-weight:700;white-space:nowrap;">5.</span>
         <span>천국에 들어갈 확신은 <b id="sj_heaven">[있었고/없었고]</b>, 이유 질문에 대한 대답은 <b id="sj_reason">[믿음/행위/모름/대답안함]</b>이며, 진단은 <b id="sj_diag">[①비신자 ②착각비신자 ③확신부족 ④이미신자/머리신자]</b>입니다.</span>
       </div>
 
       <!-- 6번 -->
-      <div style="margin-bottom:4mm;display:flex;align-items:baseline;gap:1mm;flex-wrap:wrap;">
+      <div style="margin-bottom:var(--suju-gap,4mm);display:flex;align-items:baseline;gap:1mm;flex-wrap:wrap;">
         <span style="font-weight:700;white-space:nowrap;">6.</span>
         <span style="white-space:nowrap;">훈련생</span>
         <span style="border-bottom:0.5pt solid #333;min-width:16mm;display:inline-block;text-align:center;font-weight:700;" id="sj_trainee2">&nbsp;</span>
@@ -2214,26 +2235,26 @@ pre.code-block {
         <span style="border-bottom:0.5pt solid #333;min-width:28mm;display:inline-block;font-weight:700;text-align:center;" id="sj_trainee_part">&nbsp;</span>
         <span style="white-space:nowrap;">부분을 <b id="sj_trainee_action">[제시하였고/참관하였고]</b>,</span>
       </div>
-      <div style="margin-bottom:4mm;display:flex;align-items:baseline;gap:1mm;flex-wrap:wrap;padding-left:4mm;">
+      <div style="margin-bottom:var(--suju-gap,4mm);display:flex;align-items:baseline;gap:1mm;flex-wrap:wrap;padding-left:4mm;">
         <span style="white-space:nowrap;">훈련자</span>
         <span style="border-bottom:0.5pt solid #333;min-width:16mm;display:inline-block;text-align:center;font-weight:700;" id="sj_trainer2">&nbsp;</span>
         <span style="white-space:nowrap;">는(은)</span>
         <span style="border-bottom:0.5pt solid #333;min-width:28mm;display:inline-block;font-weight:700;text-align:center;" id="sj_trainer_part">&nbsp;</span>
         <span style="white-space:nowrap;">부분을 <b id="sj_trainer_action">[제시하였고/참관하였고]</b>,</span>
       </div>
-      <div style="margin-bottom:4mm;display:flex;align-items:baseline;gap:1mm;flex-wrap:wrap;padding-left:4mm;">
+      <div style="margin-bottom:var(--suju-gap,4mm);display:flex;align-items:baseline;gap:1mm;flex-wrap:wrap;padding-left:4mm;">
         <span style="white-space:nowrap;">훈련자(조장)</span>
         <span style="border-bottom:0.5pt solid #333;min-width:16mm;display:inline-block;text-align:center;font-weight:700;" id="sj_leader2">&nbsp;</span>
         <span style="white-space:nowrap;">는(은)</span>
         <span style="border-bottom:0.5pt solid #333;min-width:28mm;display:inline-block;font-weight:700;text-align:center;" id="sj_leader_part">&nbsp;</span>
         <span style="white-space:nowrap;">부분을 <b id="sj_leader_action">[제시하였고/참관하였고]</b>,</span>
       </div>
-      <div style="margin-bottom:4mm;padding-left:4mm;">
+      <div style="margin-bottom:var(--suju-gap,4mm);padding-left:4mm;">
         결과는 [<b id="sj_result">결신/보류·거절/확신/이미신자</b>]입니다.
       </div>
 
       <!-- 7번 -->
-      <div style="margin-bottom:4mm;display:flex;align-items:baseline;gap:1mm;flex-wrap:wrap;line-height:1.6;">
+      <div style="margin-bottom:var(--suju-gap,4mm);display:flex;align-items:baseline;gap:1mm;flex-wrap:wrap;line-height:var(--suju-wrap-lh,1.6);">
         <span style="font-weight:700;white-space:nowrap;">7.</span>
         <span id="sj_item7_text">즉석 양육을(<b id="sj_immed">[했고/안했고]</b>), 후속 양육을(<b id="sj_followup">7일후 재방문 약속/24시간 내외 전화 약속/예배참석 약속/새생명반 연결/목장 연결/하지 못</b>)했습니다.</span>
         <span id="sj_reason_wrap" style="display:none;align-items:baseline;gap:1mm;flex-wrap:nowrap;">(못한 이유는 <span style="border-bottom:0.5pt solid #333;min-width:20mm;display:inline-block;font-weight:700;" id="sj_followup_reason">&nbsp;</span>)</span>
@@ -2247,11 +2268,11 @@ pre.code-block {
       <div id="sj_q8_block" style="width:100%;font-size:7.5pt;font-weight:700;border-left:none;">
         <div id="sj_q8_inganse" style="display:none;padding:0 2mm 0 2mm;">
           <div style="color:#555;font-size:6.5pt;font-weight:700;margin-bottom:0.5mm;">(성령의 인도하심)</div>
-          <div id="sj_q10_text" style="white-space:pre-wrap;word-break:break-all;border-bottom:0.5pt solid #bbb;padding-bottom:1.5mm;margin-bottom:1.5mm;line-height:5mm;"></div>
+          <div id="sj_q10_text" style="white-space:pre-wrap;word-break:break-all;border-bottom:0.5pt solid #bbb;padding-bottom:1.5mm;margin-bottom:1.5mm;line-height:var(--suju-ans-lh,5mm);"></div>
         </div>
         <div id="sj_q8_improve" style="display:none;padding:0 2mm 0 2mm;">
           <div style="color:#555;font-size:6.5pt;font-weight:700;margin-bottom:0.5mm;">(개선점)</div>
-          <div id="sj_q11_text" style="white-space:pre-wrap;word-break:break-all;border-bottom:0.5pt solid #bbb;padding-bottom:1.5mm;margin-bottom:1.5mm;line-height:5mm;"></div>
+          <div id="sj_q11_text" style="white-space:pre-wrap;word-break:break-all;border-bottom:0.5pt solid #bbb;padding-bottom:1.5mm;margin-bottom:1.5mm;line-height:var(--suju-ans-lh,5mm);"></div>
         </div>
         <!-- 내용 없을 때 기본 빈 줄 4개 -->
         <div id="sj_q8_empty">
@@ -2268,7 +2289,7 @@ pre.code-block {
         <span style="white-space:nowrap;">기도제목은</span>
       </div>
       <div id="sj_q9_block" style="width:100%;font-size:7.5pt;font-weight:700;">
-        <div id="sj_q9_text" style="display:none;white-space:pre-wrap;word-break:break-all;border-bottom:0.5pt solid #bbb;padding:0 2mm 1.5mm;margin-bottom:1.5mm;line-height:5mm;"></div>
+        <div id="sj_q9_text" style="display:none;white-space:pre-wrap;word-break:break-all;border-bottom:0.5pt solid #bbb;padding:0 2mm 1.5mm;margin-bottom:1.5mm;line-height:var(--suju-ans-lh,5mm);"></div>
         <!-- 내용 없을 때 기본 빈 줄 2개 -->
         <div id="sj_q9_empty">
           <div style="border-bottom:0.5pt solid #bbb;min-height:5.5mm;margin-bottom:1.5mm;width:100%;"></div>
@@ -6016,7 +6037,7 @@ function setEl2(id, val) {
 }
 
 function syncSuju() {
-  applySujuFontSize();
+  applySujuLayoutSettings();
   // 전도일 날짜
   var date = v('report-date');
   if (date) {
@@ -6335,7 +6356,81 @@ function toggleSujuSettings() {
   if (!panel) return;
   var visible = panel.style.display !== 'none';
   panel.style.display = visible ? 'none' : 'block';
-  if (!visible) applySujuFontSize();
+  if (!visible) applySujuLayoutSettings();
+}
+
+// ── 항목 간격 / 줄바꿈 줄간격 / 서술형 줄간격 설정 ──────────────
+var SUJU_GAP_KEY = 'suju_gap_mm', SUJU_GAP_DEFAULT = 4, SUJU_GAP_MIN = 1, SUJU_GAP_MAX = 8;
+var SUJU_WRAP_LH_KEY = 'suju_wrap_lh', SUJU_WRAP_LH_DEFAULT = 1.6, SUJU_WRAP_LH_MIN = 1.0, SUJU_WRAP_LH_MAX = 2.4, SUJU_WRAP_LH_STEP = 0.1;
+var SUJU_ANS_LH_KEY = 'suju_ans_lh_mm', SUJU_ANS_LH_DEFAULT = 5, SUJU_ANS_LH_MIN = 3, SUJU_ANS_LH_MAX = 8;
+
+function getSujuGap() {
+  var v = parseInt(localStorage.getItem(SUJU_GAP_KEY), 10);
+  if (!v || v < SUJU_GAP_MIN || v > SUJU_GAP_MAX) return SUJU_GAP_DEFAULT;
+  return v;
+}
+function getSujuWrapLh() {
+  var v = parseFloat(localStorage.getItem(SUJU_WRAP_LH_KEY));
+  if (!v || v < SUJU_WRAP_LH_MIN || v > SUJU_WRAP_LH_MAX) return SUJU_WRAP_LH_DEFAULT;
+  return Math.round(v * 10) / 10;
+}
+function getSujuAnsLh() {
+  var v = parseInt(localStorage.getItem(SUJU_ANS_LH_KEY), 10);
+  if (!v || v < SUJU_ANS_LH_MIN || v > SUJU_ANS_LH_MAX) return SUJU_ANS_LH_DEFAULT;
+  return v;
+}
+
+function applySujuLayoutSettings() {
+  applySujuFontSize();
+  var paper = document.getElementById('suju-paper');
+  var gap = getSujuGap(), wrapLh = getSujuWrapLh(), ansLh = getSujuAnsLh();
+  if (paper) {
+    paper.style.setProperty('--suju-gap', gap + 'mm');
+    paper.style.setProperty('--suju-wrap-lh', wrapLh);
+    paper.style.setProperty('--suju-ans-lh', ansLh + 'mm');
+  }
+  var gapLabel = document.getElementById('suju-gap-label');
+  if (gapLabel) gapLabel.textContent = gap + 'mm';
+  var wrapLhLabel = document.getElementById('suju-wrap-lh-label');
+  if (wrapLhLabel) wrapLhLabel.textContent = String(wrapLh);
+  var ansLhLabel = document.getElementById('suju-ans-lh-label');
+  if (ansLhLabel) ansLhLabel.textContent = ansLh + 'mm';
+}
+
+function adjustSujuGap(delta) {
+  var v = getSujuGap() + delta;
+  if (v < SUJU_GAP_MIN) v = SUJU_GAP_MIN;
+  if (v > SUJU_GAP_MAX) v = SUJU_GAP_MAX;
+  localStorage.setItem(SUJU_GAP_KEY, String(v));
+  applySujuLayoutSettings();
+}
+function resetSujuGap() {
+  localStorage.setItem(SUJU_GAP_KEY, String(SUJU_GAP_DEFAULT));
+  applySujuLayoutSettings();
+}
+
+function adjustSujuWrapLh(dir) {
+  var v = Math.round((getSujuWrapLh() + dir * SUJU_WRAP_LH_STEP) * 10) / 10;
+  if (v < SUJU_WRAP_LH_MIN) v = SUJU_WRAP_LH_MIN;
+  if (v > SUJU_WRAP_LH_MAX) v = SUJU_WRAP_LH_MAX;
+  localStorage.setItem(SUJU_WRAP_LH_KEY, String(v));
+  applySujuLayoutSettings();
+}
+function resetSujuWrapLh() {
+  localStorage.setItem(SUJU_WRAP_LH_KEY, String(SUJU_WRAP_LH_DEFAULT));
+  applySujuLayoutSettings();
+}
+
+function adjustSujuAnsLh(delta) {
+  var v = getSujuAnsLh() + delta;
+  if (v < SUJU_ANS_LH_MIN) v = SUJU_ANS_LH_MIN;
+  if (v > SUJU_ANS_LH_MAX) v = SUJU_ANS_LH_MAX;
+  localStorage.setItem(SUJU_ANS_LH_KEY, String(v));
+  applySujuLayoutSettings();
+}
+function resetSujuAnsLh() {
+  localStorage.setItem(SUJU_ANS_LH_KEY, String(SUJU_ANS_LH_DEFAULT));
+  applySujuLayoutSettings();
 }
 
 async function printSuju() {
@@ -6799,7 +6894,7 @@ function buildSujuHtml(r) {
 
   var targetNameDisplay = maskName(r.name || '');
 
-  return '<div class="suju-paper" style="width:148mm;min-height:210mm;background:#fff;padding:6mm 7mm 7mm;font-size:' + getSujuFontSize() + 'pt;color:#111;line-height:1.55;box-sizing:border-box;font-family:\'Malgun Gothic\',\'Apple SD Gothic Neo\',sans-serif;">' +
+  return '<div class="suju-paper" style="width:148mm;min-height:210mm;background:#fff;padding:6mm 7mm 7mm;font-size:' + getSujuFontSize() + 'pt;color:#111;line-height:1.55;box-sizing:border-box;font-family:\'Malgun Gothic\',\'Apple SD Gothic Neo\',sans-serif;--suju-gap:' + getSujuGap() + 'mm;--suju-wrap-lh:' + getSujuWrapLh() + ';--suju-ans-lh:' + getSujuAnsLh() + 'mm;">' +
     '<div style="display:flex;gap:3mm;margin-bottom:2.5mm;align-items:stretch;">' +
     '<div style="flex:0 0 42%;display:flex;flex-direction:column;">' +
     '<div style="font-size:6.5pt;margin-bottom:0.5mm;">(훈련생용)</div>' +
@@ -6864,7 +6959,7 @@ function buildSujuHtml(r) {
     '<div style="border-top:0.8pt solid #333;margin-bottom:2mm;"></div>' +
     '<div style="line-height:1;">' +
     '<div style="margin-bottom:4mm;"></div>' +
-    '<div style="margin-bottom:4mm;display:flex;align-items:baseline;gap:1mm;flex-wrap:wrap;">' +
+    '<div style="margin-bottom:var(--suju-gap,4mm);display:flex;align-items:baseline;gap:1mm;flex-wrap:wrap;">' +
     '<span style="font-weight:700;white-space:nowrap;">1.</span>' +
     '<span style="border-bottom:0.5pt solid #333;min-width:12mm;display:inline-block;text-align:center;font-weight:700;">' + (r.jo || '') + '</span>' +
     '<span style="white-space:nowrap;">조 공개 보고 드리겠습니다. (제</span>' +
@@ -6874,7 +6969,7 @@ function buildSujuHtml(r) {
     '<span style="border-bottom:0.5pt solid #333;min-width:12mm;display:inline-block;text-align:center;font-weight:700;">' + group + '</span>' +
     '<span>그룹)</span>' +
     '</div>' +
-    '<div style="margin-bottom:4mm;display:flex;align-items:baseline;gap:1mm;flex-wrap:wrap;">' +
+    '<div style="margin-bottom:var(--suju-gap,4mm);display:flex;align-items:baseline;gap:1mm;flex-wrap:wrap;">' +
     '<span style="font-weight:700;white-space:nowrap;">2.</span>' +
     '<span style="white-space:nowrap;">훈련자(조장)는</span>' +
     '<span style="border-bottom:0.5pt solid #333;min-width:18mm;display:inline-block;text-align:center;font-weight:700;">' + (r.leader || '') + '</span>' +
@@ -6884,7 +6979,7 @@ function buildSujuHtml(r) {
     '<span style="border-bottom:0.5pt solid #333;min-width:18mm;display:inline-block;text-align:center;font-weight:700;">' + (r.trainee1 || '') + '</span>' +
     '<span>,</span><span style="border-bottom:0.5pt solid #333;min-width:16mm;display:inline-block;">&nbsp;</span><span>입니다.</span>' +
     '</div>' +
-    '<div style="margin-bottom:4mm;display:flex;align-items:baseline;gap:1mm;flex-wrap:wrap;line-height:1.6;">' +
+    '<div style="margin-bottom:var(--suju-gap,4mm);display:flex;align-items:baseline;gap:1mm;flex-wrap:wrap;line-height:var(--suju-wrap-lh,1.6);">' +
     '<span style="font-weight:700;white-space:nowrap;">3.</span>' +
     '<span style="white-space:nowrap;">저희들은</span>' +
     '<span style="border-bottom:0.5pt solid #333;min-width:24mm;display:inline-block;text-align:center;font-weight:700;">' + (r.location || '') + '</span>' +
@@ -6899,7 +6994,7 @@ function buildSujuHtml(r) {
     '<span style="border-bottom:0.5pt solid #333;min-width:24mm;display:inline-block;font-weight:700;text-align:center;">' + relText + '</span>' +
     '<span>입니다.</span>' +
     '</div>' +
-    '<div style="margin-bottom:4mm;display:flex;align-items:baseline;gap:1mm;flex-wrap:wrap;">' +
+    '<div style="margin-bottom:var(--suju-gap,4mm);display:flex;align-items:baseline;gap:1mm;flex-wrap:wrap;">' +
     '<span style="font-weight:700;white-space:nowrap;">4.</span>' +
     '<span style="white-space:nowrap;">그분의 종교 배경은</span>' +
     '<span style="border-bottom:0.5pt solid #333;min-width:22mm;display:inline-block;text-align:center;font-weight:700;">' + (r.religion || '') + '</span>' +
@@ -6907,11 +7002,11 @@ function buildSujuHtml(r) {
     '<span style="border-bottom:0.5pt solid #333;min-width:22mm;display:inline-block;text-align:center;font-weight:700;">' + (r.job || '') + '</span>' +
     '<span>이었습니다.</span>' +
     '</div>' +
-    '<div style="margin-bottom:4mm;display:flex;align-items:baseline;gap:1mm;flex-wrap:wrap;line-height:1.6;">' +
+    '<div style="margin-bottom:var(--suju-gap,4mm);display:flex;align-items:baseline;gap:1mm;flex-wrap:wrap;line-height:var(--suju-wrap-lh,1.6);">' +
     '<span style="font-weight:700;white-space:nowrap;">5.</span>' +
     '<span>천국에 들어갈 확신은 <b>' + (r.heaven || '[있었고/없었고]') + '</b>, 이유 질문에 대한 대답은 <b>' + (r.reason || '[믿음/행위/모름/대답안함]') + '</b>이며, 진단은 <b>' + (diagName ? '(' + diagName + ')' : '[①비신자 ②착각비신자 ③확신부족 ④이미신자/머리신자]') + '</b>입니다.</span>' +
     '</div>' +
-    '<div style="margin-bottom:4mm;display:flex;align-items:baseline;gap:1mm;flex-wrap:wrap;">' +
+    '<div style="margin-bottom:var(--suju-gap,4mm);display:flex;align-items:baseline;gap:1mm;flex-wrap:wrap;">' +
     '<span style="font-weight:700;white-space:nowrap;">6.</span>' +
     '<span style="white-space:nowrap;">훈련생</span>' +
     '<span style="border-bottom:0.5pt solid #333;min-width:16mm;display:inline-block;text-align:center;font-weight:700;">' + (r.trainee1 || '') + '</span>' +
@@ -6919,22 +7014,22 @@ function buildSujuHtml(r) {
     '<span style="border-bottom:0.5pt solid #333;min-width:28mm;display:inline-block;font-weight:700;text-align:center;">' + (r.trainee_part || '') + '</span>' +
     '<span style="white-space:nowrap;">부분을 <b>' + (r.trainee_action || '[제시하였고/참관하였고]') + '</b>,</span>' +
     '</div>' +
-    '<div style="margin-bottom:4mm;display:flex;align-items:baseline;gap:1mm;flex-wrap:wrap;padding-left:4mm;">' +
+    '<div style="margin-bottom:var(--suju-gap,4mm);display:flex;align-items:baseline;gap:1mm;flex-wrap:wrap;padding-left:4mm;">' +
     '<span style="white-space:nowrap;">훈련자</span>' +
     '<span style="border-bottom:0.5pt solid #333;min-width:16mm;display:inline-block;text-align:center;font-weight:700;">' + (r.trainer || '') + '</span>' +
     '<span style="white-space:nowrap;">는(은)</span>' +
     '<span style="border-bottom:0.5pt solid #333;min-width:28mm;display:inline-block;font-weight:700;text-align:center;">' + (r.trainer_part || '') + '</span>' +
     '<span style="white-space:nowrap;">부분을 <b>' + (r.trainer_action || '[제시하였고/참관하였고]') + '</b>,</span>' +
     '</div>' +
-    '<div style="margin-bottom:4mm;display:flex;align-items:baseline;gap:1mm;flex-wrap:wrap;padding-left:4mm;">' +
+    '<div style="margin-bottom:var(--suju-gap,4mm);display:flex;align-items:baseline;gap:1mm;flex-wrap:wrap;padding-left:4mm;">' +
     '<span style="white-space:nowrap;">훈련자(조장)</span>' +
     '<span style="border-bottom:0.5pt solid #333;min-width:16mm;display:inline-block;text-align:center;font-weight:700;">' + (r.leader || '') + '</span>' +
     '<span style="white-space:nowrap;">는(은)</span>' +
     '<span style="border-bottom:0.5pt solid #333;min-width:28mm;display:inline-block;font-weight:700;text-align:center;">' + (r.leader_part || '') + '</span>' +
     '<span style="white-space:nowrap;">부분을 <b>' + (r.leader_action || '[제시하였고/참관하였고]') + '</b>,</span>' +
     '</div>' +
-    '<div style="margin-bottom:4mm;padding-left:4mm;">결과는 [<b>' + (r.result || '결신/보류·거절/확신/이미신자') + '</b>]입니다.</div>' +
-    '<div style="margin-bottom:4mm;display:flex;align-items:baseline;gap:1mm;flex-wrap:wrap;line-height:1.6;">' +
+    '<div style="margin-bottom:var(--suju-gap,4mm);padding-left:4mm;">결과는 [<b>' + (r.result || '결신/보류·거절/확신/이미신자') + '</b>]입니다.</div>' +
+    '<div style="margin-bottom:var(--suju-gap,4mm);display:flex;align-items:baseline;gap:1mm;flex-wrap:wrap;line-height:var(--suju-wrap-lh,1.6);">' +
     '<span style="font-weight:700;white-space:nowrap;">7.</span>' +
     '<span>즉석 양육을(<b>' + (r.immed_nurture || '[했고/안했고]') + '</b>), 후속 양육을(<b>' + fuText + '</b>)했습니다.</span>' +
     (fuReason ? '<span>' + fuReason + '</span>' : '') +
@@ -6954,12 +7049,12 @@ function buildSujuHtml(r) {
         if (q10) q8html +=
           '<div style="padding:0 2mm 0 2mm;">' +
           '<div style="color:#555;font-size:6.5pt;font-weight:700;margin-bottom:0.5mm;">(성령의 인도하심)</div>' +
-          '<div style="white-space:pre-wrap;word-break:break-all;border-bottom:0.5pt solid #bbb;padding-bottom:1.5mm;margin-bottom:1.5mm;line-height:5mm;">' + q10 + '</div>' +
+          '<div style="white-space:pre-wrap;word-break:break-all;border-bottom:0.5pt solid #bbb;padding-bottom:1.5mm;margin-bottom:1.5mm;line-height:var(--suju-ans-lh,5mm);">' + q10 + '</div>' +
           '</div>';
         if (q11) q8html +=
           '<div style="padding:0 2mm 0 2mm;">' +
           '<div style="color:#555;font-size:6.5pt;font-weight:700;margin-bottom:0.5mm;">(개선점)</div>' +
-          '<div style="white-space:pre-wrap;word-break:break-all;border-bottom:0.5pt solid #bbb;padding-bottom:1.5mm;margin-bottom:1.5mm;line-height:5mm;">' + q11 + '</div>' +
+          '<div style="white-space:pre-wrap;word-break:break-all;border-bottom:0.5pt solid #bbb;padding-bottom:1.5mm;margin-bottom:1.5mm;line-height:var(--suju-ans-lh,5mm);">' + q11 + '</div>' +
           '</div>';
         q8html += '</div>';
       } else {
@@ -6970,7 +7065,7 @@ function buildSujuHtml(r) {
         '<span style="white-space:nowrap;">기도제목은</span>' +
         '</div>';
       if (q12) {
-        q9html += '<div style="font-size:7.5pt;font-weight:700;white-space:pre-wrap;word-break:break-all;border-bottom:0.5pt solid #bbb;padding:0 2mm 1.5mm;margin-bottom:1.5mm;line-height:5mm;">' + q12 + '</div>';
+        q9html += '<div style="font-size:7.5pt;font-weight:700;white-space:pre-wrap;word-break:break-all;border-bottom:0.5pt solid #bbb;padding:0 2mm 1.5mm;margin-bottom:1.5mm;line-height:var(--suju-ans-lh,5mm);">' + q12 + '</div>';
       } else {
         q9html += '<div style="' + lineStyle + '"></div><div style="' + lineStyle + '"></div>';
       }
