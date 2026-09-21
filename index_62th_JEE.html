@@ -4775,11 +4775,14 @@ function onYeopjeopChange() {
   var fv = document.getElementById('diag-final-val');
   if (fv) { fv.textContent = result; fv.className = 'diag-final-val ' + (clsMap[result] || result); }
   document.getElementById('diag-final-row').style.display = 'flex';
-  // 이미신자/머리신자처럼 하나의 조합(있었고+믿음)에 두 갈래로 나뉘는 경우,
-  // 실제 선택한 값(testimony6)이 있으면 그 값만 진단명으로 사용 (결합 라벨 방지)
+  // 이미신자/머리신자, 확신부족신자/비신자처럼 하나의 조합(있었고+믿음 또는
+  // 없었고+믿음)이 두 갈래로 나뉘는 경우, 실제 선택한 값(testimony6/7)이
+  // 있으면 그 값만 진단명으로 사용 (결합 라벨 "확신부족 / 비신자" 방지)
   var diagLabel = info.diag;
   var t6ForDiag = radio('testimony6');
+  var t7ForDiag = radio('testimony7');
   if (t6ForDiag === '이미신자' || t6ForDiag === '머리신자') diagLabel = t6ForDiag;
+  else if (t7ForDiag === '확신부족신자' || t7ForDiag === '비신자') diagLabel = t7ForDiag;
   var saved = '진단: ' + diagLabel + ' | 영접: ' + yj + ' | 결과: ' + result;
   document.getElementById('diag-saved-result').value = saved;
   var resultEl = document.getElementById('q8_result');
