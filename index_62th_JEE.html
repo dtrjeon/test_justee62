@@ -1388,6 +1388,7 @@ pre.code-block {
 
   body.print-suju .suju-paper {
     box-shadow: none !important;
+    border: none !important;
     border-radius: 0 !important;
     margin: 0 !important;
     transform: none !important;
@@ -1575,7 +1576,8 @@ pre.code-block {
   min-height: 210mm;
   background: #fff;
   padding: 6mm 7mm 7mm;
-  box-shadow: 0 4px 28px rgba(120, 40, 200, 0.13);
+  border: 1px solid #ddd;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
   border-radius: 3px;
   font-size: 9pt;
   color: #111;
@@ -6489,6 +6491,9 @@ async function saveSujuAsJpg() {
     document.body.appendChild(container);
     container.innerHTML = buildSujuHtml(r);
     container.style.minHeight = SRC_H + 'mm';
+    // JPG 저장본에는 테두리를 명확히 보이게 인라인으로 직접 지정(캡처 누락 방지)
+    var paperEl = container.querySelector('.suju-paper');
+    if (paperEl) paperEl.style.border = '1px solid #ddd';
     await new Promise(function(res) { setTimeout(res, 120); });
 
     var capturePx = Math.max(container.scrollHeight, Math.round(SRC_H * PX_PER_MM));
