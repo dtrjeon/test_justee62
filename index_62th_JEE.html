@@ -6536,6 +6536,16 @@ async function saveSujuAsJpg() {
       Math.round(drawWmm * pxPerMmOut),
       Math.round(drawHmm * pxPerMmOut)
     );
+    // 캔버스에 직접 테두리를 그려서(캡처 과정에서 CSS border가 누락돼도) 확실히 보이게 함
+    var borderPx = Math.max(1, Math.round(pxPerMmOut * 0.35));
+    ctx.strokeStyle = '#dddddd';
+    ctx.lineWidth = borderPx;
+    ctx.strokeRect(
+      Math.round(offsetXmm * pxPerMmOut) + borderPx / 2,
+      Math.round(offsetYmm * pxPerMmOut) + borderPx / 2,
+      Math.round(drawWmm * pxPerMmOut) - borderPx,
+      Math.round(drawHmm * pxPerMmOut) - borderPx
+    );
 
     var imgData = a4Canvas.toDataURL('image/jpeg', 0.95);
     var a = document.createElement('a');
