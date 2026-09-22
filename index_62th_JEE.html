@@ -2278,15 +2278,12 @@ pre.code-block {
             <div style="border-bottom:0.5pt solid #bbb;min-height:5.5mm;margin-bottom:1.5mm;width:100%;"></div>
             <div style="border-bottom:0.5pt solid #bbb;min-height:5.5mm;margin-bottom:1.5mm;width:100%;"></div>
             <div style="border-bottom:0.5pt solid #bbb;min-height:5.5mm;margin-bottom:1.5mm;width:100%;"></div>
-            <div style="border-bottom:0.5pt solid #bbb;min-height:5.5mm;margin-bottom:1.5mm;width:100%;"></div>
-            <div style="border-bottom:0.5pt solid #bbb;min-height:5.5mm;margin-bottom:1.5mm;width:100%;"></div>
           </div>
         </div>
         <div style="padding:0 2mm 0 2mm;">
           <div style="color:#555;font-size:6.5pt;font-weight:700;margin-bottom:0.5mm;">(개선점)</div>
           <div id="sj_q11_text" style="display:none;white-space:pre-wrap;word-break:break-all;border-bottom:0.5pt solid #bbb;padding-bottom:1.5mm;margin-bottom:1.5mm;font-size:var(--suju-ans-font-size,8pt);line-height:var(--suju-ans-lh,5mm);"></div>
           <div id="sj_q11_empty">
-            <div style="border-bottom:0.5pt solid #bbb;min-height:5.5mm;margin-bottom:1.5mm;width:100%;"></div>
             <div style="border-bottom:0.5pt solid #bbb;min-height:5.5mm;margin-bottom:1.5mm;width:100%;"></div>
             <div style="border-bottom:0.5pt solid #bbb;min-height:5.5mm;margin-bottom:1.5mm;width:100%;"></div>
           </div>
@@ -2301,7 +2298,6 @@ pre.code-block {
       <div id="sj_q9_block" style="width:100%;font-size:7.5pt;font-weight:700;">
         <div id="sj_q9_text" style="display:none;white-space:pre-wrap;word-break:break-all;border-bottom:0.5pt solid #bbb;padding:0 2mm 1.5mm;margin-bottom:1.5mm;font-size:var(--suju-ans-font-size,8pt);line-height:var(--suju-ans-lh,5mm);"></div>
         <div id="sj_q9_empty">
-          <div style="border-bottom:0.5pt solid #bbb;min-height:5.5mm;margin-bottom:1.5mm;width:100%;"></div>
           <div style="border-bottom:0.5pt solid #bbb;min-height:5.5mm;margin-bottom:1.5mm;width:100%;"></div>
           <div style="border-bottom:0.5pt solid #bbb;min-height:5.5mm;margin-bottom:1.5mm;width:100%;"></div>
         </div>
@@ -7119,13 +7115,13 @@ function buildSujuHtml(r) {
         '<div style="color:#555;font-size:6.5pt;font-weight:700;margin-bottom:0.5mm;">(성령의 인도하심)</div>' +
         (q10
           ? '<div style="white-space:pre-wrap;word-break:break-all;border-bottom:0.5pt solid #bbb;padding-bottom:1.5mm;margin-bottom:1.5mm;line-height:var(--suju-ans-lh,5mm);">' + q10 + '</div>'
-          : blankLines(7)) +
+          : blankLines(5)) +
         '</div>';
       q8html += '<div style="padding:0 2mm 0 2mm;">' +
         '<div style="color:#555;font-size:6.5pt;font-weight:700;margin-bottom:0.5mm;">(개선점)</div>' +
         (q11
           ? '<div style="white-space:pre-wrap;word-break:break-all;border-bottom:0.5pt solid #bbb;padding-bottom:1.5mm;margin-bottom:1.5mm;line-height:var(--suju-ans-lh,5mm);">' + q11 + '</div>'
-          : blankLines(3)) +
+          : blankLines(2)) +
         '</div>';
       q8html += '</div>';
       var q9html = '<div style="margin-top:2mm;margin-bottom:1.5mm;display:flex;align-items:baseline;gap:1mm;">' +
@@ -7135,7 +7131,7 @@ function buildSujuHtml(r) {
       if (q12) {
         q9html += '<div style="font-size:var(--suju-ans-font-size,8pt);font-weight:700;white-space:pre-wrap;word-break:break-all;border-bottom:0.5pt solid #bbb;padding:0 2mm 1.5mm;margin-bottom:1.5mm;line-height:var(--suju-ans-lh,5mm);">' + q12 + '</div>';
       } else {
-        q9html += '<div style="font-size:var(--suju-ans-font-size,8pt);">' + blankLines(3) + '</div>';
+        q9html += '<div style="font-size:var(--suju-ans-font-size,8pt);">' + blankLines(2) + '</div>';
       }
       return q8html + q9html;
     })() +
