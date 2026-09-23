@@ -3516,9 +3516,42 @@ function apply7ilhu() {
     if (el) { el.value = '0'; el.readOnly = true; el.style.background = '#f0f0f0'; el.style.color = '#aaa'; }
   });
 
-  // 6. 후속양육 → 7일 후 재 방문 약속 자동 선택
-  var rb7 = document.querySelector('input[name="followup"][value="7일 후 재 방문 약속"]');
-  if (rb7) { rb7.checked = true; if (typeof updateFollowup === 'function') updateFollowup(); }
+  // 6. 후속양육 → 하지 못함 자동 선택
+  var rbNone = document.querySelector('input[name="followup"][value="하지 못함"]');
+  if (rbNone) { rbNone.checked = true; if (typeof updateFollowup === 'function') updateFollowup(); }
+
+  // 7. 결신자 이름 선택 말풍선
+  var relSel2 = document.getElementById('q3_relation_member');
+  if (relSel2) {
+    // 기존 말풍선 제거
+    var old = document.getElementById('balloon-7ilhu');
+    if (old) old.remove();
+    var balloon = document.createElement('div');
+    balloon.id = 'balloon-7ilhu';
+    balloon.textContent = '💬 결신자 이름을 선택해주세요';
+    balloon.style.cssText = 'position:absolute;background:#1a3ab0;color:#fff;font-size:12px;font-weight:700;padding:7px 13px;border-radius:8px;white-space:nowrap;z-index:999;pointer-events:none;box-shadow:0 2px 8px rgba(0,0,0,0.2);';
+    // 화살표
+    var arrow = document.createElement('div');
+    arrow.style.cssText = 'position:absolute;top:-7px;left:16px;width:0;height:0;border-left:7px solid transparent;border-right:7px solid transparent;border-bottom:7px solid #1a3ab0;';
+    balloon.appendChild(arrow);
+    // 위치: relSel2 바로 아래
+    relSel2.parentNode.style.position = 'relative';
+    relSel2.parentNode.appendChild(balloon);
+    var rect = relSel2.getBoundingClientRect();
+    balloon.style.top = (relSel2.offsetTop + relSel2.offsetHeight + 4) + 'px';
+    balloon.style.left = relSel2.offsetLeft + 'px';
+    // 3초 후 자동 제거
+    setTimeout(function() {
+      var b = document.getElementById('balloon-7ilhu');
+      if (b) b.remove();
+    }, 3000);
+    // 관계 드롭다운 변경 시 제거
+    relSel2.addEventListener('change', function removeBalloon() {
+      var b = document.getElementById('balloon-7ilhu');
+      if (b) b.remove();
+      relSel2.removeEventListener('change', removeBalloon);
+    });
+  }
 }
 
 // 7일후(팀) 선택 전 상태 스냅샷 저장/복원
