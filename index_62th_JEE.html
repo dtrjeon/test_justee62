@@ -3520,9 +3520,9 @@ function apply7ilhu() {
   var rbNone = document.querySelector('input[name="followup"][value="하지 못함"]');
   if (rbNone) { rbNone.checked = true; if (typeof updateFollowup === 'function') updateFollowup(); }
 
-  // 7. 결신자 이름 선택 말풍선
-  var relSel2 = document.getElementById('q3_relation_member');
-  if (relSel2) {
+  // 7. 결신자 이름 선택 말풍선 (복음제시 박스 아래)
+  var evangEl = document.getElementById('evang_type');
+  if (evangEl) {
     // 기존 말풍선 제거
     var old = document.getElementById('balloon-7ilhu');
     if (old) old.remove();
@@ -3530,27 +3530,29 @@ function apply7ilhu() {
     balloon.id = 'balloon-7ilhu';
     balloon.textContent = '💬 결신자 이름을 선택해주세요';
     balloon.style.cssText = 'position:absolute;background:#1a3ab0;color:#fff;font-size:12px;font-weight:700;padding:7px 13px;border-radius:8px;white-space:nowrap;z-index:999;pointer-events:none;box-shadow:0 2px 8px rgba(0,0,0,0.2);';
-    // 화살표
+    // 위쪽 화살표
     var arrow = document.createElement('div');
     arrow.style.cssText = 'position:absolute;top:-7px;left:16px;width:0;height:0;border-left:7px solid transparent;border-right:7px solid transparent;border-bottom:7px solid #1a3ab0;';
     balloon.appendChild(arrow);
-    // 위치: relSel2 바로 아래
-    relSel2.parentNode.style.position = 'relative';
-    relSel2.parentNode.appendChild(balloon);
-    var rect = relSel2.getBoundingClientRect();
-    balloon.style.top = (relSel2.offsetTop + relSel2.offsetHeight + 4) + 'px';
-    balloon.style.left = relSel2.offsetLeft + 'px';
-    // 3초 후 자동 제거
+    // 복음제시 박스 부모에 붙이기
+    evangEl.parentNode.style.position = 'relative';
+    evangEl.parentNode.appendChild(balloon);
+    balloon.style.top = (evangEl.offsetTop + evangEl.offsetHeight + 6) + 'px';
+    balloon.style.left = evangEl.offsetLeft + 'px';
+    // 5초 후 자동 제거
     setTimeout(function() {
       var b = document.getElementById('balloon-7ilhu');
       if (b) b.remove();
-    }, 3000);
+    }, 5000);
     // 관계 드롭다운 변경 시 제거
-    relSel2.addEventListener('change', function removeBalloon() {
-      var b = document.getElementById('balloon-7ilhu');
-      if (b) b.remove();
-      relSel2.removeEventListener('change', removeBalloon);
-    });
+    var relSel3 = document.getElementById('q3_relation_member');
+    if (relSel3) {
+      relSel3.addEventListener('change', function removeBalloon() {
+        var b = document.getElementById('balloon-7ilhu');
+        if (b) b.remove();
+        relSel3.removeEventListener('change', removeBalloon);
+      });
+    }
   }
 }
 
