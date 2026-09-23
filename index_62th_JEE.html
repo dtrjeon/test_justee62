@@ -5795,6 +5795,18 @@ function renderHistory(records, src, preserveFilter) {
       resultBadge = '<span style="' + rColor + 'font-size:10px;font-weight:700;border-radius:4px;padding:2px 7px;margin-left:6px;white-space:nowrap;display:inline-block;">' + resultText + '</span>';
     }
     var docNum = r.doc_number ? '<span style="font-size:10px;color:#2050c8;font-weight:700;background:#eef2ff;border-radius:4px;padding:2px 7px;margin-left:4px;">' + r.doc_number + '</span>' : '';
+    // 전도일 표시
+    var dateStr = '';
+    if(r.date){
+      var d=new Date(r.date);
+      if(!isNaN(d)){
+        var mm=String(d.getMonth()+1).padStart(2,'0');
+        var dd=String(d.getDate()).padStart(2,'0');
+        dateStr='<span style="font-size:10px;color:#666;margin-left:6px;">전도일: '+mm+'/'+dd+'</span>';
+      } else {
+        dateStr='<span style="font-size:10px;color:#666;margin-left:6px;">전도일: '+r.date+'</span>';
+      }
+    }
     // 관리자 모드: 중복 문서번호에 수정 이력 뱃지 표시
     var dupBadge = '';
     if (isAdmin && r.doc_number) {
@@ -5817,7 +5829,7 @@ function renderHistory(records, src, preserveFilter) {
       (src === 'server' ? '' : '<span class="src-badge ' + src + '">TEST</span>') +
       resultBadge +
       '</div>' +
-      '<div style="margin-top:3px;">' + docNum + dupBadge + '</div>' +
+      '<div style="margin-top:3px;">' + docNum + dateStr + dupBadge + '</div>' +
       '<div class="rc-meta">' +
       '👑 ' + (r.leader || '—') + ' &nbsp;👤 ' + (r.trainer || '—') + (r.trainee1 ? ', ' + r.trainee1 : '') +
       '<br>📍 ' + (r.location || '—') + ' ' + (r.name ? (/씨$/.test(r.name) ? r.name : r.name + '씨') : '') + ' ' + (r.age ? (/[세대]$/.test(r.age) ? r.age : r.age + '세') : '') +
