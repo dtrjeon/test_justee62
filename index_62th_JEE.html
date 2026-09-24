@@ -2355,9 +2355,24 @@ pre.code-block {
 <div class="history-container">
   <div class="history-header">
     <h2 class="server" id="history-title">전도보고서 기록</h2>
-    <div id="history-conn-badge" style="display:flex;align-items:center;gap:5px;padding:3px 9px;border-radius:6px;border:1px solid rgba(32,80,200,0.18);background:rgba(32,80,200,0.04);font-size:11px;font-weight:600;">
-      <span id="history-conn-dot" style="width:7px;height:7px;border-radius:50%;background:#e6b84a;flex-shrink:0;transition:background .3s;"></span>
-      <span id="history-conn-label" style="color:rgba(140,90,20,0.8);">미연결</span>
+    <div style="display:flex;align-items:center;gap:6px;">
+      <div id="history-conn-badge" style="display:flex;align-items:center;gap:5px;padding:3px 9px;border-radius:6px;border:1px solid rgba(32,80,200,0.18);background:rgba(32,80,200,0.04);font-size:11px;font-weight:600;">
+        <span id="history-conn-dot" style="width:7px;height:7px;border-radius:50%;background:#e6b84a;flex-shrink:0;transition:background .3s;"></span>
+        <span id="history-conn-label" style="color:rgba(140,90,20,0.8);">미연결</span>
+      </div>
+      <button type="button" onclick="toggleHistoryHelp()" title="아이콘 설명 보기" style="width:24px;height:24px;border-radius:50%;border:1px solid rgba(32,80,200,0.3);background:#fff;color:#2050c8;font-size:13px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;">?</button>
+    </div>
+  </div>
+  <div id="history-help-panel" style="display:none;background:#fff;border:1px solid rgba(32,80,200,0.2);border-radius:8px;padding:12px 14px;margin-bottom:10px;font-size:12px;line-height:1.6;color:#333;">
+    <div style="font-weight:700;font-size:13px;color:#1a3a9e;margin-bottom:8px;">ℹ️ 아이콘 설명</div>
+    <div style="display:grid;grid-template-columns:auto 1fr;gap:4px 8px;">
+      <div>👤 내 조 / 전체보기</div><div>내가 설정한 "내 조" 기준으로만 보기 ↔ 전체(관리자) 보기 전환<br><span style="color:#888;">예: 8조 조장이 본인 조 것만 빠르게 보고 싶을 때 누름</span></div>
+      <div>🔄 새로고침</div><div>서버에서 최신 데이터를 다시 받아옴 (지금 선택된 조회 조건은 유지)<br><span style="color:#888;">예: 다른 사람이 방금 제출한 보고서가 안 보일 때 누름</span></div>
+      <div>➕ / ➖</div><div>검색바(주차·조회) 보이기/숨기기만 함 (조건은 안 지워짐)<br><span style="color:#888;">예: 화면을 좀 넓게 쓰고 싶을 때 검색바를 접어둠</span></div>
+      <div>☑️ 선택출력</div><div>여러 건을 체크해서 한꺼번에 PDF 출력하거나 삭제하는 모드로 전환<br><span style="color:#888;">예: 이번 주차 보고서 5건을 한 번에 PDF로 뽑을 때</span></div>
+      <div>↺ 초기화</div><div>주차·조·전도유형 등 검색 조건만 전체 초기값으로 지움 (데이터는 그대로)<br><span style="color:#888;">예: 8조로 필터해놓고 다시 전체 조를 보고 싶을 때</span></div>
+      <div>🔍 조회</div><div>선택한 조건으로 목록을 필터링 실행 (문서번호 텍스트 검색 시에만 꼭 눌러야 함)<br><span style="color:#888;">예: 문서번호 "62-8"을 입력하고 조회를 눌러 찾기</span></div>
+      <div>🕒 정렬</div><div>누를 때마다 최신순 → 조 내림차순 → 조 오름차순 → 주차순으로 순환 (조회된 결과 안에서만 순서 변경)<br><span style="color:#888;">예: 조 번호 순서대로 쭉 훑어보고 싶을 때 몇 번 눌러서 "조 오름차순"으로 맞춤</span></div>
     </div>
   </div>
   <div class="history-toolbar-row">
@@ -3516,44 +3531,9 @@ function apply7ilhu() {
     if (el) { el.value = '0'; el.readOnly = true; el.style.background = '#f0f0f0'; el.style.color = '#aaa'; }
   });
 
-  // 6. 후속양육 → 하지 못함 자동 선택
-  var rbNone = document.querySelector('input[name="followup"][value="하지 못함"]');
-  if (rbNone) { rbNone.checked = true; if (typeof updateFollowup === 'function') updateFollowup(); }
-
-  // 7. 결신자 이름 선택 말풍선 (복음제시 박스 아래)
-  var evangEl = document.getElementById('evang_type');
-  if (evangEl) {
-    // 기존 말풍선 제거
-    var old = document.getElementById('balloon-7ilhu');
-    if (old) old.remove();
-    var balloon = document.createElement('div');
-    balloon.id = 'balloon-7ilhu';
-    balloon.textContent = '💬 결신자 이름을 선택해주세요';
-    balloon.style.cssText = 'position:absolute;background:#1a3ab0;color:#fff;font-size:12px;font-weight:700;padding:7px 13px;border-radius:8px;white-space:nowrap;z-index:999;pointer-events:none;box-shadow:0 2px 8px rgba(0,0,0,0.2);';
-    // 위쪽 화살표
-    var arrow = document.createElement('div');
-    arrow.style.cssText = 'position:absolute;top:-7px;left:16px;width:0;height:0;border-left:7px solid transparent;border-right:7px solid transparent;border-bottom:7px solid #1a3ab0;';
-    balloon.appendChild(arrow);
-    // 복음제시 박스 부모에 붙이기
-    evangEl.parentNode.style.position = 'relative';
-    evangEl.parentNode.appendChild(balloon);
-    balloon.style.top = (evangEl.offsetTop + evangEl.offsetHeight + 6) + 'px';
-    balloon.style.left = evangEl.offsetLeft + 'px';
-    // 5초 후 자동 제거
-    setTimeout(function() {
-      var b = document.getElementById('balloon-7ilhu');
-      if (b) b.remove();
-    }, 5000);
-    // 관계 드롭다운 변경 시 제거
-    var relSel3 = document.getElementById('q3_relation_member');
-    if (relSel3) {
-      relSel3.addEventListener('change', function removeBalloon() {
-        var b = document.getElementById('balloon-7ilhu');
-        if (b) b.remove();
-        relSel3.removeEventListener('change', removeBalloon);
-      });
-    }
-  }
+  // 6. 후속양육 → 7일 후 재 방문 약속 자동 선택
+  var rb7 = document.querySelector('input[name="followup"][value="7일 후 재 방문 약속"]');
+  if (rb7) { rb7.checked = true; if (typeof updateFollowup === 'function') updateFollowup(); }
 }
 
 // 7일후(팀) 선택 전 상태 스냅샷 저장/복원
@@ -5275,6 +5255,12 @@ function updateSortBtnLabel() {
   btn.title = info.title;
 }
 
+function toggleHistoryHelp() {
+  var panel = document.getElementById('history-help-panel');
+  if (!panel) return;
+  panel.style.display = (panel.style.display === 'none') ? 'block' : 'none';
+}
+
 function toggleSearch() {
   var bar = document.getElementById('search-bar');
   var btn = document.getElementById('search-btn');
@@ -5830,18 +5816,6 @@ function renderHistory(records, src, preserveFilter) {
       resultBadge = '<span style="' + rColor + 'font-size:10px;font-weight:700;border-radius:4px;padding:2px 7px;margin-left:6px;white-space:nowrap;display:inline-block;">' + resultText + '</span>';
     }
     var docNum = r.doc_number ? '<span style="font-size:10px;color:#2050c8;font-weight:700;background:#eef2ff;border-radius:4px;padding:2px 7px;margin-left:4px;">' + r.doc_number + '</span>' : '';
-    // 전도일 표시
-    var dateStr = '';
-    if(r.date){
-      var d=new Date(r.date);
-      if(!isNaN(d)){
-        var mm=String(d.getMonth()+1).padStart(2,'0');
-        var dd=String(d.getDate()).padStart(2,'0');
-        dateStr='<span style="font-size:10px;color:#666;margin-left:6px;">전도일: '+mm+'/'+dd+'</span>';
-      } else {
-        dateStr='<span style="font-size:10px;color:#666;margin-left:6px;">전도일: '+r.date+'</span>';
-      }
-    }
     // 관리자 모드: 중복 문서번호에 수정 이력 뱃지 표시
     var dupBadge = '';
     if (isAdmin && r.doc_number) {
@@ -5864,7 +5838,7 @@ function renderHistory(records, src, preserveFilter) {
       (src === 'server' ? '' : '<span class="src-badge ' + src + '">TEST</span>') +
       resultBadge +
       '</div>' +
-      '<div style="margin-top:3px;">' + docNum + dateStr + dupBadge + '</div>' +
+      '<div style="margin-top:3px;">' + docNum + dupBadge + '</div>' +
       '<div class="rc-meta">' +
       '👑 ' + (r.leader || '—') + ' &nbsp;👤 ' + (r.trainer || '—') + (r.trainee1 ? ', ' + r.trainee1 : '') +
       '<br>📍 ' + (r.location || '—') + ' ' + (r.name ? (/씨$/.test(r.name) ? r.name : r.name + '씨') : '') + ' ' + (r.age ? (/[세대]$/.test(r.age) ? r.age : r.age + '세') : '') +
