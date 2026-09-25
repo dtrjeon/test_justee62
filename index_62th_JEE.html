@@ -3638,13 +3638,62 @@ function buildReportWeekSelect() {
     var opt = document.createElement('option');
     opt.value = w;
     var wPeriod = computeWeekPeriod(w);
-    opt.textContent = w + '주차' + (wPeriod ? ' (' + wPeriod + ')' : '');
+    opt.textContent = w + '주차' + (wPeriod ? '(' + wPeriod + ')' : '');
     sel.appendChild(opt);
   }
 
   if (curVal) sel.value = curVal;
   updateTrainPeriodBadge();
   updateWeekPeriodText();
+
+  // 기록 탭 주차 셀렉트도 같은 기간으로 갱신
+  buildSearchWeekSelect();
+}
+
+// ── 기록 탭 주차 드롭다운: "N주차(MM/DD~MM/DD)" 형식 ─────────────
+function computeWeekPeriodPadded(week) {
+  week = parseInt(week, 10);
+  if (!week || week < 1) return '';
+  var start = new Date(localStorage.getItem('mon_trainStart') || '2026-08-30');
+  if (isNaN(start)) return '';
+  var dow = start.getDay();
+  var startMonday = new Date(start);
+  startMonday.setDate(start.getDate() + ((dow === 0) ? -6 : 1 - dow));
+  var ws = new Date(startMonday);
+  ws.setDate(startMonday.getDate() + (week - 1) * 7);
+  var we = new Date(ws);
+  we.setDate(ws.getDate() + 6);
+  var p2 = function(n) { return (n < 10 ? '0' : '') + n; };
+  var fmt = function(d) { return p2(d.getMonth() + 1) + '/' + p2(d.getDate()); };
+  return fmt(ws) + '~' + fmt(we);
+}
+
+function buildSearchWeekSelect() {
+  var weekSel = document.getElementById('search-week-sel');
+  if (!weekSel) return;
+  var curVal = weekSel.value;
+
+  // 최대 주차: 훈련 종료일 기준 (작성 탭과 동일 계산)
+  var maxWeek = 14;
+  var start = new Date(localStorage.getItem('mon_trainStart') || '2026-08-30');
+  var end   = new Date(localStorage.getItem('mon_trainEnd')   || '2026-11-29');
+  if (!isNaN(start) && !isNaN(end)) {
+    var dow = start.getDay();
+    var startMonday = new Date(start);
+    startMonday.setDate(start.getDate() + ((dow === 0) ? -6 : 1 - dow));
+    var diffDays = Math.floor((end - startMonday) / 86400000);
+    maxWeek = Math.max(1, Math.floor(diffDays / 7) + 1);
+  }
+
+  weekSel.innerHTML = '<option value="">전체</option>';
+  for (var w = 1; w <= maxWeek; w++) {
+    var opt = document.createElement('option');
+    opt.value = String(w);
+    var per = computeWeekPeriodPadded(w);
+    opt.textContent = w + '주차' + (per ? '(' + per + ')' : '');
+    weekSel.appendChild(opt);
+  }
+  if (curVal) weekSel.value = curVal;
 }
 
 // ── 선택된 주차의 기간(월/일~월/일) 계산 ─────────────────────
@@ -3668,7 +3717,8 @@ function computeWeekPeriod(week) {
   var weekEnd = new Date(weekStart);
   weekEnd.setDate(weekStart.getDate() + 6);
 
-  var fmt = function(d) { return (d.getMonth() + 1) + '/' + d.getDate(); };
+  var p2 = function(n) { return (n < 10 ? '0' : '') + n; };
+  var fmt = function(d) { return p2(d.getMonth() + 1) + '/' + p2(d.getDate()); };
   return fmt(weekStart) + '~' + fmt(weekEnd);
 }
 
@@ -5303,13 +5353,7 @@ function onSearchTypeChange() {
   } else if (type === 'week') {
     // 주차 셀렉트 빌드 (1~13주차)
     if (weekSel) {
-      weekSel.innerHTML = '<option value="">전체</option>';
-      for (var w = 1; w <= 13; w++) {
-        var opt = document.createElement('option');
-        opt.value = String(w);
-        opt.textContent = w + '주차';
-        weekSel.appendChild(opt);
-      }
+      buildSearchWeekSelect();
       weekSel.style.display = '';
     }
 
