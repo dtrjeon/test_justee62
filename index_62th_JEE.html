@@ -4205,13 +4205,13 @@ function buildRoleSections() {
     var allGospelItem =
       '<label class="ms-item" style="border-bottom:1px solid #e8eaf0;margin-bottom:4px;padding-bottom:4px;">' +
         '<input type="checkbox" name="' + m.id + '_role" value="전체복음" id="' + m.id + '_all_gospel" ' +
-        'onchange="onAllGospelChange(\'' + m.id + '\');updateRoleText(\'' + m.id + '\');syncPreview()"> ' +
+        'onchange="onAllGospelChange(\'' + m.id + '\');updateRoleText(\'' + m.id + '\', true);syncPreview()"> ' +
         '<span style="font-weight:700;color:#c65000;">✦ 전체복음</span>' +
       '</label>';
     var roleItems = ROLES.map(function(r) {
       return '<label class="ms-item"><input type="checkbox" name="' + m.id + '_role" value="' + r + '" ' +
         'id="' + m.id + '_role_' + r.replace(/[^a-zA-Z0-9가-힣]/g,'_') + '" ' +
-        'onchange="onRoleItemChange(\'' + m.id + '\');updateRoleText(\'' + m.id + '\');syncPreview()"> ' + r + '</label>';
+        'onchange="onRoleItemChange(\'' + m.id + '\');updateRoleText(\'' + m.id + '\', true);syncPreview()"> ' + r + '</label>';
     }).join('');
 
     document.getElementById('role-' + m.id).innerHTML =
@@ -4396,7 +4396,9 @@ document.addEventListener('click', function(e) {
   }
 });
 
-function updateRoleText(who) {
+// fromUser === true : 사용자가 역할 체크박스를 직접 바꾼 경우에만 제시/참관을 자동 전환한다.
+// (복원·탭 이동·초기화 등에서 호출될 때는 사용자가 고른 제시/참관/불참 값을 그대로 유지)
+function updateRoleText(who, fromUser) {
   var allChecked = [].slice.call(document.querySelectorAll('input[name="' + who + '_role"]:checked')).map(function(e) {
     return e.value;
   });
@@ -4430,7 +4432,7 @@ function updateRoleText(who) {
   }
   var a1 = document.getElementById(who + '_a1');
   var a2 = document.getElementById(who + '_a2');
-  if (a1 && a2) {
+  if (fromUser && a1 && a2) {
     if (checked.length > 0) {
       a1.checked = true;
       a2.checked = false;
@@ -4478,7 +4480,7 @@ function removeRole(who, val) {
   var cb = document.querySelector('input[name="' + who + '_role"][value="' + val + '"]');
   if (cb) {
     cb.checked = false;
-    updateRoleText(who);
+    updateRoleText(who, true);
     syncPreview();
   }
 }
@@ -4926,7 +4928,8 @@ function onYeopjeopChange() {
               document.querySelectorAll('input[name="' + evangMemberId + '_role"]').forEach(function(el) {
                 el.checked = autoParts.indexOf(el.value) > -1;
               });
-              updateRoleText(evangMemberId);
+              // 파트 자동설정 = 전도자가 직접 제시한 것 → 제시하였고 자동 선택 유지
+              updateRoleText(evangMemberId, true);
             }
           }
         }
@@ -5860,6 +5863,15 @@ function renderHistory(records, src, preserveFilter) {
       resultBadge = '<span style="' + rColor + 'font-size:10px;font-weight:700;border-radius:4px;padding:2px 7px;margin-left:6px;white-space:nowrap;display:inline-block;">' + resultText + '</span>';
     }
     var docNum = r.doc_number ? '<span style="font-size:10px;color:#2050c8;font-weight:700;background:#eef2ff;border-radius:4px;padding:2px 7px;margin-left:4px;">' + r.doc_number + '</span>' : '';
+    // 전도일 뱃지 (문서번호 옆) — "전도일 09/13(토)"
+    var evDateBadge = (function() {
+      var ds = String(r.date || '').trim();
+      var m = ds.match(/^(\d{4})-(\d{2})-(\d{2})/);
+      if (!m) return '';
+      var dd = new Date(+m[1], +m[2] - 1, +m[3]);
+      var dow = isNaN(dd) ? '' : '(' + '일월화수목금토'.charAt(dd.getDay()) + ')';
+      return '<span style="font-size:10px;color:#1a6b3c;font-weight:700;background:#eaf6ee;border-radius:4px;padding:2px 7px;margin-left:4px;white-space:nowrap;">📅 전도일 ' + m[2] + '/' + m[3] + dow + '</span>';
+    })();
     // 관리자 모드: 중복 문서번호에 수정 이력 뱃지 표시
     var dupBadge = '';
     if (isAdmin && r.doc_number) {
@@ -5882,7 +5894,7 @@ function renderHistory(records, src, preserveFilter) {
       (src === 'server' ? '' : '<span class="src-badge ' + src + '">TEST</span>') +
       resultBadge +
       '</div>' +
-      '<div style="margin-top:3px;">' + docNum + dupBadge + '</div>' +
+      '<div style="margin-top:3px;">' + docNum + evDateBadge + dupBadge + '</div>' +
       '<div class="rc-meta">' +
       '👑 ' + (r.leader || '—') + ' &nbsp;👤 ' + (r.trainer || '—') + (r.trainee1 ? ', ' + r.trainee1 : '') +
       '<br>📍 ' + (r.location || '—') + ' ' + (r.name ? (/씨$/.test(r.name) ? r.name : r.name + '씨') : '') + ' ' + (r.age ? (/[세대]$/.test(r.age) ? r.age : r.age + '세') : '') +
@@ -6074,6 +6086,8 @@ function resetForm() {
     });
   }
   MEMBERS.forEach(function(m) {
+    var a2r = document.getElementById(m.id + '_a2');
+    if (a2r) a2r.checked = true;   // 초기화 시 기본값 참관하였고
     updateRoleText(m.id);
   });
   syncRoleAvailability();
