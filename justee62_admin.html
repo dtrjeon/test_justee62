@@ -1167,7 +1167,7 @@ tr:last-child td {
 </style>
 </head>
 <body>
-<div style="position:fixed;top:2px;left:4px;font-size:9px;color:rgba(255,255,255,0.35);z-index:99999;pointer-events:none;font-family:monospace;letter-spacing:.3px;">v2026.09.27-57(7ilhu-result-restored)</div>
+<div style="position:fixed;top:2px;left:4px;font-size:9px;color:rgba(255,255,255,0.35);z-index:99999;pointer-events:none;font-family:monospace;letter-spacing:.3px;">v2026.09.27-58(ques2day-check)</div>
 <script>
 // ── 테스트 모드 데이터 ──────────────────────────────────────────────────────
 // 테스트 모드 ON: window.TEST_MODE = true
@@ -4321,7 +4321,7 @@ function renderWeekly2Html(data, w) {
         (mi===0 ? '<td style="text-align:center;border-right:1px solid #c5cde8;'+(joRelCnt>=6?'background:#fffde7;':'')+'" rowspan="'+rowspan+'">'+(joRelCnt>0?(joRelCnt>=7?'<b style="color:var(--green)">✔ '+joRelCnt+'</b>':joRelCnt>=6?'<b style="color:#e65100;">'+joRelCnt+'</b>':'<span style="color:#e65100;">'+joRelCnt+'</span>'):DASH)+'</td>' : '') +
         // 질문지(팀) — 첫 행에만 rowspan
         (mi===0 ? '<td style="text-align:center;font-weight:700;" rowspan="'+rowspan+'">'+(joQuesCnt||DASH)+'</td>' : '') +
-        (mi===0 ? '<td style="text-align:center;border-right:1px solid #c5cde8;'+(joQuesDateCnt>=2?'background:#fffde7;':'')+'" rowspan="'+rowspan+'">'+(joQuesDateCnt>0?(joQuesDateCnt>=3?'<b style="color:var(--green)">✔ '+joQuesDateCnt+'</b>':joQuesDateCnt>=2?'<b style="color:#e65100;">'+joQuesDateCnt+'</b>':'<span style="color:#e65100;">'+joQuesDateCnt+'</span>'):DASH)+'</td>' : '') +
+        (mi===0 ? '<td style="text-align:center;border-right:1px solid #c5cde8;'+(joQuesDateCnt>=2?'background:#fffde7;':'')+'" rowspan="'+rowspan+'">'+(joQuesDateCnt>0?(joQuesDateCnt>=2?'<b style="color:var(--green)">✔ '+joQuesDateCnt+'</b>':'<span style="color:#e65100;">'+joQuesDateCnt+'</span>'):DASH)+'</td>' : '') +
         // 7일후(팀) — 첫 행에만 rowspan
         (mi===0 ? '<td style="text-align:center;border-right:1px solid #c5cde8;'+(joDay7Cnt>=1?'background:#fffde7;':'')+'" rowspan="'+rowspan+'">'+(joDay7Cnt>=1?'<b style="color:var(--green)">✔ '+joDay7Cnt+'</b>':DASH)+'</td>' : '') +
         // 수료요건 — 첫 행에만 rowspan
