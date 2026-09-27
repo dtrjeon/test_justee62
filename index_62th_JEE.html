@@ -2518,7 +2518,7 @@ pre.code-block {
   });
 })();
 
-const APP_VERSION  = 'index v2026.09.27c';
+const APP_VERSION  = 'index v2026.09.27d';
 const LS_SEQ       = 'report_seq_counter';
 const LS_JO        = 'report_jo_data';
 const LS_SUBMITTED = 'report_submitted';
@@ -3549,12 +3549,42 @@ function fix7ilhuResultOnLoad() {
   var cur = (q8.value || '').trim();
   if (cur && cur !== '7일후') return; // 이미 최종결과로 저장된 기록
   var fv = document.getElementById('diag-final-val');
-  var fin = fv ? (fv.textContent || '').trim() : '';
+  // 저장된 진단결과가 있을 때만 화면의 최종결과를 신뢰 (이전에 불러온 기록 값이 남아있는 경우 방지)
+  var fin = (fv && v('diag-saved-result')) ? (fv.textContent || '').trim() : '';
   if (!fin || fin === '7일후') {
+    fin = '';
     var hv = radio('heaven'), rs = radio('reason'), yj = radio('yeopjeop');
-    fin = (hv && rs && yj) ? calcResult(hv, rs, yj) : '';
+    var t6 = radio('testimony6');
+    var savedDiag = v('diag-saved-result');
+    // ① 이미신자(있었고+믿음+이미신자, 또는 저장된 진단명이 이미신자) → 영접여부와 무관하게 이미신자
+    if ((hv === '있었고' && rs === '믿음' && t6 === '이미신자') || /진단\s*:\s*이미신자/.test(savedDiag)) {
+      fin = '이미신자';
+      // 예전 버전 기본값(이미신자인데 영접 선택) 보정 → 불필요
+      if (typeof updateYeopjeopOptions === 'function' && hv === '있었고' && rs === '믿음') {
+        updateYeopjeopOptions('unnecessary');
+        var yj3 = document.getElementById('yj3');
+        if (yj3) yj3.checked = true;
+        if (savedDiag) {
+          document.getElementById('diag-saved-result').value =
+            savedDiag.replace(/영접\s*:\s*[^|]*/, '영접: 불필요 ');
+        }
+      }
+    // ② 진단 입력이 모두 있으면 규칙대로 계산
+    } else if (hv && rs && yj) {
+      fin = calcResult(hv, rs, yj);
+    }
   }
-  if (!fin || fin === '-') return;
+  if (!fin || fin === '-') {
+    // 진단 정보가 없어 계산 불가 — 결과·최종결과 표시를 비우고 진단 입력을 안내
+    q8.value = '';
+    if (fv) fv.textContent = '';
+    var frEmpty = document.getElementById('diag-final-row');
+    if (frEmpty) frEmpty.style.display = 'none';
+    setTimeout(function() {
+      showStatus('⚠️ 예전 7일후 기록이라 진단(천국확신·이유·영접여부)이 없습니다. 진단을 입력하면 결과가 자동으로 채워집니다.', 'warn');
+    }, 1200);
+    return;
+  }
   q8.value = fin;
   var clsMap = { '결신': '결신', '이미신자': '이미신자', '확신': '확신', '보류/거부': '보류거부' };
   if (fv) { fv.textContent = fin; fv.className = 'diag-final-val ' + (clsMap[fin] || fin); }
