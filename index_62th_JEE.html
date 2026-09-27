@@ -2518,7 +2518,7 @@ pre.code-block {
   });
 })();
 
-const APP_VERSION  = 'index v2026.09.27';
+const APP_VERSION  = 'index v2026.09.27c';
 const LS_SEQ       = 'report_seq_counter';
 const LS_JO        = 'report_jo_data';
 const LS_SUBMITTED = 'report_submitted';
@@ -2784,7 +2784,10 @@ function applyFormData(r) {
 
   // 17. 7일후(팀) 자동설정 — 모든 필드 복원 후 마지막에 적용
   _pre7ilhu = null; // 불러오기 시에는 스냅샷 복원 차단
-  if (r.evang_type === '7일후(팀)') apply7ilhu();
+  if (r.evang_type === '7일후(팀)') {
+    apply7ilhu(true);
+    fix7ilhuResultOnLoad();
+  }
   // QQ/질문지(팀) → 관계조원 "-" 자동
   if (r.evang_type === 'QQ' || r.evang_type === '질문지(팀)') {
     var qqRelSel = document.getElementById('q3_relation_member');
@@ -3483,7 +3486,8 @@ async function suggestEvangCount() {
 }
 
 // 7일후(팀) 선택 시 관련 필드 자동설정 — onEvangTypeChange·applyFormData 공용
-function apply7ilhu() {
+// fromLoad === true : 기록 불러오기 — 저장된 진단(확신/이유/간증/영접)을 기본값으로 덮어쓰지 않음
+function apply7ilhu(fromLoad) {
   // 1. 관계 드롭다운 → 결신자 (옵션 없으면 추가)
   var relSel = document.getElementById('q3_relation_member');
   if (relSel) {
@@ -3501,28 +3505,24 @@ function apply7ilhu() {
 
   // 1.5 확신 및 이유 질문 → 있었고 + 믿음(예수님) + 이미신자로 기본값 자동 설정
   //     (대부분 이미 지난주에 결신한 사람이므로 기본값일 뿐, 아래에서 자유롭게 변경 가능)
-  var hEl = document.getElementById('h2'); // 있었고
-  var rEl = document.getElementById('r1'); // 믿음
-  if (hEl) hEl.checked = true;
-  if (rEl) rEl.checked = true;
-  if (typeof onQ5Change === 'function') onQ5Change();
-  var t61 = document.getElementById('t61'); // 이미신자
-  if (t61) t61.checked = true;
-  if (typeof onTestimony6Change === 'function') onTestimony6Change();
-  // 영접여부: 세 버튼 모두 노출한 뒤 기본값 "영접"으로 표시(필요시 변경 가능)
-  if (typeof updateYeopjeopOptions === 'function') updateYeopjeopOptions('normal');
-  var yj1 = document.getElementById('yj1');
-  if (yj1) yj1.checked = true;
+  //     이미신자 → 영접여부 "불필요" 자동, 최종결과·8번 결과 "이미신자"
+  if (!fromLoad) {
+    var hEl = document.getElementById('h2'); // 있었고
+    var rEl = document.getElementById('r1'); // 믿음
+    if (hEl) hEl.checked = true;
+    if (rEl) rEl.checked = true;
+    if (typeof onQ5Change === 'function') onQ5Change();
+    var t61 = document.getElementById('t61'); // 이미신자
+    if (t61) t61.checked = true;
+    if (typeof onTestimony6Change === 'function') onTestimony6Change();
+  }
 
   // 2. 대상자 구분 → 7일후
   var ttSel = document.getElementById('q3_target_type');
   if (ttSel) ttSel.value = '7일후';
 
-  // 3~4. 위 확신/이유/개인간증/영접여부는 기본값일 뿐 자유롭게 바꿀 수 있고,
-  //      실제로 결신 등 다른 최종결과가 나와도 "결과"(q8_result)는
-  //      syncPreview()에서 항상 "7일후"로 고정 반영한다.
-  var q8 = document.getElementById('q8_result');
-  if (q8) q8.value = '7일후';
+  // 3~4. "결과"(q8_result)는 진단의 최종결과와 동일하게 둔다 (결신/확신/이미신자/보류/거부).
+  //      단, 통계(결신·보류/거절·확신·이미신자)에는 반영하지 않는다 → 아래 5번에서 0 고정.
 
 
   // 5. 통계 결신·보류/거절·확신·이미신자 → 0 고정
@@ -3531,13 +3531,38 @@ function apply7ilhu() {
     if (el) { el.value = '0'; el.readOnly = true; el.style.background = '#f0f0f0'; el.style.color = '#aaa'; }
   });
 
-  // 6. 후속양육 → "하지 못함" 자동 선택 + 사유 "7일후" 입력
+  // 6. 후속양육 → "하지 못함" 자동 선택 + 사유 "-" 입력
   var rbNo = document.querySelector('input[name="followup"][value="하지 못함"]');
   if (rbNo) {
     rbNo.checked = true;
     if (typeof updateFollowup === 'function') updateFollowup(); // 사유 입력칸 표시
     var frIn = document.getElementById('followup_reason');
-    if (frIn && !frIn.value) frIn.value = '7일후'; // 이미 입력된 사유는 유지
+    // 비어 있거나 이전 자동값("7일후")이면 "-"로, 직접 입력한 사유는 유지
+    if (frIn && (!frIn.value || frIn.value === '7일후')) frIn.value = '-';
+  }
+}
+
+// 예전 7일후(팀) 기록(결과가 "7일후"로 저장됨)을 불러올 때 — 진단으로 최종결과를 다시 계산해 결과에 반영
+function fix7ilhuResultOnLoad() {
+  var q8 = document.getElementById('q8_result');
+  if (!q8) return;
+  var cur = (q8.value || '').trim();
+  if (cur && cur !== '7일후') return; // 이미 최종결과로 저장된 기록
+  var fv = document.getElementById('diag-final-val');
+  var fin = fv ? (fv.textContent || '').trim() : '';
+  if (!fin || fin === '7일후') {
+    var hv = radio('heaven'), rs = radio('reason'), yj = radio('yeopjeop');
+    fin = (hv && rs && yj) ? calcResult(hv, rs, yj) : '';
+  }
+  if (!fin || fin === '-') return;
+  q8.value = fin;
+  var clsMap = { '결신': '결신', '이미신자': '이미신자', '확신': '확신', '보류/거부': '보류거부' };
+  if (fv) { fv.textContent = fin; fv.className = 'diag-final-val ' + (clsMap[fin] || fin); }
+  var fr = document.getElementById('diag-final-row');
+  if (fr) fr.style.display = 'flex';
+  var savedEl = document.getElementById('diag-saved-result');
+  if (savedEl && /결과\s*:\s*7일후/.test(savedEl.value)) {
+    savedEl.value = savedEl.value.replace(/결과\s*:\s*7일후/, '결과: ' + fin);
   }
 }
 
@@ -3600,10 +3625,10 @@ function restore7ilhu() {
   var q8 = document.getElementById('q8_result');
   if (q8) q8.value = snap.q8_result;
 
-  // 후속양육 — 7일후(팀) 자동설정값(하지 못함 + 사유 "7일후")이 그대로면 선택 해제
+  // 후속양육 — 7일후(팀) 자동설정값(하지 못함 + 사유 "-")이 그대로면 선택 해제
   var frIn2 = document.getElementById('followup_reason');
   var rbNo2 = document.querySelector('input[name="followup"][value="하지 못함"]');
-  if (rbNo2 && rbNo2.checked && frIn2 && frIn2.value === '7일후') {
+  if (rbNo2 && rbNo2.checked && frIn2 && (frIn2.value === '-' || frIn2.value === '7일후')) {
     rbNo2.checked = false;
     frIn2.value = '';
     if (typeof updateFollowup === 'function') updateFollowup();
@@ -6114,18 +6139,12 @@ function resetForm() {
 // 임상(A4) 양식 삭제로 내부 로직은 제거됨 — 폼 전반의 다른 이벤트 핸들러들이
 // 여전히 이 함수를 호출하므로(오류 방지를 위해) 빈 함수로 유지
 function syncPreview() {
-  // 7일후(팀)는 실제 진단(확신/이유/개인간증 등 최종결과)이 무엇으로 나오든
-  // 강제로 미리 채우지 않고 사용자가 직접 답하게 두되, 시트에 저장되는
-  // "결과"(q8_result) 값만은 항상 "7일후"로 고정한다. (최종결과·진단은 그대로 둠)
+  // 7일후(팀): 결과는 최종결과와 동일하게 저장하되, 통계(결신·보류/거절·확신·이미신자)는 항상 0
   if (v('evang_type') === '7일후(팀)') {
-    var q8 = document.getElementById('q8_result');
-    if (q8 && q8.value !== '7일후') q8.value = '7일후';
-    var savedEl = document.getElementById('diag-saved-result');
-    if (savedEl && savedEl.value && !/결과\s*:\s*7일후\s*$/.test(savedEl.value)) {
-      savedEl.value = /결과\s*:/.test(savedEl.value)
-        ? savedEl.value.replace(/결과\s*:\s*[^|]*$/, '결과: 7일후')
-        : savedEl.value;
-    }
+    ['t_decision', 't_reject', 't_confirm', 't_believer'].forEach(function(id) {
+      var el = document.getElementById(id);
+      if (el && el.value !== '0') el.value = '0';
+    });
   }
 }
 
