@@ -1167,7 +1167,7 @@ tr:last-child td {
 </style>
 </head>
 <body>
-<div style="position:fixed;top:2px;left:4px;font-size:9px;color:rgba(255,255,255,0.35);z-index:99999;pointer-events:none;font-family:monospace;letter-spacing:.3px;">v2026.09.27-58(ques2day-check)</div>
+<div style="position:fixed;top:2px;left:4px;font-size:9px;color:rgba(255,255,255,0.35);z-index:99999;pointer-events:none;font-family:monospace;letter-spacing:.3px;">v2026.09.28-62(member-slot-by-name)</div>
 <script>
 // ── 테스트 모드 데이터 ──────────────────────────────────────────────────────
 // 테스트 모드 ON: window.TEST_MODE = true
@@ -3146,6 +3146,35 @@ function isDidAction(v) {
   return v === '제시하였고' || v === '하였고';
 }
 
+// ── 조원 ↔ 보고서 자리(슬롯) 매칭 ─────────────────────────────────────────────
+// 보고서(index_62th_JEE.html)는 조원 자리가 [훈련자(조장) / 훈련자 / 훈련생] 3칸으로 고정되어 있고,
+// 행동·역할도 그 자리 기준(훈련자(조장)행동 / 훈련자행동 / 훈련생행동)으로 저장된다.
+// 조 구성이 "훈련자(조장)+훈련자+훈련자"인 경우 뒤쪽 훈련자(단계가 낮은 쪽)는 훈련생 자리에 앉으므로
+// 그 사람의 기록은 '훈련생' 칸에 저장된다. 따라서 MEMBERS의 role이 아니라
+// 레코드의 이름 칸(leader/trainer/trainee) 중 실제로 이름이 일치하는 자리로 찾아야 한다.
+function _nm(v) { return String(v || '').trim(); }
+function memberSlot(r, m) {
+  if (!r || !m) return '';
+  var nm = _nm(m.name);
+  var L = _nm(r.leader), T = _nm(r.trainer), E = _nm(r.trainee);
+  if (nm) {
+    if (L === nm) return 'leader';
+    if (T === nm) return 'trainer';
+    if (E === nm) return 'trainee';
+  }
+  // 이름 칸이 모두 비어있는 예전 데이터만 기존 역할 기준으로 처리
+  if (!L && !T && !E) return m.role === '리더' ? 'leader' : m.role === '훈련자' ? 'trainer' : 'trainee';
+  return '';
+}
+function memberAction(r, m) {
+  var s = memberSlot(r, m);
+  return s === 'leader' ? r.leaderAction : s === 'trainer' ? r.trainerAction : s === 'trainee' ? r.traineeAction : '';
+}
+function memberPart(r, m) {
+  var s = memberSlot(r, m);
+  return s === 'leader' ? r.leaderPart : s === 'trainer' ? r.trainerPart : s === 'trainee' ? r.traineePart : '';
+}
+
 // ── 렌더링 총괄 ──────────────────────────────────────────────────────────────
 function renderAll() {
   updateGospelResultLabels();
@@ -3868,9 +3897,7 @@ function renderTab0(data, w) {
       return String(m.jo) === String(jo);
     });
     joMembers.forEach(function(m) {
-      var action = m.role === '리더' ? (joRecs[0] ? joRecs[0].leaderAction : '') :
-        m.role === '훈련자' ? (joRecs[0] ? joRecs[0].trainerAction : '') :
-        (joRecs[0] ? joRecs[0].traineeAction : '');
+      var action = memberAction(joRecs[0], m) || '';
       if (isDidAction(action)) {
         if (m.role === '리더') leaderCnt++;
         else if (m.role === '훈련자') trainerCnt++;
@@ -4037,9 +4064,7 @@ function renderTab0(data, w) {
       var isPersonal = (recEvangType === '개인' || recEvangType === '관계');
 
       joMembers.forEach(function(m, mi) {
-        var action = m.role === '리더' ? (rec ? rec.leaderAction : '') :
-          m.role === '훈련자' ? (rec ? rec.trainerAction : '') :
-          (rec ? rec.traineeAction : '');
+        var action = memberAction(rec, m) || '';
 
         // 개인전도: action이 비어있으면 relationMember(전도자)와 이름 비교로 판별
         if (isPersonal && !action) {
@@ -4093,9 +4118,7 @@ function renderTab0(data, w) {
         var PARTS = ['간증', '서론', '은혜', '인간', '하나님', '그리스도', '믿음', '결신', '즉석양육'];
         var isTeam = recEvangType === '관계(팀)';
         var markColor = isTeam ? '#1565c0' : '#e65100';
-        var mPart = m.role === '리더' ? (rec ? rec.leaderPart : '') :
-          m.role === '훈련자' ? (rec ? rec.trainerPart : '') :
-          (rec ? rec.traineePart : '');
+        var mPart = memberPart(rec, m) || '';
         var partArr = mPart ? mPart.split(',').map(function(s) { return s.trim(); }).filter(Boolean) : [];
 
         // 역할배분 없음 + 개인전도 → 결과에 따라 파트 자동 설정
@@ -4152,9 +4175,7 @@ function renderTab0(data, w) {
         // absentType: 'personal'=개인전도불참, 'team'=팀전도불참, 'error'=잘못된참관, ''=정상
         var absentType = '';
         if (isPersonal) {
-          var mmAction = m.role === '리더' ? (rec ? rec.leaderAction : '') :
-            m.role === '훈련자' ? (rec ? rec.trainerAction : '') :
-            (rec ? rec.traineeAction : '');
+          var mmAction = memberAction(rec, m) || '';
           if (!mmAction) {
             var evangName = rec ? (rec.relationMember || '').replace(/\(.*?\)/g, '').trim() : '';
             mmAction = (evangName && m.name === evangName) ? '제시하였고' : '';
@@ -4255,9 +4276,9 @@ function renderWeekly2Html(data, w) {
 
       // 본인 레코드 필터
       var myRecs = allRecs.filter(function(r){
-        if (m.role==='리더') return r.leader===m.name;
-        if (m.role==='훈련자') return r.trainer===m.name;
-        return r.trainee===m.name;
+        // 자리(조장/훈련자/훈련생 칸) 상관없이 이름이 들어있는 기록 = 본인 기록
+        var nm = _nm(m.name);
+        return !!nm && (_nm(r.leader)===nm || _nm(r.trainer)===nm || _nm(r.trainee)===nm);
       });
 
       // 전도유형별 횟수
@@ -4286,21 +4307,22 @@ function renderWeekly2Html(data, w) {
       // 복음참여 파트 (관계팀 레코드만 반영 — 질문지/7일후/개인전도 제외)
       var actRecs = myRecs.filter(function(r){
         if (r.evangType !== '관계(팀)') return false;
-        var act = m.role==='리더' ? r.leaderAction : m.role==='훈련자' ? r.trainerAction : r.traineeAction;
+        var act = memberAction(r, m);
         return isDidAction(act);
       });
       var partCounts = {};
       PARTS2.forEach(function(p){ partCounts[p]=0; });
       actRecs.forEach(function(r){
-        var pt = m.role==='리더' ? r.leaderPart : m.role==='훈련자' ? r.trainerPart : r.traineePart;
+        var pt = memberPart(r, m);
         if (pt) pt.split(',').map(function(s){ return s.trim(); }).forEach(function(p){
           if (partCounts[p]!==undefined) partCounts[p]++;
         });
       });
 
-      // 풀복음 완료일 (이름 기준, 형식 MM/DD)
+      // 풀복음 완료일 (이름 기준, 형식 MM/DD) — 관계(팀) 전도 기록만 반영
       var gospelDateVal = DASH;
       allData.forEach(function(r) {
+        if (r.evangType !== '관계(팀)') return;
         if (!r.gospelDate) return;
         r.gospelDate.split('|').forEach(function(p) {
           var ci = p.indexOf(':');
@@ -4313,36 +4335,37 @@ function renderWeekly2Html(data, w) {
       var gospelDoneCell = '<span style="font-size:10px;color:' + (gospelDateVal !== DASH ? 'var(--green);font-weight:700;' : '#bbb;') + '">' + gospelDateVal + '</span>';
 
       html += '<tr class="jo-row' + (mi===0?' jo-row-first':'') + '">' +
-        (mi===0 ? '<td class="td-jo" rowspan="'+rowspan+'">'+jo+'</td>' : '') +
-        '<td class="td-name" style="'+roleCls+'">'+m.name+'</td>' +
-        '<td class="td-role">'+roleBadge+'</td>' +
-        '<td style="border-right:1px solid #c5cde8;text-align:center;">'+( m.step||DASH)+'</td>' +
+        (mi===0 ? '<td class="td-jo" data-col="1" rowspan="'+rowspan+'">'+jo+'</td>' : '') +
+        '<td class="td-name" data-col="2" style="'+roleCls+'">'+m.name+'</td>' +
+        '<td class="td-role" data-col="3">'+roleBadge+'</td>' +
+        '<td data-col="4" style="border-right:1px solid #c5cde8;text-align:center;">'+( m.step||DASH)+'</td>' +
         // 관계(팀) — 첫 행에만 rowspan으로 병합
-        (mi===0 ? '<td style="text-align:center;border-right:1px solid #c5cde8;'+(joRelCnt>=6?'background:#fffde7;':'')+'" rowspan="'+rowspan+'">'+(joRelCnt>0?(joRelCnt>=7?'<b style="color:var(--green)">✔ '+joRelCnt+'</b>':joRelCnt>=6?'<b style="color:#e65100;">'+joRelCnt+'</b>':'<span style="color:#e65100;">'+joRelCnt+'</span>'):DASH)+'</td>' : '') +
+        (mi===0 ? '<td data-col="5" style="text-align:center;border-right:1px solid #c5cde8;'+(joRelCnt>=6?'background:#fffde7;':'')+'" rowspan="'+rowspan+'">'+(joRelCnt>0?(joRelCnt>=7?'<b style="color:var(--green)">✔ '+joRelCnt+'</b>':joRelCnt>=6?'<b style="color:#e65100;">'+joRelCnt+'</b>':'<span style="color:#e65100;">'+joRelCnt+'</span>'):DASH)+'</td>' : '') +
         // 질문지(팀) — 첫 행에만 rowspan
-        (mi===0 ? '<td style="text-align:center;font-weight:700;" rowspan="'+rowspan+'">'+(joQuesCnt||DASH)+'</td>' : '') +
-        (mi===0 ? '<td style="text-align:center;border-right:1px solid #c5cde8;'+(joQuesDateCnt>=2?'background:#fffde7;':'')+'" rowspan="'+rowspan+'">'+(joQuesDateCnt>0?(joQuesDateCnt>=2?'<b style="color:var(--green)">✔ '+joQuesDateCnt+'</b>':'<span style="color:#e65100;">'+joQuesDateCnt+'</span>'):DASH)+'</td>' : '') +
+        (mi===0 ? '<td data-col="6" style="text-align:center;font-weight:700;" rowspan="'+rowspan+'">'+(joQuesCnt||DASH)+'</td>' : '') +
+        (mi===0 ? '<td data-col="7" style="text-align:center;border-right:1px solid #c5cde8;'+(joQuesDateCnt>=2?'background:#fffde7;':'')+'" rowspan="'+rowspan+'">'+(joQuesDateCnt>0?(joQuesDateCnt>=2?'<b style="color:var(--green)">✔ '+joQuesDateCnt+'</b>':'<span style="color:#e65100;">'+joQuesDateCnt+'</span>'):DASH)+'</td>' : '') +
         // 7일후(팀) — 첫 행에만 rowspan
-        (mi===0 ? '<td style="text-align:center;border-right:1px solid #c5cde8;'+(joDay7Cnt>=1?'background:#fffde7;':'')+'" rowspan="'+rowspan+'">'+(joDay7Cnt>=1?'<b style="color:var(--green)">✔ '+joDay7Cnt+'</b>':DASH)+'</td>' : '') +
+        (mi===0 ? '<td data-col="8" style="text-align:center;border-right:1px solid #c5cde8;'+(joDay7Cnt>=1?'background:#fffde7;':'')+'" rowspan="'+rowspan+'">'+(joDay7Cnt>=1?'<b style="color:var(--green)">✔ '+joDay7Cnt+'</b>':DASH)+'</td>' : '') +
         // 수료요건 — 첫 행에만 rowspan
-        (mi===0 ? '<td style="text-align:center;border-right:1px solid #c5cde8;'+(isSuryoComplete(joRelCnt,joQuesDateCnt,joDay7Cnt)?'background:#fffde7;':'')+'" rowspan="'+rowspan+'">'+joComplete+'</td>' : '') +
+        (mi===0 ? '<td data-col="9" style="text-align:center;border-right:1px solid #c5cde8;'+(isSuryoComplete(joRelCnt,joQuesDateCnt,joDay7Cnt)?'background:#fffde7;':'')+'" rowspan="'+rowspan+'">'+joComplete+'</td>' : '') +
         // 개인전도 — 이름(좌) + 횟수(우) 한 행에 표시
-        '<td style="text-align:left;border-right:1px solid #c5cde8;padding:2px 4px;white-space:nowrap;max-width:70px;overflow:hidden;">' +
+        '<td data-col="10" style="text-align:left;border-right:1px solid #c5cde8;padding:2px 4px;white-space:nowrap;max-width:70px;overflow:hidden;">' +
           '<span style="color:#666;font-size:9px;">' + m.name + '</span>' +
           '<span style="float:right;font-weight:800;font-size:10px;margin-left:4px;color:' + (persCnt > 0 ? '#1565c0' : '#bbb') + ';">' + (persCnt > 0 ? persCnt : DASH) + '</span>' +
         '</td>' +
-        // 복음참여 파트
+        // 복음참여 파트 — data-col: 11(간증) ~ 19(즉석양육), 표(names 배열)와 순서가 항상 일치하도록 고정 지정
+        // (rowspan으로 앞쪽 열이 줄어드는 행에서도 :nth-child가 아닌 이 값으로 폰트를 매칭한다)
         PARTS2.map(function(p, pi){
           var cnt = partCounts[p];
           var isLast = pi===PARTS2.length-1;
           var border = isLast ? 'border-right:1px solid #c5cde8;' : '';
           var color = p==='서론' ? 'color:#222;' : 'color:#1565c0;';
           var zeroDot = '<span style="color:#c9ccd4;">-</span>';
-          return '<td style="text-align:center;'+(cnt?'font-weight:700;'+color:'')+border+'">'+(cnt||zeroDot)+'</td>';
+          return '<td data-col="'+(11+pi)+'" style="text-align:center;'+(cnt?'font-weight:700;'+color:'')+border+'">'+(cnt||zeroDot)+'</td>';
         }).join('') +
-                '<td style="text-align:center;border-right:1px solid #c5cde8;">'+gospelDoneCell+'</td>' +
+                '<td data-col="20" style="text-align:center;border-right:1px solid #c5cde8;">'+gospelDoneCell+'</td>' +
         // 비고
-        '<td style="font-size:10px;"></td>' +
+        '<td data-col="21" style="font-size:10px;"></td>' +
         '</tr>';
     });
   });
@@ -4476,7 +4499,16 @@ function renderTab1(data, w) {
       return true;
     });
 
-    spec.steps.forEach(function(step) {
+    // 원래 예상 단계(spec.steps)에 없는 단계(예: 훈련생인데 2단계)라도 조원이
+    // 실제로 존재하면 빠짐없이 표시되도록, 실제 데이터에 있는 단계를 뒤에 추가한다.
+    // (안 그러면 예상 밖 단계의 인원이 표에서 통째로 누락된다)
+    var stepsToRender = spec.steps.slice();
+    roleMembers.forEach(function(m) {
+      var st = String(m.step || '').trim().toUpperCase();
+      if (st && stepsToRender.indexOf(st) === -1) stepsToRender.push(st);
+    });
+
+    stepsToRender.forEach(function(step) {
       var stepMembers = roleMembers.filter(function(m) {
         return String(m.step || '').trim().toUpperCase() === step.toUpperCase();
       }).sort(function(a, b) {
@@ -4499,7 +4531,7 @@ function renderTab1(data, w) {
         });
         var actRecs = allRecs.filter(function(r) {
           if (r.evangType !== '관계(팀)') return false; // 관계전도(팀) 파트 집계 — 관계(팀) 레코드만 반영
-          var act = m.role === '리더' ? r.leaderAction : m.role === '훈련자' ? r.trainerAction : r.traineeAction;
+          var act = memberAction(r, m);
           return isDidAction(act);
         });
 
@@ -4508,7 +4540,7 @@ function renderTab1(data, w) {
           partCounts[p] = 0;
         });
         actRecs.forEach(function(r) {
-          var pt = m.role === '리더' ? r.leaderPart : m.role === '훈련자' ? r.trainerPart : r.traineePart;
+          var pt = memberPart(r, m);
           if (pt) pt.split(',').map(function(s) {
             return s.trim();
           }).forEach(function(p) {
@@ -4556,6 +4588,7 @@ function renderTab1(data, w) {
         // 저장 형식: "홍길동:2026-05-17|김철수:2026-05-17"
         var gospelDateRaw = '';
         allRecs.forEach(function(r) {
+          if (r.evangType !== '관계(팀)') return;
           if (!r.gospelDate) return;
           r.gospelDate.split('|').forEach(function(p) {
             var ci  = p.indexOf(':');
@@ -4752,6 +4785,7 @@ function renderTab2(data, w) {
         // 풀복음 완료일: allData에서 이름 기준
         var gospelDate = DASH;
         allData.forEach(function(r) {
+          if (r.evangType !== '관계(팀)') return;
           if (!r.gospelDate) return;
           r.gospelDate.split('|').forEach(function(p) {
             var ci = p.indexOf(':');
@@ -5064,7 +5098,12 @@ function applyColFonts(target, arr) {
   var css = '';
   arr.forEach(function(size, i) {
     var n = i + 1;
-    css += cfg.tableSelector + ' tbody td:nth-child(' + n + ') { font-size:' + size + 'px !important; }\n';
+    // tab2(팀전도현황)는 조원별 행마다 rowspan으로 앞쪽 열 개수가 달라져 :nth-child가
+    // 어긋나므로, 렌더링 시 각 <td>에 심어둔 data-col 속성으로 매칭한다.
+    var selector = (target === 'tab2')
+      ? cfg.tableSelector + ' tbody td[data-col="' + n + '"]'
+      : cfg.tableSelector + ' tbody td:nth-child(' + n + ')';
+    css += selector + ' { font-size:' + size + 'px !important; }\n';
   });
   var styleId = 'colfont-style-' + target;
   var styleEl = document.getElementById(styleId);
