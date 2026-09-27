@@ -3531,9 +3531,14 @@ function apply7ilhu() {
     if (el) { el.value = '0'; el.readOnly = true; el.style.background = '#f0f0f0'; el.style.color = '#aaa'; }
   });
 
-  // 6. 후속양육 → 7일 후 재 방문 약속 자동 선택
-  var rb7 = document.querySelector('input[name="followup"][value="7일 후 재 방문 약속"]');
-  if (rb7) { rb7.checked = true; if (typeof updateFollowup === 'function') updateFollowup(); }
+  // 6. 후속양육 → "하지 못함" 자동 선택 + 사유 "7일후" 입력
+  var rbNo = document.querySelector('input[name="followup"][value="하지 못함"]');
+  if (rbNo) {
+    rbNo.checked = true;
+    if (typeof updateFollowup === 'function') updateFollowup(); // 사유 입력칸 표시
+    var frIn = document.getElementById('followup_reason');
+    if (frIn && !frIn.value) frIn.value = '7일후'; // 이미 입력된 사유는 유지
+  }
 }
 
 // 7일후(팀) 선택 전 상태 스냅샷 저장/복원
@@ -3594,6 +3599,15 @@ function restore7ilhu() {
   // 역할배분 결과 복원
   var q8 = document.getElementById('q8_result');
   if (q8) q8.value = snap.q8_result;
+
+  // 후속양육 — 7일후(팀) 자동설정값(하지 못함 + 사유 "7일후")이 그대로면 선택 해제
+  var frIn2 = document.getElementById('followup_reason');
+  var rbNo2 = document.querySelector('input[name="followup"][value="하지 못함"]');
+  if (rbNo2 && rbNo2.checked && frIn2 && frIn2.value === '7일후') {
+    rbNo2.checked = false;
+    frIn2.value = '';
+    if (typeof updateFollowup === 'function') updateFollowup();
+  }
 
   // 통계 복원 + 잠금 해제
   var statsMap = { t_decision: snap.decision, t_reject: snap.reject, t_confirm: snap.confirm, t_believer: snap.believer };
