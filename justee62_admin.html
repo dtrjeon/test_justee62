@@ -1167,7 +1167,7 @@ tr:last-child td {
 </style>
 </head>
 <body>
-<div style="position:fixed;top:2px;left:4px;font-size:9px;color:rgba(255,255,255,0.35);z-index:99999;pointer-events:none;font-family:monospace;letter-spacing:.3px;">v2026.09.14-54(colwidth-new-defaults)</div>
+<div style="position:fixed;top:2px;left:4px;font-size:9px;color:rgba(255,255,255,0.35);z-index:99999;pointer-events:none;font-family:monospace;letter-spacing:.3px;">v2026.09.27-57(7ilhu-result-restored)</div>
 <script>
 // ── 테스트 모드 데이터 ──────────────────────────────────────────────────────
 // 테스트 모드 ON: window.TEST_MODE = true
@@ -3934,6 +3934,9 @@ function renderTab0(data, w) {
   // 오류 레코드 개별 감지: 각 record별로 gospel < target or gospel < resultSum
   var errorRecs = [];
   data.forEach(function(r) {
+    // 7일후(팀)는 지난주에 이미 복음제시·결과가 집계된 재방문이라
+    // 복음제시/결과를 0으로 저장한다 → 오류 검사에서 제외
+    if (is7ilhu(r)) return;
     var g = Number(r.gospel) || 0;
     var t = Number(r.target) || 0;
     var rSum = (Number(r.decision)||0) + (Number(r.believer)||0) + (Number(r.confirm)||0) + (Number(r.reject)||0);
