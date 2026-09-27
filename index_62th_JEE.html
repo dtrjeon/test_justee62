@@ -2518,7 +2518,7 @@ pre.code-block {
   });
 })();
 
-const APP_VERSION  = 'index v2026.09.27d';
+const APP_VERSION  = 'index v2026.09.27e';
 const LS_SEQ       = 'report_seq_counter';
 const LS_JO        = 'report_jo_data';
 const LS_SUBMITTED = 'report_submitted';
@@ -3525,8 +3525,8 @@ function apply7ilhu(fromLoad) {
   //      단, 통계(결신·보류/거절·확신·이미신자)에는 반영하지 않는다 → 아래 5번에서 0 고정.
 
 
-  // 5. 통계 결신·보류/거절·확신·이미신자 → 0 고정
-  ['t_decision', 't_reject', 't_confirm', 't_believer'].forEach(function(id) {
+  // 5. 통계 복음제시·결신·보류/거절·확신·이미신자 → 0 고정 (지난주에 이미 집계됨)
+  ['t_gospel', 't_decision', 't_reject', 't_confirm', 't_believer'].forEach(function(id) {
     var el = document.getElementById(id);
     if (el) { el.value = '0'; el.readOnly = true; el.style.background = '#f0f0f0'; el.style.color = '#aaa'; }
   });
@@ -3609,6 +3609,7 @@ function save7ilhuSnapshot() {
     diag_text:   (document.getElementById('diag-final-val') || {}).textContent || '',
     diag_saved:  v('diag-saved-result'),
     q8_result:   v('q8_result'),
+    gospel:      v('t_gospel'),
     decision:    v('t_decision'),
     reject:      v('t_reject'),
     confirm:     v('t_confirm'),
@@ -3665,7 +3666,7 @@ function restore7ilhu() {
   }
 
   // 통계 복원 + 잠금 해제
-  var statsMap = { t_decision: snap.decision, t_reject: snap.reject, t_confirm: snap.confirm, t_believer: snap.believer };
+  var statsMap = { t_gospel: snap.gospel || '1', t_decision: snap.decision, t_reject: snap.reject, t_confirm: snap.confirm, t_believer: snap.believer };
   Object.keys(statsMap).forEach(function(id) {
     var el = document.getElementById(id);
     if (el) { el.value = statsMap[id]; el.readOnly = false; el.style.background = ''; el.style.color = ''; }
@@ -3673,7 +3674,7 @@ function restore7ilhu() {
 }
 
 function unlock7ilhuStats() {
-  ['t_decision', 't_reject', 't_confirm', 't_believer'].forEach(function(id) {
+  ['t_gospel', 't_decision', 't_reject', 't_confirm', 't_believer'].forEach(function(id) {
     var el = document.getElementById(id);
     if (el) { el.readOnly = false; el.style.background = ''; el.style.color = ''; }
   });
@@ -6169,9 +6170,9 @@ function resetForm() {
 // 임상(A4) 양식 삭제로 내부 로직은 제거됨 — 폼 전반의 다른 이벤트 핸들러들이
 // 여전히 이 함수를 호출하므로(오류 방지를 위해) 빈 함수로 유지
 function syncPreview() {
-  // 7일후(팀): 결과는 최종결과와 동일하게 저장하되, 통계(결신·보류/거절·확신·이미신자)는 항상 0
+  // 7일후(팀): 결과는 최종결과와 동일하게 저장하되, 통계(복음제시·결신·보류/거절·확신·이미신자)는 항상 0
   if (v('evang_type') === '7일후(팀)') {
-    ['t_decision', 't_reject', 't_confirm', 't_believer'].forEach(function(id) {
+    ['t_gospel', 't_decision', 't_reject', 't_confirm', 't_believer'].forEach(function(id) {
       var el = document.getElementById(id);
       if (el && el.value !== '0') el.value = '0';
     });
