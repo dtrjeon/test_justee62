@@ -1895,7 +1895,7 @@ window.TEST_DATA = {"records": [{"저장일시": "2026-03-14", "주차": 3, "전
       </div>
     </div>
     <div style="padding:8px 12px;font-size:10px;color:#888;background:#fafafa;border-bottom:1px solid #eee;">
-      ※ 같은 문서번호가 2행 이상인 경우 표시 &nbsp;|&nbsp; 가장 최근 저장일시 = 대표 등록, 나머지 = 삭제 대상
+      ※ 같은 문서번호가 2행 이상인 경우 행별로 표시 &nbsp;|&nbsp; 가장 최근 저장일시 = 대표, 나머지 = 삭제 대상 &nbsp;|&nbsp; ✏️ 수정 · 🗑 삭제는 각 행 단위
     </div>
     <div id="dup-empty" style="padding:20px;text-align:center;font-size:12px;color:#aaa;display:none;">✅ 중복 문서번호가 없습니다</div>
     <div class="tbl-scroll" style="overflow-x:auto;">
@@ -1906,11 +1906,10 @@ window.TEST_DATA = {"records": [{"저장일시": "2026-03-14", "주차": 3, "전
             <th style="padding:7px 8px;text-align:center;">조</th>
             <th style="padding:7px 8px;text-align:center;">유형</th>
             <th style="padding:7px 8px;text-align:center;">전도일</th>
-            <th style="padding:7px 8px;text-align:center;">전체<br>행수</th>
-            <th style="padding:7px 8px;text-align:center;">대표<br>(최신)</th>
-            <th style="padding:7px 8px;text-align:center;">중복<br>(삭제대상)</th>
-            <th style="padding:7px 8px;text-align:center;">최신저장일시</th>
+            <th style="padding:7px 8px;text-align:center;">구분</th>
+            <th style="padding:7px 8px;text-align:center;">저장일시</th>
             <th style="padding:7px 8px;text-align:center;">수정</th>
+            <th style="padding:7px 8px;text-align:center;">삭제</th>
           </tr>
         </thead>
         <tbody id="dup-list"></tbody>
@@ -3071,6 +3070,8 @@ function parseRecords(raw) {
       return (r[k] !== undefined && r[k] !== null && r[k] !== '') ? r[k] : '';
     }
     return {
+      rowIndex: r.rowIndex || null,
+      _raw: r,
       savedAt: g('저장일시'),
       week: num(g('주차')),
       date: g('전도일'),
@@ -7585,10 +7586,12 @@ function renderTab4() {
         jo: r.jo || '',
         type: r.evangType || '',
         date: r.date || '',
-        savedAts: []
+        savedAts: [],
+        rows: []
       };
     }
     groups[doc].savedAts.push(r.savedAt || '');
+    groups[doc].rows.push(r);
   });
 
   var allDocs = Object.values(groups);
@@ -7635,29 +7638,99 @@ function renderTab4() {
   empty.style.display = 'none';
   table.style.display = 'table';
 
-  tbody.innerHTML = dupDocs.map(function(g, i) {
+  window._dupRowsCache = {};
+  var html = '';
+  dupDocs.forEach(function(g, i) {
     var bg = i % 2 === 0 ? '#fff' : '#fff8f0';
-    var safeDoc = g.doc.replace(/'/g, "\'");
-    var dupBadge = '<span style="background:#e65100;color:#fff;border-radius:3px;padding:1px 5px;font-size:9px;font-weight:700;">'
-      + g.dupRows + '건 삭제대상</span>';
-    return '<tr style="background:' + bg + ';">' +
-      '<td style="padding:6px 8px;font-weight:700;">' +
-        '<a href="#" onclick="openInIndex(\'' + safeDoc + '\');return false;" ' +
-        'style="color:#1565c0;text-decoration:underline;">' + g.doc + '</a>' +
-      '</td>' +
-      '<td style="padding:6px 8px;text-align:center;">' + g.jo + '조</td>' +
-      '<td style="padding:6px 8px;text-align:center;font-size:10px;">' + (g.type || DASH) + '</td>' +
-      '<td style="padding:6px 8px;text-align:center;font-size:10px;">' + (g.date || DASH) + '</td>' +
-      '<td style="padding:6px 8px;text-align:center;font-weight:700;color:#e65100;">' + g.totalRows + '</td>' +
-      '<td style="padding:6px 8px;text-align:center;color:#4caf50;font-weight:700;">1</td>' +
-      '<td style="padding:6px 8px;text-align:center;">' + dupBadge + '</td>' +
-      '<td style="padding:6px 8px;text-align:center;font-size:10px;color:#1565c0;font-weight:600;">' + (g.latestSavedAt ? g.latestSavedAt.slice(0, 16) : DASH) + '</td>' +
-      '<td style="padding:6px 8px;text-align:center;">' +
-        '<button onclick="openInIndex(\'' + safeDoc + '\')" ' +
-        'style="background:#1a3ab0;color:#fff;border:none;border-radius:4px;padding:3px 8px;font-size:10px;cursor:pointer;">열기</button>' +
-      '</td>' +
-      '</tr>';
-  }).join('');
+    var rows = g.rows.slice().sort(function(x, y) {
+      return _dupTime(y.savedAt) - _dupTime(x.savedAt);
+    });
+    var safeDoc = String(g.doc).replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+    rows.forEach(function(r, k) {
+      var key = i + '_' + k;
+      window._dupRowsCache[key] = r;
+      var isRep = k === 0;
+      var badge = isRep
+        ? '<span style="background:#2e7d32;color:#fff;border-radius:3px;padding:1px 5px;font-size:9px;font-weight:700;">대표</span>'
+        : '<span style="background:#e65100;color:#fff;border-radius:3px;padding:1px 5px;font-size:9px;font-weight:700;">삭제대상</span>';
+      html += '<tr style="background:' + bg + ';' + (k === 0 ? 'border-top:2px solid #c5cae9;' : '') + '">';
+      if (k === 0) {
+        html += '<td rowspan="' + rows.length + '" style="padding:6px 8px;font-weight:700;vertical-align:middle;">' + g.doc + '</td>' +
+          '<td rowspan="' + rows.length + '" style="padding:6px 8px;text-align:center;vertical-align:middle;">' + g.jo + '조</td>' +
+          '<td rowspan="' + rows.length + '" style="padding:6px 8px;text-align:center;font-size:10px;vertical-align:middle;">' + (g.type || DASH) + '</td>' +
+          '<td rowspan="' + rows.length + '" style="padding:6px 8px;text-align:center;font-size:10px;vertical-align:middle;">' + (g.date || DASH) + '</td>';
+      }
+      html += '<td style="padding:6px 8px;text-align:center;">' + badge + '</td>' +
+        '<td style="padding:6px 8px;text-align:center;font-size:10px;color:#1565c0;font-weight:600;white-space:nowrap;">' + (r.savedAt ? String(r.savedAt).slice(0, 16) : DASH) + '</td>' +
+        '<td style="padding:6px 8px;text-align:center;">' +
+          '<button title="이 행 수정" onclick="editDupRow(\'' + key + '\')" style="background:#1a3ab0;color:#fff;border:none;border-radius:4px;padding:3px 8px;font-size:12px;cursor:pointer;">✏️</button>' +
+        '</td>' +
+        '<td style="padding:6px 8px;text-align:center;">' +
+          '<button title="이 행 삭제" onclick="deleteDupRow(\'' + key + '\')" style="background:#c62828;color:#fff;border:none;border-radius:4px;padding:3px 8px;font-size:12px;cursor:pointer;">🗑</button>' +
+        '</td>' +
+        '</tr>';
+    });
+  });
+  tbody.innerHTML = html;
+}
+
+function _dupTime(v) {
+  var t = new Date(String(v || '').replace(/\./g, '-').replace(' ', 'T')).getTime();
+  return isNaN(t) ? 0 : t;
+}
+
+// 개별 행 수정: 해당 행의 원본 레코드를 그대로 index로 전달
+function editDupRow(key) {
+  if (!requireAdminLevel()) return;
+  var r = (window._dupRowsCache || {})[key];
+  if (!r) { showToast('행 정보를 찾을 수 없습니다. 새로고침 후 다시 시도하세요.'); return; }
+  var rec = {};
+  Object.keys(r._raw || {}).forEach(function(k) { if (k !== 'rowIndex') rec[k] = r._raw[k]; });
+  localStorage.setItem('admin_load_request', JSON.stringify({
+    docNumber: r.docNumber,
+    record: rec,
+    ts: Date.now()
+  }));
+  window.open('https://dtrjeon.github.io/test_justee62/index.html', '_blank');
+  showToast('✅ index.html을 열고 있습니다...');
+}
+
+// 개별 행 삭제: 최신 데이터를 다시 받아 문서번호+저장일시로 rowIndex를 재확인한 뒤 삭제
+async function deleteDupRow(key) {
+  if (!requireAdminLevel()) return;
+  var r = (window._dupRowsCache || {})[key];
+  if (!r) { showToast('행 정보를 찾을 수 없습니다. 새로고침 후 다시 시도하세요.'); return; }
+  var when = r.savedAt ? String(r.savedAt).slice(0, 16) : '';
+  if (!confirm('문서번호 ' + r.docNumber + '\n저장일시 ' + when + '\n\n이 행 1건을 삭제합니다. 계속할까요?')) return;
+  try {
+    showToast('⏳ 삭제 준비 중...');
+    var res = await fetch(CFG.url + '?action=get', { redirect: 'follow' });
+    var json = JSON.parse(await res.text());
+    var list = json.records || [];
+    var target = String(r.docNumber) + '|' + String(r.savedAt);
+    var found = list.filter(function(x) {
+      return String(x['문서번호']) + '|' + String(x['저장일시']) === target;
+    });
+    if (found.length !== 1) throw new Error(found.length ? '동일한 행이 여러 개라 삭제를 중단했습니다.' : '대상 행을 찾을 수 없습니다. (이미 삭제됨?)');
+    var pres = await fetch(CFG.url, {
+      method: 'POST',
+      redirect: 'follow',
+      headers: { 'Content-Type': 'text/plain' },
+      body: JSON.stringify({
+        action: 'delete_doc_row',
+        rowIndex: found[0].rowIndex,
+        docNumber: r.docNumber,
+        adminToken: getAdminToken()
+      })
+    });
+    var out = JSON.parse(await pres.text());
+    if (out.status !== 'ok' || out.deleted === false || out.deleted === 0) throw new Error(out.message || '삭제 실패');
+    showToast('🗑 삭제되었습니다.');
+    await loadData();
+    renderTab4();
+  } catch (e) {
+    showToast('❌ 삭제 실패: ' + e.message);
+  }
 }
 
 function renderTab5() {
