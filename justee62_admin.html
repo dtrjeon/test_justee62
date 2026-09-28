@@ -7651,17 +7651,17 @@ function renderTab4() {
       window._dupRowsCache[key] = r;
       var isRep = k === 0;
       var badge = isRep
-        ? '<span style="background:#2e7d32;color:#fff;border-radius:3px;padding:1px 5px;font-size:9px;font-weight:700;">대표</span>'
-        : '<span style="background:#e65100;color:#fff;border-radius:3px;padding:1px 5px;font-size:9px;font-weight:700;">삭제대상</span>';
+        ? '<span style="background:#2e7d32;color:#fff;border-radius:3px;padding:1px 5px;font-size:9px;font-weight:700;white-space:nowrap;">대표</span>'
+        : '<span style="background:#e65100;color:#fff;border-radius:3px;padding:1px 5px;font-size:9px;font-weight:700;white-space:nowrap;">삭제<br>대상</span>';
       html += '<tr style="background:' + bg + ';' + (k === 0 ? 'border-top:2px solid #c5cae9;' : '') + '">';
       if (k === 0) {
         html += '<td rowspan="' + rows.length + '" style="padding:6px 8px;font-weight:700;vertical-align:middle;">' + g.doc + '</td>' +
           '<td rowspan="' + rows.length + '" style="padding:6px 8px;text-align:center;vertical-align:middle;">' + g.jo + '조</td>' +
           '<td rowspan="' + rows.length + '" style="padding:6px 8px;text-align:center;font-size:10px;vertical-align:middle;">' + (g.type || DASH) + '</td>' +
-          '<td rowspan="' + rows.length + '" style="padding:6px 8px;text-align:center;font-size:10px;vertical-align:middle;">' + (g.date || DASH) + '</td>';
+          '<td rowspan="' + rows.length + '" style="padding:6px 8px;text-align:center;font-size:10px;vertical-align:middle;">' + _noYear(g.date) + '</td>';
       }
       html += '<td style="padding:6px 8px;text-align:center;">' + badge + '</td>' +
-        '<td style="padding:6px 8px;text-align:center;font-size:10px;color:#1565c0;font-weight:600;white-space:nowrap;">' + (r.savedAt ? String(r.savedAt).slice(0, 16) : DASH) + '</td>' +
+        '<td style="padding:6px 8px;text-align:center;font-size:10px;color:#1565c0;font-weight:600;white-space:nowrap;">' + (r.savedAt ? _noYear(String(r.savedAt).slice(0, 16)) : DASH) + '</td>' +
         '<td style="padding:6px 8px;text-align:center;">' +
           '<button title="이 행 수정" onclick="editDupRow(\'' + key + '\')" style="background:#1a3ab0;color:#fff;border:none;border-radius:4px;padding:3px 8px;font-size:12px;cursor:pointer;">✏️</button>' +
         '</td>' +
@@ -7672,6 +7672,11 @@ function renderTab4() {
     });
   });
   tbody.innerHTML = html;
+}
+
+function _noYear(v) {
+  if (!v) return DASH;
+  return String(v).replace(/^\d{4}[-.\/]\s*/, '');
 }
 
 function _dupTime(v) {
@@ -7695,23 +7700,49 @@ function editDupRow(key) {
   showToast('✅ index.html을 열고 있습니다...');
 }
 
+// 모바일 인앱브라우저는 confirm()을 조용히 막는 경우가 있어 페이지 내 확인창을 사용
+function dupConfirm(msgHtml) {
+  return new Promise(function(resolve) {
+    var old = document.getElementById('dup-confirm-ov');
+    if (old) old.remove();
+    var ov = document.createElement('div');
+    ov.id = 'dup-confirm-ov';
+    ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:100000;display:flex;align-items:center;justify-content:center;padding:16px;';
+    ov.innerHTML = '<div style="background:#fff;border-radius:12px;padding:18px;max-width:320px;width:100%;font-size:13px;line-height:1.6;">' +
+      '<div style="margin-bottom:14px;">' + msgHtml + '</div>' +
+      '<div style="display:flex;gap:8px;justify-content:flex-end;">' +
+      '<button id="dup-c-no" style="padding:8px 14px;border:1px solid #ccc;background:#fff;border-radius:6px;">취소</button>' +
+      '<button id="dup-c-yes" style="padding:8px 14px;border:none;background:#c62828;color:#fff;border-radius:6px;font-weight:700;">삭제</button>' +
+      '</div></div>';
+    document.body.appendChild(ov);
+    function done(v) { ov.remove(); resolve(v); }
+    document.getElementById('dup-c-no').onclick = function() { done(false); };
+    document.getElementById('dup-c-yes').onclick = function() { done(true); };
+  });
+}
+
 // 개별 행 삭제: 최신 데이터를 다시 받아 문서번호+저장일시로 rowIndex를 재확인한 뒤 삭제
 async function deleteDupRow(key) {
   if (!requireAdminLevel()) return;
   var r = (window._dupRowsCache || {})[key];
   if (!r) { showToast('행 정보를 찾을 수 없습니다. 새로고침 후 다시 시도하세요.'); return; }
   var when = r.savedAt ? String(r.savedAt).slice(0, 16) : '';
-  if (!confirm('문서번호 ' + r.docNumber + '\n저장일시 ' + when + '\n\n이 행 1건을 삭제합니다. 계속할까요?')) return;
+  var ok = await dupConfirm('<b>' + r.docNumber + '</b><br>저장일시 ' + when + '<br><br>이 행 1건을 삭제합니다. 계속할까요?');
+  if (!ok) return;
+  var step = '조회';
   try {
     showToast('⏳ 삭제 준비 중...');
-    var res = await fetch(CFG.url + '?action=get', { redirect: 'follow' });
-    var json = JSON.parse(await res.text());
-    var list = json.records || [];
+    var fetchRows = async function() {
+      var res = await fetch(CFG.url + '?action=get&_ts=' + Date.now(), { redirect: 'follow', cache: 'no-store' });
+      var j = JSON.parse(await res.text());
+      return j.records || [];
+    };
+    var keyOf = function(x) { return String(x['문서번호']) + '|' + String(x['저장일시']); };
     var target = String(r.docNumber) + '|' + String(r.savedAt);
-    var found = list.filter(function(x) {
-      return String(x['문서번호']) + '|' + String(x['저장일시']) === target;
-    });
-    if (found.length !== 1) throw new Error(found.length ? '동일한 행이 여러 개라 삭제를 중단했습니다.' : '대상 행을 찾을 수 없습니다. (이미 삭제됨?)');
+    var found = (await fetchRows()).filter(function(x) { return keyOf(x) === target; });
+    if (found.length !== 1) throw new Error(found.length ? '동일한 행이 여러 개라 삭제를 중단했습니다.' : '대상 행을 찾을 수 없습니다. (이미 삭제됨? 새로고침 해보세요)');
+    if (!getAdminToken()) throw new Error('관리자 토큰이 없습니다. 페이지를 새로고침하고 admin 비밀번호로 다시 로그인하세요.');
+    step = '삭제 요청';
     var pres = await fetch(CFG.url, {
       method: 'POST',
       redirect: 'follow',
@@ -7723,13 +7754,21 @@ async function deleteDupRow(key) {
         adminToken: getAdminToken()
       })
     });
-    var out = JSON.parse(await pres.text());
-    if (out.status !== 'ok' || out.deleted === false || out.deleted === 0) throw new Error(out.message || '삭제 실패');
+    var ptxt = await pres.text();
+    var out;
+    try { out = JSON.parse(ptxt); } catch (e) { throw new Error('서버 응답 이상: ' + ptxt.slice(0, 80)); }
+    if (out.status !== 'ok') throw new Error(out.message || ('서버 거부: ' + ptxt.slice(0, 80)));
+    step = '삭제 검증';
+    var still = (await fetchRows()).some(function(x) { return keyOf(x) === target; });
+    if (still) throw new Error('서버는 완료라고 했지만 시트에 그대로 남아 있습니다. (응답: ' + ptxt.slice(0, 80) + ')');
     showToast('🗑 삭제되었습니다.');
     await loadData();
     renderTab4();
   } catch (e) {
-    showToast('❌ 삭제 실패: ' + e.message);
+    var t = document.getElementById('status-toast');
+    showToast('❌ ' + step + ' 실패: ' + e.message);
+    clearTimeout(showToast._timer);
+    showToast._timer = setTimeout(function() { t.classList.remove('show'); }, 8000);
   }
 }
 
