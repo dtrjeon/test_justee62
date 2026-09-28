@@ -7721,6 +7721,23 @@ function dupConfirm(msgHtml) {
   });
 }
 
+// 화면 중앙에 뜨는 결과창 (토스트가 안 보이는 환경 대비) — [확인]을 눌러야 닫힘
+function dupAlert(title, bodyHtml) {
+  return new Promise(function(resolve) {
+    var old = document.getElementById('dup-alert-ov');
+    if (old) old.remove();
+    var ov = document.createElement('div');
+    ov.id = 'dup-alert-ov';
+    ov.style.cssText = 'position:fixed;left:0;top:0;right:0;bottom:0;background:rgba(0,0,0,.45);z-index:100001;display:flex;align-items:center;justify-content:center;padding:16px;';
+    ov.innerHTML = '<div style="background:#fff;border-radius:12px;padding:18px;max-width:340px;width:100%;font-size:13px;line-height:1.6;word-break:break-all;">' +
+      '<div style="font-weight:800;font-size:15px;margin-bottom:8px;">' + title + '</div>' +
+      '<div style="margin-bottom:14px;">' + bodyHtml + '</div>' +
+      '<div style="text-align:right;"><button id="dup-a-ok" style="padding:8px 18px;border:none;background:#1a3ab0;color:#fff;border-radius:6px;font-weight:700;">확인</button></div></div>';
+    document.body.appendChild(ov);
+    document.getElementById('dup-a-ok').onclick = function() { ov.remove(); resolve(); };
+  });
+}
+
 // 개별 행 삭제: 최신 데이터를 다시 받아 문서번호+저장일시로 rowIndex를 재확인한 뒤 삭제
 async function deleteDupRow(key) {
   if (!requireAdminLevel()) return;
@@ -7762,13 +7779,11 @@ async function deleteDupRow(key) {
     var still = (await fetchRows()).some(function(x) { return keyOf(x) === target; });
     if (still) throw new Error('서버는 완료라고 했지만 시트에 그대로 남아 있습니다. (응답: ' + ptxt.slice(0, 80) + ')');
     showToast('🗑 삭제되었습니다.');
+    await dupAlert('🗑 삭제 완료', '문서번호 ' + r.docNumber + '<br>저장일시 ' + when + ' 행이 삭제되었습니다.');
     await loadData();
     renderTab4();
   } catch (e) {
-    var t = document.getElementById('status-toast');
-    showToast('❌ ' + step + ' 실패: ' + e.message);
-    clearTimeout(showToast._timer);
-    showToast._timer = setTimeout(function() { t.classList.remove('show'); }, 8000);
+    await dupAlert('❌ ' + step + ' 단계 실패', String(e && e.message ? e.message : e));
   }
 }
 
