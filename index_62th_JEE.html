@@ -2154,7 +2154,7 @@ pre.code-block {
         <!-- 현장불참자 / 접촉자 -->
         <div style="font-size:6.5pt;margin-bottom:0.5mm;display:flex;gap:1mm;align-items:baseline;">
           <span style="white-space:nowrap;font-weight:700;">현장불참자:</span>
-          <span style="flex:1;border-bottom:0.5pt solid #444;min-height:3.5mm;display:inline-block;">&nbsp;</span>
+          <span id="sj_absent" style="flex:1;border-bottom:0.5pt solid #444;min-height:3.5mm;display:inline-block;font-weight:700;color:#1a3a9e;">&nbsp;</span>
           <span style="white-space:nowrap;font-weight:700;">접촉자 수(질문지):</span>
           <span style="min-width:6mm;border-bottom:0.5pt solid #444;display:inline-block;text-align:center;font-weight:700;" id="sj_t_contact">&nbsp;</span>
           <span style="font-weight:700;">명</span>
@@ -2518,7 +2518,7 @@ pre.code-block {
   });
 })();
 
-const APP_VERSION  = 'index v2026.09.27e';
+const APP_VERSION  = 'index v2026.09.28c';
 const LS_SEQ       = 'report_seq_counter';
 const LS_JO        = 'report_jo_data';
 const LS_SUBMITTED = 'report_submitted';
@@ -6189,6 +6189,17 @@ function syncPreview() {
   }
 }
 
+// ── 현장불참자: 역할배분에서 [불참하였고]로 선택된 조원 이름 목록 ──
+// names/actions: { leader, trainer, trainee } — 이름이 비어 있으면 역할명으로 표시
+function absentNamesText(names, actions) {
+  var labels = { leader: '훈련자(조장)', trainer: '훈련자', trainee: '훈련생' };
+  var out = [];
+  ['leader', 'trainer', 'trainee'].forEach(function(k) {
+    if ((actions[k] || '') === '불참하였고') out.push(String(names[k] || '').trim() || labels[k]);
+  });
+  return out.join(', ');
+}
+
 // ── 수주반 A5 미리보기 동기화 ────────────────────────
 function setEl2(id, val) {
   var el = document.getElementById(id);
@@ -6359,6 +6370,21 @@ function syncSuju() {
   if (taEl) taEl.textContent = radio('trainee_action') || '[제시하였고/참관하였고]';
   if (trEl) trEl.textContent = radio('trainer_action') || '[제시하였고/참관하였고]';
   if (laEl) laEl.textContent = radio('leader_action') || '[제시하였고/참관하였고]';
+  var absEl = document.getElementById('sj_absent');
+  if (absEl) {
+    // 이름: 2번 이름칸 → 비어 있으면 조정보(선택한 조)의 이름 사용
+    var _jf = null;
+    try {
+      var _jd = (typeof getJoData === 'function') ? getJoData() : [];
+      _jf = (_jd || []).find(function(j) { return String(j.jo) === String(v('q1_jo')); }) || null;
+    } catch (e) { _jf = null; }
+    var absTxt = absentNamesText(
+      { leader:  v('q2_leader')   || (_jf && _jf.leader)  || '',
+        trainer: v('q2_trainer')  || (_jf && _jf.trainer) || '',
+        trainee: v('q2_trainee1') || (_jf && (_jf.trainee || _jf.trainee2)) || '' },
+      { leader: radio('leader_action'), trainer: radio('trainer_action'), trainee: radio('trainee_action') });
+    absEl.innerHTML = absTxt ? absTxt.replace(/&/g, '&amp;').replace(/</g, '&lt;') : '&nbsp;';
+  }
   var rsltEl = document.getElementById('sj_result');
   if (rsltEl) rsltEl.textContent = v('q8_result') || '결신/보류·거절/확신/이미신자';
   // 즉석양육
@@ -7167,7 +7193,12 @@ function buildSujuHtml(r) {
     '</div>' +
     '<div style="font-size:6.5pt;margin-bottom:0.5mm;display:flex;gap:1mm;align-items:baseline;">' +
     '<span style="white-space:nowrap;font-weight:700;">현장불참자:</span>' +
-    '<span style="flex:1;border-bottom:0.5pt solid #444;min-height:3.5mm;display:inline-block;">&nbsp;</span>' +
+    '<span style="flex:1;border-bottom:0.5pt solid #444;min-height:3.5mm;display:inline-block;font-weight:700;color:#1a3a9e;">' +
+      ((function() {
+        var t = absentNamesText({ leader: r.leader, trainer: r.trainer, trainee: r.trainee1 },
+          { leader: r.leader_action, trainer: r.trainer_action, trainee: r.trainee_action });
+        return t ? t.replace(/&/g, '&amp;').replace(/</g, '&lt;') : '&nbsp;';
+      })()) + '</span>' +
     '<span style="white-space:nowrap;font-weight:700;">접촉자 수(질문지):</span>' +
     '<span style="min-width:6mm;border-bottom:0.5pt solid #444;display:inline-block;text-align:center;font-weight:700;">' + (r.contact || '') + '</span>' +
     '<span style="font-weight:700;">명</span>' +
@@ -7429,10 +7460,29 @@ async function deleteSelectedRecords() {
         body: JSON.stringify({ action: 'delete_doc_row', rowIndex: toDelete[i].rowIndex, docNumber: toDelete[i].doc_number, adminToken: getAdminToken() })
       });
       var json = await res.json();
-      if (json.status === 'ok') okCount++; else failCount++;
+      // 서버가 'ok'라도 실제 삭제 행 수(deleted)가 0이면 삭제되지 않은 것으로 본다
+      if (json.status === 'ok' && !(json.deleted === 0 || json.deleted === '0')) okCount++; else failCount++;
     } catch (e) {
       failCount++;
     }
+  }
+
+  // ── 삭제 검증: 서버에서 다시 조회해서 선택한 항목이 정말 없어졌는지 확인 ──
+  var stillThere = [];
+  try {
+    var vRes = await fetch(scriptUrl + (scriptUrl.indexOf('?') > -1 ? '&' : '?') + '_ts=' + Date.now(), {
+      method: 'GET', redirect: 'follow', cache: 'no-store'
+    });
+    var vJson = await vRes.json();
+    if (vJson.status === 'ok') {
+      var vKeys = {};
+      (vJson.records || []).forEach(function(r) { vKeys[(r['문서번호'] || '') + '|' + (r['저장일시'] || '')] = true; });
+      stillThere = toDelete.filter(function(r) { return vKeys[(r.doc_number || '') + '|' + (r._savedAt || '')]; });
+    }
+  } catch (e) { /* 검증 실패는 무시하고 아래 메시지로 안내 */ }
+  if (stillThere.length) {
+    okCount = Math.max(0, okCount - stillThere.length);
+    failCount += stillThere.length;
   }
 
   if (btn) {
@@ -7442,6 +7492,10 @@ async function deleteSelectedRecords() {
   var msg = '🗑️ ' + okCount + '건 삭제 완료' + (failCount ? (' · ' + failCount + '건 실패') : '')
     + (kept.length ? (' · 🛡️ ' + kept.length + '건 최신본 보존') : '')
     + (noRowIndex.length ? (' · ⚠️ ' + noRowIndex.length + '건은 행 정보가 없어 건너뜀(새로고침 후 다시 시도)') : '');
+  if (stillThere.length) {
+    msg += ' · ❗ ' + stillThere.length + '건은 서버가 완료라고 응답했지만 시트에 그대로 남아 있습니다 (' +
+      stillThere.map(function(r) { return r.doc_number + ' ' + (r._savedAt || ''); }).join(', ') + ')';
+  }
   showStatus(msg, (failCount || noRowIndex.length) ? 'warn' : 'success');
   clearMultiSelect();
   loadHistory(); // 목록 새로고침
