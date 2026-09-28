@@ -3896,6 +3896,12 @@ function onEvangTypeChange() {
     document.getElementById('personal_member').value = '';
   }
 
+  // 관계전도: 훈련생은 항상 [불참하였고] 자동 설정
+  if (type === '관계') {
+    var _tr = document.querySelector('input[name="trainee_action"][value="불참하였고"]');
+    if (_tr) _tr.checked = true;
+  }
+
   // 관계(대상자 모신분) 자동 설정
   var relSel2 = document.getElementById('q3_relation_member');
   if (type === '질문지(팀)' || type === 'QQ') {
@@ -5178,6 +5184,10 @@ async function handleSubmit() {
     return;
   }
   // ── 개인전도 참관 선택 경고 — 강제 차단 ──────────────────────────────────────
+  if (v('evang_type') === '관계') {
+    var _tr2 = document.querySelector('input[name="trainee_action"][value="불참하였고"]');
+    if (_tr2 && !_tr2.checked) { _tr2.checked = true; syncPreview(); }
+  }
   var personalWarn = checkPersonalActionWarning();
   if (personalWarn) {
     // 오류 데이터 저장 방지 — confirm 없이 무조건 차단
