@@ -7756,7 +7756,9 @@ async function deleteDupRow(key) {
     };
     var keyOf = function(x) { return String(x['문서번호']) + '|' + String(x['저장일시']); };
     var target = String(r.docNumber) + '|' + String(r.savedAt);
-    var found = (await fetchRows()).filter(function(x) { return keyOf(x) === target; });
+    var beforeRows = await fetchRows();
+    var beforeKeys = beforeRows.map(keyOf);
+    var found = beforeRows.filter(function(x) { return keyOf(x) === target; });
     if (found.length !== 1) throw new Error(found.length ? '동일한 행이 여러 개라 삭제를 중단했습니다.' : '대상 행을 찾을 수 없습니다. (이미 삭제됨? 새로고침 해보세요)');
     if (!getAdminToken()) throw new Error('관리자 토큰이 없습니다. 페이지를 새로고침하고 admin 비밀번호로 다시 로그인하세요.');
     step = '삭제 요청';
@@ -7768,6 +7770,7 @@ async function deleteDupRow(key) {
         action: 'delete_doc_row',
         rowIndex: found[0].rowIndex,
         docNumber: r.docNumber,
+        savedAt: r.savedAt,
         adminToken: getAdminToken()
       })
     });
@@ -7776,8 +7779,20 @@ async function deleteDupRow(key) {
     try { out = JSON.parse(ptxt); } catch (e) { throw new Error('서버 응답 이상: ' + ptxt.slice(0, 80)); }
     if (out.status !== 'ok') throw new Error(out.message || ('서버 거부: ' + ptxt.slice(0, 80)));
     step = '삭제 검증';
-    var still = (await fetchRows()).some(function(x) { return keyOf(x) === target; });
-    if (still) throw new Error('서버는 완료라고 했지만 시트에 그대로 남아 있습니다. (응답: ' + ptxt.slice(0, 80) + ')');
+    var afterRows = [], still = true;
+    for (var n = 0; n < 4 && still; n++) {
+      if (n) await new Promise(function(rs) { setTimeout(rs, 1500); });
+      afterRows = await fetchRows();
+      still = afterRows.some(function(x) { return keyOf(x) === target; });
+    }
+    if (still) {
+      var afterKeys = afterRows.map(keyOf);
+      var gone = beforeKeys.filter(function(k) { return afterKeys.indexOf(k) < 0; });
+      throw new Error('서버는 완료(' + ptxt.slice(0, 60) + ')라고 했지만 대상 행이 남아 있습니다.<br>' +
+        '보낸 행번호: ' + found[0].rowIndex + '<br>' +
+        '행 수: ' + beforeRows.length + ' → ' + afterRows.length + '<br>' +
+        '사라진 행: ' + (gone.length ? gone.join(', ') : '없음'));
+    }
     showToast('🗑 삭제되었습니다.');
     await dupAlert('🗑 삭제 완료', '문서번호 ' + r.docNumber + '<br>저장일시 ' + when + ' 행이 삭제되었습니다.');
     await loadData();
