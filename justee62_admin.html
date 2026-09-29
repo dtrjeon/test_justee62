@@ -7752,6 +7752,7 @@ async function deleteDupRow(key) {
     var fetchRows = async function() {
       var res = await fetch(CFG.url + '?action=get&_ts=' + Date.now(), { redirect: 'follow', cache: 'no-store' });
       var j = JSON.parse(await res.text());
+      fetchRows.meta = 'GET lastRow=' + j.lastRow + ', serverTime=' + j.serverTime;
       return j.records || [];
     };
     var keyOf = function(x) { return String(x['문서번호']) + '|' + String(x['저장일시']); };
@@ -7788,7 +7789,7 @@ async function deleteDupRow(key) {
     if (still) {
       var afterKeys = afterRows.map(keyOf);
       var gone = beforeKeys.filter(function(k) { return afterKeys.indexOf(k) < 0; });
-      throw new Error('서버는 완료(' + ptxt.slice(0, 60) + ')라고 했지만 대상 행이 남아 있습니다.<br>' +
+      throw new Error('서버 응답: ' + ptxt + '<br>다시 조회: ' + fetchRows.meta + '<br>서버는 완료라고 했지만 대상 행이 남아 있습니다.<br>' +
         '보낸 행번호: ' + found[0].rowIndex + '<br>' +
         '행 수: ' + beforeRows.length + ' → ' + afterRows.length + '<br>' +
         '사라진 행: ' + (gone.length ? gone.join(', ') : '없음'));
