@@ -4071,12 +4071,15 @@ function renderTab0(data, w) {
       var resultCls = result === '결신' ? 'b-red' : result === '이미신자' ? 'b-green' : result === '확신' ? 'b-blue' : 'b-gray';
       var recEvangType = rec ? rec.evangType || '' : '';
       var isPersonal = (recEvangType === '개인' || recEvangType === '관계');
+      // 관계전도: 훈련생만 [불참하였고] 고정, 훈련자(조장)/훈련자는 제시·참관·불참 모두 가능 (개인전도와 규칙이 다름)
+      var isRelation = (recEvangType === '관계');
 
       joMembers.forEach(function(m, mi) {
         var action = memberAction(rec, m) || '';
 
         // 개인전도: action이 비어있으면 relationMember(전도자)와 이름 비교로 판별
-        if (isPersonal && !action) {
+        // (관계전도의 relationMember는 대상자 모신분이라 전도자가 아니므로 제외)
+        if (isPersonal && !isRelation && !action) {
           var evangName = rec ? (rec.relationMember || '').replace(/\(.*?\)/g, '').trim() : '';
           action = (evangName && m.name === evangName) ? '제시하였고' : '';
         }
@@ -4093,7 +4096,9 @@ function renderTab0(data, w) {
         // 이름~불참자 열: 다른 조 경계 OR 같은 조 레코드 경계
         var nameBorderStyle = joBorderFull || extraBorderStyle;
 
-        var absentClass = (isPersonal && !isDidAction(action)) ? ' personal-absent' : (action === '불참하였고' ? ' team-absent' : '');
+        var absentClass = isRelation
+          ? (action === '불참하였고' ? ' personal-absent' : '')   // 관계전도: 불참하였고인 조원만 회색 행 (참관자는 제외)
+          : (isPersonal && !isDidAction(action)) ? ' personal-absent' : (action === '불참하였고' ? ' team-absent' : '');
         html += '<tr class="jo-row active-row' + (isFirst ? ' jo-row-first' : '') + (isRecFirst ? ' rec-row-first' : '') + absentClass + '" data-rec-idx="' + ri + '">' +
           // 조번호: 첫 번째 건의 첫 번째 조원에만 전체 rowspan (다른 조 경계선만)
           (!joNumRendered ? '<td class="td-jo" rowspan="' + totalRowspan + '" style="position:sticky;left:0;z-index:2;background:#fff;box-shadow:1px 0 0 #c5cde8;' + joBorderStyle + '">' + jo + '</td>' : '') +
@@ -4106,7 +4111,7 @@ function renderTab0(data, w) {
         // 전도내용 셀 (건당 첫 조원에만 rowspan)
         if (isRecFirst) {
           html +=
-            '<td rowspan="' + rowspan + '" style="font-size:10px;color:#1a3a9e;font-weight:700;' + nameBorderStyle + '">' + (rec.docNumber || DASH) + '</td>' +
+            '<td rowspan="' + rowspan + '" style="font-size:10px;color:#1a3a9e;font-weight:700;' + nameBorderStyle + '">' + (rec.docNumber ? (isAdminLevel() ? '<a href="javascript:void(0)" onclick="openInIndex(\'' + String(rec.docNumber).replace(/'/g, "\\'") + '\')" style="color:#1a3a9e;text-decoration:underline;cursor:pointer;" title="클릭 → 보고서 화면(index)에서 열기">' + rec.docNumber + '</a>' : rec.docNumber) : DASH) + '</td>' +
             '<td rowspan="' + rowspan + '" style="font-size:10px;' + nameBorderStyle + '">' + (rec.evangType || DASH) + '</td>' +
             '<td rowspan="' + rowspan + '" style="' + nameBorderStyle + '"><span style="color:#c8ccd6;">-</span></td>' +
             '<td rowspan="' + rowspan + '" style="' + nameBorderStyle + '"><span style="color:#c8ccd6;">-</span></td>' +
@@ -4146,7 +4151,7 @@ function renderTab0(data, w) {
 
         // 참관 셀 — 팀전도 참관자만 회색 마크, 개인전도는 빈칸
         html += '<td style="text-align:center;border-left:1px solid #c5cde8;' + nameBorderStyle + '">' +
-          (!isPersonal && action === '참관하였고' ? '<span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#9e9e9e;vertical-align:middle;" title="참관"></span>' : '') +
+          ((!isPersonal || isRelation) && action === '참관하였고' ? '<span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#9e9e9e;vertical-align:middle;" title="참관"></span>' : '') +
           '</td>';
 
         // 복음참여 9칸
@@ -4184,7 +4189,10 @@ function renderTab0(data, w) {
         // 불참자 열 — 조원별 개별 셀
         // absentType: 'personal'=개인전도불참, 'team'=팀전도불참, 'error'=잘못된참관, ''=정상
         var absentType = '';
-        if (isPersonal) {
+        if (isRelation) {
+          // 관계전도: 기록에 [불참하였고]로 저장된 조원만 불참자로 표시 (참관·제시·빈 값은 표시 안 함)
+          if (action === '불참하였고') absentType = 'personal';
+        } else if (isPersonal) {
           var mmAction = memberAction(rec, m) || '';
           if (!mmAction) {
             var evangName = rec ? (rec.relationMember || '').replace(/\(.*?\)/g, '').trim() : '';
@@ -4205,7 +4213,7 @@ function renderTab0(data, w) {
         var absentMark = '';
         if (absentType === 'personal') {
           // 개인전도 불참 — 회색 단일 원
-          absentMark = '<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#bdbdbd;vertical-align:middle;" title="개인전도 불참"></span>';
+          absentMark = '<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#bdbdbd;vertical-align:middle;" title="' + (isRelation ? '관계전도 불참' : '개인전도 불참') + '"></span>';
         } else if (absentType === 'team') {
           // 팀전도 불참 — 빨간 2중 원
           absentMark = '<span style="display:inline-block;width:12px;height:12px;border-radius:50%;border:2px solid #e53935;background:transparent;vertical-align:middle;box-shadow:inset 0 0 0 2px #e53935;position:relative;" title="팀전도 불참">' +
