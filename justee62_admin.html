@@ -2893,7 +2893,13 @@ function buildJoSelect() {
   Array.from(joSet).sort(function(a,b){ return a-b; }).forEach(function(jo) {
     var opt = document.createElement('option');
     opt.value = String(jo);
-    opt.textContent = jo + '조';
+    // 조 목록 표시: "1조(성기현, 최정화, 김소형)" — 훈련자(조장) → 훈련자 → 훈련생 순
+    var roleRank = { '리더': 0, '훈련자': 1 };
+    var names = MEMBERS.filter(function(m) { return String(m.jo) === String(jo) && m.name; })
+      .map(function(m, i) { return { name: m.name, rank: (roleRank[m.role] !== undefined ? roleRank[m.role] : 2), i: i }; })
+      .sort(function(a, b) { return a.rank - b.rank || a.i - b.i; })
+      .map(function(x) { return x.name; });
+    opt.textContent = jo + '조' + (names.length ? '(' + names.join(', ') + ')' : '');
     sel.appendChild(opt);
   });
   if (cur) sel.value = cur;
@@ -7540,6 +7546,7 @@ async function syncJoFromServer() {
       localStorage.setItem('mon_members', JSON.stringify(MEMBERS));
       buildGroupSettings();
       buildJoAssign();
+      buildJoSelect(); // 조 선택 목록의 조원 이름 갱신
       renderAll();
       showToast('✅ 조정보 불러오기 완료 (' + json.joData.length + '개 조)');
     } else {
