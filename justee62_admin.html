@@ -6431,7 +6431,9 @@ function renderTab3(selectedWeek) {
 
   var maxWeekTab3 = getMaxWeek();
   var DASH3 = '<span style="color:#c8ccd6;">-</span>';
-  for (var w = 1; w <= maxWeekTab3; w++) {
+  // 선택한 주차까지만 표시 (예: 5주차 선택 시 1~5주만)
+  var lastWeekTab3 = Math.min(maxWeekTab3, Number(selectedWeek) || maxWeekTab3);
+  for (var w = 1; w <= lastWeekTab3; w++) {
     var wData = allData.filter(function(r) {
       return Number(r.week) === w;
     });
