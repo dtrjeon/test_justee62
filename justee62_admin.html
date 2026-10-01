@@ -1222,6 +1222,7 @@ window.TEST_DATA = {"records": [{"저장일시": "2026-03-14", "주차": 3, "전
       <option value="">전체</option>
       <option value="관계">관계(팀)</option>
       <option value="질문지">질문지(팀)</option>
+      <option value="관계전도">관계</option>
       <option value="개인">개인</option>
       <option value="7일후">7일후(팀)</option>
       <option value="QQ">QQ</option>
@@ -3198,6 +3199,7 @@ function renderAll() {
       if (et === '관계'   && t !== '관계(팀)')  return false;
       if (et === '질문지' && t !== '질문지(팀)') return false;
       if (et === '7일후'  && t !== '7일후(팀)')  return false;
+      if (et === '관계전도' && t !== '관계')      return false;
       if (et === '개인'   && t !== '개인')        return false;
       if (et === 'QQ'     && t.indexOf('QQ') < 0 && t.indexOf('qq') < 0) return false;
     }
