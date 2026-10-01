@@ -3896,11 +3896,7 @@ function onEvangTypeChange() {
     document.getElementById('personal_member').value = '';
   }
 
-  // 관계전도: 훈련생은 항상 [불참하였고] 자동 설정
-  if (type === '관계') {
-    var _tr = document.querySelector('input[name="trainee_action"][value="불참하였고"]');
-    if (_tr) _tr.checked = true;
-  }
+  // 관계전도: 불참자는 훈련자 또는 훈련생이 될 수 있으므로 선택값을 자동으로 바꾸지 않는다
 
   // 관계(대상자 모신분) 자동 설정
   var relSel2 = document.getElementById('q3_relation_member');
@@ -5184,10 +5180,6 @@ async function handleSubmit() {
     return;
   }
   // ── 개인전도 참관 선택 경고 — 강제 차단 ──────────────────────────────────────
-  if (v('evang_type') === '관계') {
-    var _tr2 = document.querySelector('input[name="trainee_action"][value="불참하였고"]');
-    if (_tr2 && !_tr2.checked) { _tr2.checked = true; syncPreview(); }
-  }
   var personalWarn = checkPersonalActionWarning();
   if (personalWarn) {
     // 오류 데이터 저장 방지 — confirm 없이 무조건 차단
@@ -5251,6 +5243,7 @@ function checkPersonalActionWarning() {
 
   var nameMap = { leader: v('q2_leader'), trainer: v('q2_trainer'), trainee: v('q2_trainee1') };
   var problems = [];
+  var relAbsentOk = false;
   // MEMBERS 배열에서 현재 조 멤버 확인
   if (typeof MEMBERS !== 'undefined') {
     MEMBERS.forEach(function(m) {
@@ -5258,10 +5251,8 @@ function checkPersonalActionWarning() {
       var action = actionEl ? actionEl.value : '';
       var mName = nameMap[m.id] || m.label;
       if (isRelation) {
-        // 관계전도: 훈련생만 [불참하였고]로 선택되면 되고, 훈련자(조장)/훈련자는 제한 없음
-        if (m.id === 'trainee' && action !== '불참하였고') {
-          problems.push(mName + '(' + m.label + ')');
-        }
+        // 관계전도: 훈련자 또는 훈련생 중 최소 1명이 [불참하였고]이면 된다 (자동 변경 없음)
+        if ((m.id === 'trainee' || m.id === 'trainer') && action === '불참하였고') relAbsentOk = true;
       } else {
         // 개인전도: 전도자 1명만 [제시하였고], 나머지가 [참관하였고]로 선택되면 안됨
         if (action === '참관하였고') {
@@ -5271,10 +5262,10 @@ function checkPersonalActionWarning() {
     });
   }
 
-  if (!problems.length) return '';
   if (isRelation) {
-    return '⚠️ 관계전도는 훈련생이 [불참하였고]로 선택되어야 합니다.\n\n현재 다르게 선택된 조원:\n• ' + problems.join('\n• ');
+    return relAbsentOk ? '' : '⚠️ 관계전도는 훈련자 또는 훈련생 중 최소 1명이 [불참하였고]로 선택되어야 합니다.';
   }
+  if (!problems.length) return '';
   return '⚠️ 개인전도는 전도자 1명만 [제시하였고], 나머지는 [불참하였고]로 선택해야 합니다.\n\n현재 [참관하였고]로 선택된 조원:\n• ' + problems.join('\n• ');
 }
 
