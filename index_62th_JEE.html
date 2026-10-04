@@ -2466,10 +2466,12 @@ pre.code-block {
   <div class="history-header">
     <h2 class="server">🎤 전체공개보고</h2>
     <div style="display:flex;align-items:center;gap:6px;">
-      <select id="pub-week-sel" onchange="renderPubTab()" style="padding:6px 8px;border-radius:8px;border:1px solid rgba(32,80,200,.25);font-size:12px;"></select>
+      <select id="pub-week-sel" onchange="renderPubTab();applyPubMarks()" style="padding:6px 8px;border-radius:8px;border:1px solid rgba(32,80,200,.25);font-size:12px;"></select>
       <button type="button" class="search-go-btn" onclick="loadPubTab(true)">🔄 새로고침</button>
+      <button type="button" class="search-go-btn" onclick="pubPrintPdf()" title="선택된 공개보고서 PDF 출력" style="background:#2050c8;color:#fff;">🖨️ PDF</button>
     </div>
   </div>
+  <div id="pub-cand" style="margin:0 2px 8px;"></div>
   <div id="pub-info" style="font-size:11px;color:#6b6b6b;line-height:1.6;margin:2px 2px 10px;"></div>
   <div id="pub-list"><div class="empty-state"><span class="es-icon">🎤</span><p>주차를 선택하세요.</p></div></div>
 </div>
@@ -2539,7 +2541,7 @@ pre.code-block {
   });
 })();
 
-const APP_VERSION  = 'index v2026.10.04';
+const APP_VERSION  = 'index v2026.10.05b';
 const LS_SEQ       = 'report_seq_counter';
 const LS_JO        = 'report_jo_data';
 const LS_SUBMITTED = 'report_submitted';
@@ -5746,14 +5748,14 @@ function resizeQ14(delta) {
 //  · 전체공개보고 탭: 주차별 조별 선택 현황 + 변경
 //  · 보고서가 1건뿐인 조는 자동 선택, 관리자가 [확정]하면 잠금 (admin 화면에서 PDF 출력)
 // ============================================================
-var _pub = { loaded: false, records: [], sel: {}, locks: {}, openJo: null, mineOnly: null, selLoaded: false };
+var _pub = { loaded: false, records: [], sel: {}, locks: {}, openJo: null, mineOnly: null, selLoaded: false, cand: {} };
 
 function pubWeekKey(v) {
   var n = parseInt(String(v == null ? '' : v).replace(/[^0-9]/g, ''), 10);
   return isNaN(n) ? String(v || '') : String(n);
 }
 
-// 선택 권한: admin 전체 / 그룹장·부그룹장은 자기 그룹 조 / 조장은 자기 조
+// 선택 권한: admin 전체 / 그룹장·부그룹장은 자기 그룹 조 / 조원은 자기 조
 function canSelectPub(jo) {
   if (isAdminUser()) return true;
   var p = getPreset();
@@ -5762,8 +5764,11 @@ function canSelectPub(jo) {
   if (p.scope === 'group') {
     return !!(j && String(j.group || '').toUpperCase() === String(p.group || '').toUpperCase());
   }
-  return String(p.jo) === String(jo) && /조장/.test(String(p.role || ''));
+  return String(p.jo) === String(jo); // 조원 누구나(1명이 선택)
 }
+
+// 조 단위 확정(잠금) 여부
+function pubLocked(week, jo) { return !!_pub.locks[week + '|' + jo]; }
 
 async function pubPost(payload) {
   if (isAdminUser()) payload.adminToken = getAdminToken();
@@ -5847,11 +5852,37 @@ async function loadPubTab(force) {
   }
 }
 
-// (조, 주차)의 보고서 — 문서번호별 최신 1건, 저장일시 최신순
-function pubDocsFor(week, jo) {
+// 후보 주차 목록 — 보고주차(R)마다 기본은 R주차만, 1..R주차 중 여러 개 선택 가능
+function pubCandWeeks(R) {
+  var r = parseInt(R, 10) || 1;
+  var c = (_pub.cand[R] || [String(r)]).filter(function(w) { return (parseInt(w, 10) || 0) <= r; });
+  if (!c.length) c = [String(r)];
+  return c;
+}
+
+function pubToggleCand(R, w) {
+  var c = pubCandWeeks(R).slice();
+  var i = c.indexOf(w);
+  if (i >= 0) { if (c.length > 1) c.splice(i, 1); } else c.push(w);
+  _pub.cand[R] = c;
+  renderPubTab();
+}
+
+function pubSetCand(R, mode) {
+  var r = parseInt(R, 10) || 1, c = [];
+  if (mode === 'all') for (var w = 1; w <= r; w++) c.push(String(w));
+  else if (mode === 'two' && r > 1) c = [String(r - 1), String(r)];
+  else c = [String(r)];
+  _pub.cand[R] = c;
+  renderPubTab();
+}
+
+// (조, 후보주차들)의 보고서 — 문서번호별 최신 1건, 저장일시 최신순
+function pubDocsFor(weeks, jo) {
+  var ws = [].concat(weeks).map(String);
   var best = {};
   _pub.records.forEach(function(r) {
-    if (pubWeekKey(r.week) !== week || String(r.jo) !== String(jo) || !r.doc_number) return;
+    if (ws.indexOf(pubWeekKey(r.week)) < 0 || String(r.jo) !== String(jo) || !r.doc_number) return;
     var cur = best[r.doc_number];
     if (!cur || String(r._savedAt) > String(cur._savedAt)) best[r.doc_number] = r;
   });
@@ -5859,15 +5890,27 @@ function pubDocsFor(week, jo) {
     .sort(function(a, b) { return String(b._savedAt).localeCompare(String(a._savedAt)); });
 }
 
-function pubState(week, jo, docs) {
-  var s = _pub.sel[week + '|' + jo];
+// 조의 특정 문서(주차 무관) 최신본
+function pubFindDoc(jo, docNumber) {
+  var cur = null;
+  _pub.records.forEach(function(r) {
+    if (String(r.jo) !== String(jo) || r.doc_number !== docNumber) return;
+    if (!cur || String(r._savedAt) > String(cur._savedAt)) cur = r;
+  });
+  return cur;
+}
+
+// 보고주차 R 기준 상태. 선택이 없고 R주차 자체 보고서가 1건이면 자동. 후보 주차는 선택지만 넓힌다.
+function pubState(R, jo, candDocs) {
+  var s = _pub.sel[R + '|' + jo];
   if (s) {
-    var d = docs.find(function(x) { return x.doc_number === s.docNumber; });
+    var d = pubFindDoc(jo, s.docNumber);
     if (d) return { kind: s.kind === '자동' ? 'auto' : 'sel', doc: d, sel: s };
     return { kind: 'missing', sel: s };
   }
-  if (docs.length === 1) return { kind: 'auto', doc: docs[0] };
-  if (docs.length === 0) return { kind: 'none' };
+  var own = pubDocsFor([R], jo);
+  if (own.length === 1) return { kind: 'auto', doc: own[0] };
+  if (candDocs.length === 0) return { kind: 'none' };
   return { kind: 'pending' };
 }
 
@@ -5878,7 +5921,8 @@ function pubShortDate(d) {
 
 function pubDocLine(d) {
   var rc = { '결신': '#1a6b3c', '이미신자': '#e67e00', '확신': '#1a3a9e', '보류/거부': '#888' }[d.result] || '#aaa';
-  return '<span style="font-size:10px;color:#2050c8;font-weight:700;background:#eef2ff;border-radius:4px;padding:2px 7px;">' + d.doc_number + '</span>' +
+  return '<span style="font-size:10px;color:#fff;font-weight:700;background:#6a4cc2;border-radius:4px;padding:2px 6px;margin-right:4px;">' + pubWeekKey(d.week) + '주</span>' +
+    '<span style="font-size:10px;color:#2050c8;font-weight:700;background:#eef2ff;border-radius:4px;padding:2px 7px;">' + d.doc_number + '</span>' +
     (d.date ? '<span style="font-size:10px;color:#1a6b3c;font-weight:700;background:#eaf6ee;border-radius:4px;padding:2px 7px;margin-left:4px;">📅 ' + pubShortDate(d.date) + '</span>' : '') +
     (d.result ? '<span style="font-size:10px;color:#fff;background:' + rc + ';border-radius:4px;padding:2px 7px;margin-left:4px;font-weight:700;">' + d.result + '</span>' : '') +
     ((d.location || d.name) ? '<span style="font-size:10px;color:#666;margin-left:6px;">📍 ' + (d.location || '') + ' ' + (d.name ? maskName(d.name) : '') + '</span>' : '');
@@ -5890,31 +5934,54 @@ function renderPubTab() {
   var wsel = document.getElementById('pub-week-sel');
   if (!list || !wsel || !_pub.loaded) return;
   var week = wsel.value;
-  var locked = !!_pub.locks[week];
   var admin = isAdminUser();
   var jos = [];
   getJoData().forEach(function(j) { if (jos.indexOf(String(j.jo)) < 0) jos.push(String(j.jo)); });
   jos.sort(function(a, b) { return (parseInt(a, 10) || 0) - (parseInt(b, 10) || 0); });
 
   var anyMine = jos.some(canSelectPub);
-  if (_pub.mineOnly === null) _pub.mineOnly = anyMine && !admin;
+  if (_pub.mineOnly === null) _pub.mineOnly = false;
+  var cands = pubCandWeeks(week);
   var rows = jos.map(function(jo) {
-    var docs = pubDocsFor(week, jo);
-    return { jo: jo, docs: docs, st: pubState(week, jo, docs), can: canSelectPub(jo) };
+    var docs = pubDocsFor(cands, jo);
+    var st = pubState(week, jo, docs);
+    // 이미 선택된 문서가 후보 주차 밖이어도 목록에 포함
+    if (st.doc && !docs.some(function(x) { return x.doc_number === st.doc.doc_number; })) docs.push(st.doc);
+    var jd = getJoData().find(function(x) { return String(x.jo) === String(jo); }) || {};
+    return { jo: jo, group: String(jd.group || '').toUpperCase(), docs: docs, st: st, can: canSelectPub(jo) };
   });
+  // 그룹별 → 조 순서로 정렬 (그룹 없는 조는 맨 뒤)
+  rows.sort(function(a, b) {
+    var ga = a.group || '\uffff', gb = b.group || '\uffff';
+    if (ga !== gb) return ga < gb ? -1 : 1;
+    return (parseInt(a.jo, 10) || 0) - (parseInt(b.jo, 10) || 0);
+  });
+
+  var cbox = document.getElementById('pub-cand');
+  if (cbox) {
+    var R = parseInt(week, 10) || 1, chips = '';
+    for (var w = 1; w <= R; w++) {
+      var on = cands.indexOf(String(w)) >= 0;
+      chips += '<button type="button" onclick="pubToggleCand(\'' + week + '\',\'' + w + '\')" style="margin:2px 3px 2px 0;padding:4px 10px;border-radius:14px;font-size:11px;font-weight:700;cursor:pointer;border:1.5px solid #6a4cc2;background:' + (on ? '#6a4cc2' : '#fff') + ';color:' + (on ? '#fff' : '#6a4cc2') + ';">' + w + '주</button>';
+    }
+    cbox.innerHTML = '<div style="font-size:11px;color:#6b6b6b;margin-bottom:2px;">📚 선택할 보고서의 주차 (복수 선택 가능) ' +
+      '<a href="javascript:pubSetCand(\'' + week + '\',\'cur\')" style="margin-left:6px;color:#2050c8;">해당주만</a>' +
+      (R > 1 ? ' · <a href="javascript:pubSetCand(\'' + week + '\',\'two\')" style="color:#2050c8;">직전+해당주</a> · <a href="javascript:pubSetCand(\'' + week + '\',\'all\')" style="color:#2050c8;">전체</a>' : '') +
+      '</div>' + chips;
+  }
   var cntOk = rows.filter(function(r) { return r.st.kind === 'sel' || r.st.kind === 'auto'; }).length;
   var cntPend = rows.filter(function(r) { return r.st.kind === 'pending' || r.st.kind === 'missing'; }).length;
   var cntNone = rows.filter(function(r) { return r.st.kind === 'none'; }).length;
 
   info.innerHTML =
-    '<b>' + week + '주차</b> · 선택완료 <b style="color:#1a6b3c;">' + cntOk + '</b> · 미선택 <b style="color:#c0392b;">' + cntPend + '</b> · 미등록 <b>' + cntNone + '</b>' +
-    (locked ? ' · <b style="color:#c0392b;">🔒 관리자 확정됨 (변경 불가)</b>' : '') +
-    '<br>보고서가 2건 이상인 조는 발표할 1건을 선택하세요. 1건뿐이면 자동으로 선택됩니다. (조장 · 그룹장 · 부그룹장 선택 가능)' +
+    '<b>' + week + '주차 보고</b> · 선택완료 <b style="color:#1a6b3c;">' + cntOk + '</b> · 미선택 <b style="color:#c0392b;">' + cntPend + '</b> · 미등록 <b>' + cntNone + '</b>' +
+    '<br>① 보고서가 2건 이상인 조는 <b>조원 중 1명</b>이 발표할 1건을 선택 → ② <b>그룹장·부그룹장</b>이 확인 후 그룹 확정(🔒). 해당주 보고서가 1건뿐이면 자동 선택됩니다. 이전 주차 보고서는 위에서 주차를 추가하세요.' +
     (anyMine && !admin ? '<br><label style="cursor:pointer;"><input type="checkbox" ' + (_pub.mineOnly ? 'checked' : '') + ' onchange="_pub.mineOnly=this.checked;renderPubTab()"> 내가 선택할 수 있는 조만 보기</label>' : '');
 
   var shown = rows.filter(function(r) { return !(_pub.mineOnly && !r.can); });
   if (!shown.length) { list.innerHTML = '<div class="empty-state"><span class="es-icon">🎤</span><p>표시할 조가 없습니다.</p></div>'; return; }
 
+  var _lastGrp = null;
   list.innerHTML = shown.map(function(r) {
     var st = r.st, badge, body = '';
     if (st.kind === 'sel') { badge = '<span style="background:#1a6b3c;color:#fff;border-radius:10px;padding:2px 9px;font-size:10px;font-weight:700;">✅ 선택됨</span>'; }
@@ -5925,11 +5992,13 @@ function renderPubTab() {
     if (st.doc) body = '<div style="margin-top:6px;">' + pubDocLine(st.doc) + '</div>' +
       (st.sel && st.sel.selectedBy && st.kind === 'sel' ? '<div style="font-size:10px;color:#888;margin-top:3px;">선택: ' + st.sel.selectedBy + ' · ' + String(st.sel.selectedAt || '').slice(5, 16) + '</div>' : '');
     var btn = '';
-    if (r.can && r.docs.length > 1 && (!locked || admin)) {
+    var rLocked = pubLocked(week, r.jo);
+    if (rLocked) badge += ' <span style="font-size:10px;font-weight:700;color:#c0392b;">🔒확정</span>';
+    if (r.can && r.docs.length > 1 && (!rLocked || admin)) {
       btn = '<button type="button" onclick="pubToggleOpen(\'' + r.jo + '\')" style="background:#2050c8;color:#fff;border:none;border-radius:16px;padding:6px 14px;font-size:11px;font-weight:700;cursor:pointer;">' + (st.kind === 'sel' ? '변경' : '선택') + '</button>';
     }
     var picker = '';
-    if (_pub.openJo === r.jo && r.can && (!locked || admin)) {
+    if (_pub.openJo === r.jo && r.can && (!rLocked || admin)) {
       picker = '<div style="margin-top:8px;border-top:1px dashed #cbd5f0;padding-top:8px;">' + r.docs.map(function(d) {
         var chosen = st.doc && st.doc.doc_number === d.doc_number && st.kind === 'sel';
         return '<div style="display:flex;justify-content:space-between;align-items:center;gap:6px;padding:6px 0;border-bottom:1px solid #f0f0f0;">' +
@@ -5940,9 +6009,23 @@ function renderPubTab() {
       (st.kind === 'sel' ? '<div style="text-align:right;margin-top:6px;"><button type="button" onclick="pubClear(\'' + week + '\',\'' + r.jo + '\')" style="background:none;border:none;color:#c0392b;font-size:11px;cursor:pointer;text-decoration:underline;">선택 해제</button></div>' : '') +
       '</div>';
     }
-    return '<div class="record-card" style="cursor:default;">' +
+    var gHead = '';
+    if (r.group !== _lastGrp) {
+      _lastGrp = r.group;
+      var gRows = shown.filter(function(x) { return x.group === r.group; });
+      var gOk = gRows.filter(function(x) { return x.st.kind === 'sel' || x.st.kind === 'auto'; }).length;
+      gHead = '<div style="margin:14px 2px 6px;padding:5px 12px;background:#1a3a9e;color:#fff;border-radius:8px;font-size:12px;font-weight:800;display:flex;justify-content:space-between;">' +
+        '<span>' + (r.group ? r.group + '그룹' : '그룹 미지정') + '</span>' +
+        '<span style="font-weight:600;display:flex;align-items:center;gap:8px;">' + gOk + '/' + gRows.length +
+        (canConfirmGroup(r.group) ? (function() {
+          var allLocked = gRows.length && gRows.every(function(x) { return pubLocked(week, x.jo); });
+          return '<button type="button" onclick="pubToggleConfirm(\'' + r.group + '\')" style="background:#fff;color:' + (allLocked ? '#555' : '#c0392b') + ';border:none;border-radius:12px;padding:3px 10px;font-size:11px;font-weight:800;cursor:pointer;">' + (allLocked ? '🔓 확정해제' : '🔒 그룹 확정') + '</button>';
+        })() : (gRows.length && gRows.every(function(x) { return pubLocked(week, x.jo); }) ? '<span>🔒 확정</span>' : '')) +
+        '</span></div>';
+    }
+    return gHead + '<div class="record-card" style="cursor:default;">' +
       '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">' +
-      '<div style="font-size:15px;font-weight:800;color:#1a3a9e;">' + r.jo + '조 ' + badge + '</div>' + btn + '</div>' +
+      '<div style="font-size:15px;font-weight:800;color:#1a3a9e;">' + (r.group ? '<span style="font-size:11px;background:#e8eaf6;color:#1a3a9e;border-radius:6px;padding:1px 6px;margin-right:5px;">' + r.group + '</span>' : '') + r.jo + '조 ' + badge + '</div>' + btn + '</div>' +
       body + picker + '</div>';
   }).join('');
 }
@@ -5950,6 +6033,72 @@ function renderPubTab() {
 function pubToggleOpen(jo) {
   _pub.openJo = (_pub.openJo === jo) ? null : jo;
   renderPubTab();
+}
+
+// 선택완료·자동 조의 보고서를 조 순서대로 PDF 출력
+async function pubPrintPdf() {
+  var wsel = document.getElementById('pub-week-sel');
+  if (!_pub.loaded || !wsel) { showStatus('먼저 목록을 불러오세요.', 'warn'); return; }
+  var week = wsel.value, cands = pubCandWeeks(week);
+  var jos = [];
+  getJoData().forEach(function(j) { if (jos.indexOf(String(j.jo)) < 0) jos.push(String(j.jo)); });
+  jos.sort(function(a, b) { return (parseInt(a, 10) || 0) - (parseInt(b, 10) || 0); });
+  var recs = [], pend = [];
+  jos.forEach(function(jo) {
+    var st = pubState(week, jo, pubDocsFor(cands, jo));
+    if (st.doc) recs.push(st.doc);
+    else if (st.kind === 'pending' || st.kind === 'missing') pend.push(jo + '조');
+  });
+  if (!recs.length) { showStatus('출력할 선택 보고서가 없습니다.', 'warn'); return; }
+  if (pend.length && !confirm('미선택 조(' + pend.join(', ') + ')는 제외하고 ' + recs.length + '매를 출력합니다.')) return;
+  await renderSujuRecordsToPdf(recs, '전체공개보고_' + week + '주차');
+}
+
+// 확정 권한: 관리자 / 해당 그룹의 그룹장·부그룹장
+function canConfirmGroup(group) {
+  if (isAdminUser()) return true;
+  var p = getPreset();
+  return !!(p && p.name && p.scope === 'group' && group && String(p.group || '').toUpperCase() === String(group).toUpperCase());
+}
+
+// 그룹 단위 확정/확정해제 — 확정 시 해당주 보고서가 1건뿐인 조는 자동 선택으로 기록, 조원은 더 이상 변경 불가
+async function pubToggleConfirm(group) {
+  group = String(group || '').toUpperCase();
+  if (!canConfirmGroup(group)) { showStatus('해당 그룹의 그룹장·부그룹장 또는 관리자만 확정할 수 있습니다.', 'warn'); return; }
+  var wsel = document.getElementById('pub-week-sel');
+  var week = wsel ? wsel.value : '';
+  if (!week) return;
+  var cands = pubCandWeeks(week);
+  var jos = [], pend = [];
+  getJoData().forEach(function(j) {
+    if (String(j.group || '').toUpperCase() !== group) return;
+    var jo = String(j.jo);
+    if (jos.indexOf(jo) >= 0) return;
+    jos.push(jo);
+    var st = pubState(week, jo, pubDocsFor(cands, jo));
+    if (st.kind === 'pending' || st.kind === 'missing') pend.push(jo + '조');
+  });
+  if (!jos.length) { showStatus('확정할 조가 없습니다.', 'warn'); return; }
+  var allLocked = jos.every(function(jo) { return pubLocked(week, jo); });
+  var label = (group || '미지정') + '그룹 ' + week + '주차';
+  var msg = allLocked
+    ? label + ' 확정을 해제합니다.\n조원이 다시 선택을 바꿀 수 있게 됩니다.'
+    : label + ' 공개보고를 확정합니다.\n' + (pend.length ? '⚠️ 아직 선택하지 않은 조: ' + pend.join(', ') + '\n' : '') + '해당주 보고서가 1건뿐인 조는 자동 선택으로 기록되고, 이후 조원은 변경할 수 없습니다.';
+  if (!confirm(msg)) return;
+  try {
+    showStatus('⏳ 처리 중...', 'info');
+    var pr = getPreset() || {};
+    var payload = { action: 'confirm_public_week', week: week, confirmed: !allLocked, jos: jos,
+      by: pr.name || (isAdminUser() ? '관리자' : ''), role: pr.role || (isAdminUser() ? 'admin' : '') };
+    if (!isAdminUser()) payload.byRole = 'group';
+    var out = await pubPost(payload);
+    await loadPubSelection();
+    renderPubTab();
+    applyPubMarks();
+    showStatus(allLocked ? '🔓 확정을 해제했습니다.' : '🔒 ' + label + ' 확정 완료' + (out.autoAdded ? ' (자동선택 ' + out.autoAdded + '건 기록)' : ''), 'success');
+  } catch (e) {
+    showStatus('❌ 확정 처리 실패: ' + e.message, 'error');
+  }
 }
 
 async function pubSelect(week, jo, docNumber) {
@@ -5984,24 +6133,34 @@ async function pubClear(week, jo) {
 }
 
 // ── 기록 탭: 카드별 [⭐ 발표로 선택] 버튼 ──────────────────
+// 기록 탭 버튼이 가리키는 보고주차: 전체공개보고 탭에서 고른 주차(기본 현재주).
+// 단, 기록의 주차가 그보다 늦으면 그 기록의 주차를 보고주차로 본다.
+function pubTargetWeek(r) {
+  var wsel = document.getElementById('pub-week-sel');
+  var T = parseInt((wsel && wsel.value) || pubCurrentWeek(), 10) || 1;
+  var rw = parseInt(pubWeekKey(r.week), 10) || 0;
+  return String(Math.max(T, rw));
+}
+
 function applyPubMarks() {
   var recs = window._historyRecords || [];
   recs.forEach(function(r, i) {
     var box = document.getElementById('pk-' + i);
     if (!box) return;
-    var week = pubWeekKey(r.week);
-    if (!week || !r.doc_number || !r.jo) { box.style.display = 'none'; return; }
+    var rw = pubWeekKey(r.week);
+    if (!rw || !r.doc_number || !r.jo) { box.style.display = 'none'; return; }
+    var week = pubTargetWeek(r);
     var s = _pub.sel[week + '|' + r.jo];
     var chosen = !!(s && s.docNumber === r.doc_number);
-    var locked = !!_pub.locks[week];
+    var locked = pubLocked(week, r.jo);
     var can = canSelectPub(r.jo) && (!locked || isAdminUser());
     if (!chosen && !can) { box.style.display = 'none'; return; }
     box.style.display = 'block';
     if (can) {
       box.innerHTML = '<button type="button" onclick="event.stopPropagation();pubPickFromHistory(' + i + ')" style="background:' + (chosen ? '#1a6b3c' : '#fff') + ';color:' + (chosen ? '#fff' : '#2050c8') + ';border:1.5px solid ' + (chosen ? '#1a6b3c' : '#2050c8') + ';border-radius:16px;padding:5px 14px;font-size:11px;font-weight:700;cursor:pointer;">' +
-        (chosen ? '✅ ' + week + '주차 발표 선택됨 (해제)' : '⭐ 발표로 선택') + '</button>';
+        (chosen ? '✅ ' + week + '주차 보고로 선택됨 (해제)' : '⭐ ' + week + '주차 보고로 선택') + '</button>';
     } else {
-      box.innerHTML = '<span style="font-size:11px;font-weight:700;color:#1a6b3c;">⭐ ' + week + '주차 발표 보고서' + (locked ? ' 🔒' : '') + '</span>';
+      box.innerHTML = '<span style="font-size:11px;font-weight:700;color:#1a6b3c;">⭐ ' + week + '주차 보고 선택' + (locked ? ' 🔒' : '') + '</span>';
     }
   });
 }
@@ -6009,7 +6168,7 @@ function applyPubMarks() {
 async function pubPickFromHistory(i) {
   var r = (window._historyRecords || [])[i];
   if (!r) return;
-  var week = pubWeekKey(r.week);
+  var week = pubTargetWeek(r);
   var s = _pub.sel[week + '|' + r.jo];
   if (s && s.docNumber === r.doc_number) await pubClear(week, String(r.jo));
   else await pubSelect(week, String(r.jo), r.doc_number);

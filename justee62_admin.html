@@ -1207,7 +1207,6 @@ window.TEST_DATA = {"records": [{"저장일시": "2026-03-14", "주차": 3, "전
   <div class="tab" onclick="switchTab(3)">📈 복음제시</div>
   <div class="tab" onclick="switchTab(4)">🔍 문서번호관리</div>
   <div class="tab" onclick="switchTab(5)">🔒 특이사항</div>
-  <div class="tab" onclick="switchTab(6)">🎤 전체공개보고</div>
 </div>
 
 <div class="week-bar">
@@ -1946,48 +1945,6 @@ window.TEST_DATA = {"records": [{"저장일시": "2026-03-14", "주차": 3, "전
   </div>
 </div>
 
-<div class="page" id="page-6">
-  <div class="week-banner" style="background:linear-gradient(135deg,#1a3a9e,#2e6bd8);">
-    <div class="wb-left">
-      <div class="wb-title">전체공개보고</div>
-      <div class="wb-sub">각 조가 선택한 공개보고서를 확인하고 PDF로 출력 <span style="color:#c8ccd6;">-</span> 확정하면 조장·그룹장이 변경할 수 없습니다</div>
-    </div>
-    <div class="wb-right">
-      <div class="wb-rate" id="t6-ok-cnt"><span style="color:#c8ccd6;">-</span></div>
-      <div class="wb-rate-label">선택완료</div>
-    </div>
-  </div>
-
-  <div class="tbl-wrap" style="margin-top:8px;">
-    <div class="tbl-head" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px;">
-      <span class="tbl-head-title">🎤 조별 공개보고 선택 현황</span>
-      <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;">
-        <select id="t6-week" onchange="renderTab6()" style="font-size:11px;padding:4px 6px;border-radius:8px;border:1px solid #ccd;"></select>
-        <button onclick="renderTab6()" class="act-btn primary" style="font-size:11px;padding:4px 12px;">🔄 새로고침</button>
-        <button id="t6-lock-btn" onclick="t6ToggleConfirm()" style="background:#fff;border:1.5px solid #c0392b;color:#c0392b;border-radius:12px;padding:4px 10px;font-size:11px;font-weight:700;cursor:pointer;">🔒 확정</button>
-        <button onclick="t6Print()" style="background:#2050c8;border:none;color:#fff;border-radius:12px;padding:5px 12px;font-size:11px;font-weight:700;cursor:pointer;">🖨️ PDF 출력</button>
-      </div>
-    </div>
-    <div id="t6-info" style="padding:8px 12px;font-size:10px;color:#888;background:#fafafa;border-bottom:1px solid #eee;line-height:1.6;"></div>
-    <div class="tbl-scroll" style="overflow-x:auto;">
-      <table id="t6-table" style="width:100%;border-collapse:collapse;font-size:11px;">
-        <thead>
-          <tr style="background:#e8eaf6;">
-            <th style="padding:7px 8px;text-align:center;white-space:nowrap;">조</th>
-            <th style="padding:7px 8px;text-align:center;white-space:nowrap;">상태</th>
-            <th style="padding:7px 8px;text-align:left;white-space:nowrap;">선택 보고서</th>
-            <th style="padding:7px 8px;text-align:center;white-space:nowrap;">전도일</th>
-            <th style="padding:7px 8px;text-align:center;white-space:nowrap;">결과</th>
-            <th style="padding:7px 8px;text-align:center;white-space:nowrap;">선택자</th>
-            <th style="padding:7px 8px;text-align:center;white-space:nowrap;">변경</th>
-          </tr>
-        </thead>
-        <tbody id="t6-list"></tbody>
-      </table>
-    </div>
-  </div>
-</div>
-
 <!-- 설정 모달 -->
 <div class="modal-bg" id="settings-modal">
   <div class="modal">
@@ -2169,7 +2126,7 @@ window.TEST_DATA = {"records": [{"저장일시": "2026-03-14", "주차": 3, "전
 // ── 빈 값 표시용 옅은 회색 대시 ─────────────────────────────────────────────
 var DASH = '<span style="color:#c8ccd6;">-</span>';
 // ── 조 구성 데이터 ─────────────────────────────────────────────────────────
-const ADMIN_VERSION = 'admin v2026.10.04';
+const ADMIN_VERSION = 'admin v2026.10.05b';
 // 하드코딩 기준 데이터 (step 복원용)
 const HARDCODED_MEMBERS = [{
   jo: 1,
@@ -7766,7 +7723,7 @@ function editDupRow(key) {
 }
 
 // 모바일 인앱브라우저는 confirm()을 조용히 막는 경우가 있어 페이지 내 확인창을 사용
-function dupConfirm(msgHtml, okLabel) {
+function dupConfirm(msgHtml) {
   return new Promise(function(resolve) {
     var old = document.getElementById('dup-confirm-ov');
     if (old) old.remove();
@@ -7777,7 +7734,7 @@ function dupConfirm(msgHtml, okLabel) {
       '<div style="margin-bottom:14px;">' + msgHtml + '</div>' +
       '<div style="display:flex;gap:8px;justify-content:flex-end;">' +
       '<button id="dup-c-no" style="padding:8px 14px;border:1px solid #ccc;background:#fff;border-radius:6px;">취소</button>' +
-      '<button id="dup-c-yes" style="padding:8px 14px;border:none;background:#c62828;color:#fff;border-radius:6px;font-weight:700;">' + (okLabel || '삭제') + '</button>' +
+      '<button id="dup-c-yes" style="padding:8px 14px;border:none;background:#c62828;color:#fff;border-radius:6px;font-weight:700;">삭제</button>' +
       '</div></div>';
     document.body.appendChild(ov);
     function done(v) { ov.remove(); resolve(v); }
@@ -7868,208 +7825,6 @@ async function deleteDupRow(key) {
   }
 }
 
-// ── TAB 6: 전체공개보고 ─────────────────────────────────────────────────────
-// 각 조가 index(기록/전체공개보고 탭)에서 고른 "발표용 공개보고서"를 확인·확정·PDF 출력한다.
-// 선택 데이터는 구글 시트 "공개보고선택" (Code.gs get_public_selection / confirm_public_week)
-var _t6 = { sel: {}, locks: {}, rows: [] };
-function esc(v) { return String(v == null ? '' : v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
-var T6_INDEX_URL = 'https://dtrjeon.github.io/test_justee62/index.html';
-
-function t6WeekKey(v) {
-  var n = parseInt(String(v == null ? '' : v).replace(/[^0-9]/g, ''), 10);
-  return isNaN(n) ? String(v || '') : String(n);
-}
-
-function t6Time(v) {
-  var t = new Date(String(v || '').replace(/\./g, '-').replace(' ', 'T')).getTime();
-  return isNaN(t) ? 0 : t;
-}
-
-function t6ShortDate(v) {
-  var m = String(v || '').match(/(\d{4})-(\d{2})-(\d{2})/);
-  return m ? m[2] + '/' + m[3] : (v || '');
-}
-
-async function t6LoadSelection() {
-  if (!CFG.url) return false;
-  try {
-    var res = await fetch(CFG.url + '?action=get_public_selection&_ts=' + Date.now(), { redirect: 'follow', cache: 'no-store' });
-    var j = JSON.parse(await res.text());
-    if (j.status !== 'ok') throw new Error(j.message || '조회 실패');
-    var sel = {};
-    (j.selections || []).forEach(function(x) { sel[t6WeekKey(x.week) + '|' + x.jo] = x; });
-    _t6.sel = sel;
-    _t6.locks = j.locks || {};
-    return true;
-  } catch (e) {
-    showToast('❌ 공개보고 선택 조회 실패: ' + e.message + ' (Code.gs 재배포 확인)');
-    return false;
-  }
-}
-
-async function renderTab6() {
-  if (!rawData || !rawData.length) {
-    showToast('먼저 데이터를 불러오세요.');
-    return;
-  }
-  var wsel = document.getElementById('t6-week');
-  if (wsel && !wsel.options.length) {
-    var mw = getMaxWeek();
-    for (var w = 1; w <= mw; w++) {
-      var o = document.createElement('option');
-      o.value = String(w);
-      var rg = getWeekDateRangeLabel(w);
-      o.textContent = w + '주차' + (rg ? '(' + rg + ')' : '');
-      wsel.appendChild(o);
-    }
-    wsel.value = String(Math.max(1, mw));
-  }
-  await t6LoadSelection();
-  drawTab6();
-}
-
-function drawTab6() {
-  var week = document.getElementById('t6-week').value;
-  var locked = !!_t6.locks[week];
-  var admin = isAdminLevel();
-
-  // 조 목록 — MEMBERS 기준 (12조 = 로직 점검용 테스트 조 제외)
-  var jos = [];
-  MEMBERS.forEach(function(m) { var j = String(m.jo); if (j !== '12' && jos.indexOf(j) < 0) jos.push(j); });
-  jos.sort(function(a, b) { return (parseInt(a, 10) || 0) - (parseInt(b, 10) || 0); });
-
-  _t6.rows = jos.map(function(jo) {
-    var best = {};
-    rawData.forEach(function(r) {
-      if (t6WeekKey(r.week) !== week || String(r.jo) !== jo || !r.docNumber) return;
-      var cur = best[r.docNumber];
-      if (!cur || t6Time(r.savedAt) > t6Time(cur.savedAt)) best[r.docNumber] = r;
-    });
-    var docs = Object.keys(best).map(function(k) { return best[k]; })
-      .sort(function(a, b) { return t6Time(b.savedAt) - t6Time(a.savedAt); });
-    var s = _t6.sel[week + '|' + jo];
-    var st = { kind: 'none' };
-    if (s) {
-      var d = docs.filter(function(x) { return x.docNumber === s.docNumber; })[0];
-      st = d ? { kind: s.kind === '자동' ? 'auto' : 'sel', doc: d, sel: s } : { kind: 'missing', sel: s };
-    } else if (docs.length === 1) st = { kind: 'auto', doc: docs[0] };
-    else if (docs.length > 1) st = { kind: 'pending' };
-    return { jo: jo, docs: docs, st: st };
-  });
-
-  var cOk = _t6.rows.filter(function(r) { return r.st.kind === 'sel' || r.st.kind === 'auto'; }).length;
-  var cPend = _t6.rows.filter(function(r) { return r.st.kind === 'pending' || r.st.kind === 'missing'; }).length;
-  var cNone = _t6.rows.filter(function(r) { return r.st.kind === 'none'; }).length;
-  document.getElementById('t6-ok-cnt').textContent = cOk + '/' + _t6.rows.length;
-  document.getElementById('t6-info').innerHTML =
-    '<b>' + week + '주차</b> · 선택완료 ' + cOk + ' · 미선택 <b style="color:#c0392b;">' + cPend + '</b> · 미등록 ' + cNone +
-    (locked ? ' · <b style="color:#c0392b;">🔒 확정됨 (' + esc(String((_t6.locks[week] || {}).at || '').slice(0, 16)) + ')</b>' : ' · 미확정') +
-    '<br>※ 보고서가 1건뿐인 조는 [확정] 시 자동 선택으로 기록됩니다. PDF에는 선택완료·자동 조만 조 순서대로 포함됩니다.';
-
-  var btn = document.getElementById('t6-lock-btn');
-  btn.textContent = locked ? '🔓 확정해제' : '🔒 확정';
-
-  document.getElementById('t6-list').innerHTML = _t6.rows.map(function(r, i) {
-    var bg = i % 2 === 0 ? '#fff' : '#f7f9ff';
-    var st = r.st, badge;
-    if (st.kind === 'sel') badge = '<span style="background:#1a6b3c;color:#fff;border-radius:8px;padding:1px 7px;font-size:10px;font-weight:700;white-space:nowrap;">✅ 선택</span>';
-    else if (st.kind === 'auto') badge = '<span style="background:#e67e00;color:#fff;border-radius:8px;padding:1px 7px;font-size:10px;font-weight:700;white-space:nowrap;">🔸 자동</span>';
-    else if (st.kind === 'pending') badge = '<span style="background:#c0392b;color:#fff;border-radius:8px;padding:1px 7px;font-size:10px;font-weight:700;white-space:nowrap;">⚠️ 미선택(' + r.docs.length + ')</span>';
-    else if (st.kind === 'missing') badge = '<span style="background:#c0392b;color:#fff;border-radius:8px;padding:1px 7px;font-size:10px;font-weight:700;white-space:nowrap;">⚠️ 없음</span>';
-    else badge = '<span style="background:#aaa;color:#fff;border-radius:8px;padding:1px 7px;font-size:10px;font-weight:700;white-space:nowrap;">미등록</span>';
-    var d = st.doc;
-    var sel = '';
-    if (admin && r.docs.length > 1) {
-      sel = '<select onchange="t6AdminSelect(\'' + r.jo + '\',this.value)" style="font-size:10px;padding:2px;max-width:120px;">' +
-        '<option value="">선택…</option>' +
-        r.docs.map(function(x) {
-          return '<option value="' + esc(x.docNumber) + '"' + (d && d.docNumber === x.docNumber ? ' selected' : '') + '>' + esc(x.docNumber) + '</option>';
-        }).join('') + '</select>';
-    } else sel = '<span style="color:#c8ccd6;">-</span>';
-    return '<tr style="background:' + bg + ';">' +
-      '<td style="padding:6px 8px;text-align:center;font-weight:700;">' + esc(r.jo) + '조</td>' +
-      '<td style="padding:6px 8px;text-align:center;">' + badge + '</td>' +
-      '<td style="padding:6px 8px;font-weight:700;">' + (d ? esc(d.docNumber) : DASH) + '</td>' +
-      '<td style="padding:6px 8px;text-align:center;font-size:10px;">' + (d ? esc(t6ShortDate(d.date)) : DASH) + '</td>' +
-      '<td style="padding:6px 8px;text-align:center;font-size:10px;">' + (d && d.result ? esc(d.result) : DASH) + '</td>' +
-      '<td style="padding:6px 8px;text-align:center;font-size:10px;">' + (st.sel && st.kind === 'sel' ? esc(st.sel.selectedBy || '') : DASH) + '</td>' +
-      '<td style="padding:6px 8px;text-align:center;">' + sel + '</td>' +
-      '</tr>';
-  }).join('');
-}
-
-async function t6AdminSelect(jo, docNumber) {
-  if (!requireAdminLevel()) { drawTab6(); return; }
-  if (!docNumber) return;
-  var week = document.getElementById('t6-week').value;
-  try {
-    var res = await fetch(CFG.url, {
-      method: 'POST', redirect: 'follow', headers: { 'Content-Type': 'text/plain' },
-      body: JSON.stringify({ action: 'select_public_report', week: week, jo: jo, docNumber: docNumber,
-        selectedBy: '관리자', role: 'admin', kind: '수동', adminToken: getAdminToken() })
-    });
-    var out = JSON.parse(await res.text());
-    if (out.status !== 'ok') throw new Error(out.message || '실패');
-    showToast('✅ ' + jo + '조 선택 변경됨');
-    await t6LoadSelection();
-    drawTab6();
-  } catch (e) {
-    await dupAlert('❌ 선택 변경 실패', String(e.message || e));
-    drawTab6();
-  }
-}
-
-async function t6ToggleConfirm() {
-  if (!requireAdminLevel()) return;
-  var week = document.getElementById('t6-week').value;
-  var locked = !!_t6.locks[week];
-  var msg = locked
-    ? '<b>' + week + '주차 확정을 해제</b>합니다.<br>조장·그룹장이 다시 선택을 바꿀 수 있게 됩니다.'
-    : '<b>' + week + '주차를 확정</b>합니다.<br>보고서가 1건뿐인 조는 자동 선택으로 기록되고, 이후 조장·그룹장은 변경할 수 없습니다.';
-  var ok = await dupConfirm(msg, locked ? '확정해제' : '확정');
-  if (!ok) return;
-  try {
-    var res = await fetch(CFG.url, {
-      method: 'POST', redirect: 'follow', headers: { 'Content-Type': 'text/plain' },
-      body: JSON.stringify({ action: 'confirm_public_week', week: week, confirmed: !locked, adminToken: getAdminToken() })
-    });
-    var out = JSON.parse(await res.text());
-    if (out.status !== 'ok') throw new Error(out.message || '실패');
-    showToast(locked ? '🔓 확정 해제됨' : '🔒 확정됨' + (out.autoAdded ? ' (자동선택 ' + out.autoAdded + '건 기록)' : ''));
-    await t6LoadSelection();
-    drawTab6();
-  } catch (e) {
-    await dupAlert('❌ 확정 처리 실패', String(e.message || e));
-  }
-}
-
-// 선택완료·자동 조의 보고서(문서번호별 최신본)를 조 순서대로 index 화면으로 넘겨 PDF 생성
-async function t6Print() {
-  var week = document.getElementById('t6-week').value;
-  var rows = _t6.rows.filter(function(r) { return r.st.doc; });
-  if (!rows.length) { showToast('출력할 선택 보고서가 없습니다.'); return; }
-  var pend = _t6.rows.filter(function(r) { return r.st.kind === 'pending' || r.st.kind === 'missing'; });
-  if (pend.length) {
-    var ok = await dupConfirm('미선택 조가 <b>' + pend.length + '개</b> 있습니다 (' + pend.map(function(r) { return r.jo + '조'; }).join(', ') + ').<br>이 조들은 제외하고 ' + rows.length + '매를 출력합니다.', '출력');
-    if (!ok) return;
-  }
-  var payload = rows.map(function(r) {
-    var o = {};
-    Object.keys(r.st.doc._raw || {}).forEach(function(k) { if (k !== 'rowIndex') o[k] = r.st.doc._raw[k]; });
-    return o;
-  });
-  try {
-    localStorage.setItem('admin_print_request', JSON.stringify({
-      rows: payload, filename: '전체공개보고_' + week + '주차', ts: Date.now()
-    }));
-  } catch (e) {
-    showToast('❌ 출력 요청 저장 실패: ' + e.message);
-    return;
-  }
-  window.open(T6_INDEX_URL, '_blank');
-  showToast('✅ 공개보고서 화면에서 PDF를 생성합니다 (' + rows.length + '매)');
-}
-
 function renderTab5() {
   if (!rawData || !rawData.length) {
     showToast('먼저 데이터를 불러오세요.');
@@ -8123,7 +7878,6 @@ function switchTab(idx) {
   });
   if (idx === 4) renderTab4();
   if (idx === 5) renderTab5();
-  if (idx === 6) renderTab6();
   // tab1(복음참여)·tab2(팀전도)·tab3(복음제시)는 숨겨져 있는 동안 폭을 잴 수 없어서
   // (화면에 없으면 크기가 0으로 측정됨) 화면에 보이게 된 지금 다시 계산해야 한다.
   var fitTarget = { 1: 'tab1', 2: 'tab2', 3: 'tab3' }[idx];
