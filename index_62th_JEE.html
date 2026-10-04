@@ -102,7 +102,11 @@ body {
   display: flex;
   gap: 4px;
   flex: 1;
+  min-width: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
 }
+.tab-btns::-webkit-scrollbar { display: none; }
 
 .tab-btn {
   background: transparent;
@@ -116,7 +120,8 @@ body {
   cursor: pointer;
   font-weight: 500;
   white-space: nowrap;
-  flex: 1;
+  flex: 1 0 auto;
+  padding: 0 8px;
   text-align: center;
 }
 
@@ -1647,6 +1652,7 @@ pre.code-block {
     <button class="tab-btn active" onclick="switchTab('form')">✏️ 작성</button>
     <button class="tab-btn" onclick="goToPreview()">👁️ 미리보기</button>
     <button class="tab-btn" onclick="switchTab('history')">📁 기록</button>
+    <button class="tab-btn" onclick="switchTab('pub')">🎤 전체공개보고</button>
   </div>
   <div class="topbar-right">
     <div class="preset-indicator" id="preset-indicator" onclick="openPresetModal()" title="내 조 설정">
@@ -2454,6 +2460,21 @@ pre.code-block {
 </div>
 </div>
 
+<!-- PUB (전체공개보고) PAGE -->
+<div id="pub-page" class="page server-bg" style="background:linear-gradient(160deg,#fdf9f4 0%,#f5efea 100%);min-height:calc(100vh - 50px);">
+<div class="history-container">
+  <div class="history-header">
+    <h2 class="server">🎤 전체공개보고</h2>
+    <div style="display:flex;align-items:center;gap:6px;">
+      <select id="pub-week-sel" onchange="renderPubTab()" style="padding:6px 8px;border-radius:8px;border:1px solid rgba(32,80,200,.25);font-size:12px;"></select>
+      <button type="button" class="search-go-btn" onclick="loadPubTab(true)">🔄 새로고침</button>
+    </div>
+  </div>
+  <div id="pub-info" style="font-size:11px;color:#6b6b6b;line-height:1.6;margin:2px 2px 10px;"></div>
+  <div id="pub-list"><div class="empty-state"><span class="es-icon">🎤</span><p>주차를 선택하세요.</p></div></div>
+</div>
+</div>
+
 <!-- MODAL -->
 <!-- GAS URL은 코드에 고정 (모달 제거됨) -->
 
@@ -2518,7 +2539,7 @@ pre.code-block {
   });
 })();
 
-const APP_VERSION  = 'index v2026.10.01a';
+const APP_VERSION  = 'index v2026.10.04';
 const LS_SEQ       = 'report_seq_counter';
 const LS_JO        = 'report_jo_data';
 const LS_SUBMITTED = 'report_submitted';
@@ -4396,12 +4417,14 @@ function switchTab(tab) {
   var pageIds = {
     form: 'form-page',
     suju: 'suju-preview-page',
-    history: 'history-page'
+    history: 'history-page',
+    pub: 'pub-page'
   };
   var labels = {
     form: '작성',
     suju: '수주반',
-    history: '기록'
+    history: '기록',
+    pub: '전체공개보고'
   };
   document.querySelectorAll('.page').forEach(function(p) {
     p.classList.remove('active');
@@ -4430,6 +4453,7 @@ function switchTab(tab) {
     }
     loadHistory();
   }
+  if (tab === 'pub') loadPubTab(false);
   var pb = document.getElementById('print-btn');
   if (pb) {
     pb.title = (tab === 'suju') ? '수주반 A5 출력' : 'A4 출력';
@@ -5716,6 +5740,281 @@ function resizeQ14(delta) {
   resizeTextarea('q14', delta);
 }
 
+// ============================================================
+//  전체공개보고 — 매주 각 조가 발표할 공개보고서 1건 선택
+//  · 기록 탭: 카드마다 [⭐ 발표로 선택] (조장 / 그룹장·부그룹장 / admin)
+//  · 전체공개보고 탭: 주차별 조별 선택 현황 + 변경
+//  · 보고서가 1건뿐인 조는 자동 선택, 관리자가 [확정]하면 잠금 (admin 화면에서 PDF 출력)
+// ============================================================
+var _pub = { loaded: false, records: [], sel: {}, locks: {}, openJo: null, mineOnly: null, selLoaded: false };
+
+function pubWeekKey(v) {
+  var n = parseInt(String(v == null ? '' : v).replace(/[^0-9]/g, ''), 10);
+  return isNaN(n) ? String(v || '') : String(n);
+}
+
+// 선택 권한: admin 전체 / 그룹장·부그룹장은 자기 그룹 조 / 조장은 자기 조
+function canSelectPub(jo) {
+  if (isAdminUser()) return true;
+  var p = getPreset();
+  if (!p || !p.name) return false;
+  var j = getJoData().find(function(x) { return String(x.jo) === String(jo); });
+  if (p.scope === 'group') {
+    return !!(j && String(j.group || '').toUpperCase() === String(p.group || '').toUpperCase());
+  }
+  return String(p.jo) === String(jo) && /조장/.test(String(p.role || ''));
+}
+
+async function pubPost(payload) {
+  if (isAdminUser()) payload.adminToken = getAdminToken();
+  var res = await fetch(scriptUrl, {
+    method: 'POST', redirect: 'follow',
+    headers: { 'Content-Type': 'text/plain' },
+    body: JSON.stringify(payload)
+  });
+  var txt = await res.text();
+  var j;
+  try { j = JSON.parse(txt); } catch (e) { throw new Error('서버 응답 이상: ' + txt.slice(0, 80)); }
+  if (j.status !== 'ok') throw new Error(j.message || '요청 실패');
+  return j;
+}
+
+async function loadPubSelection() {
+  if (!scriptUrl) return false;
+  try {
+    var res = await fetch(scriptUrl + '?action=get_public_selection&_ts=' + Date.now(), { redirect: 'follow', cache: 'no-store' });
+    var j = JSON.parse(await res.text());
+    if (j.status !== 'ok') return false;
+    var sel = {};
+    (j.selections || []).forEach(function(x) { sel[pubWeekKey(x.week) + '|' + x.jo] = x; });
+    _pub.sel = sel;
+    _pub.locks = j.locks || {};
+    _pub.selLoaded = true;
+    return true;
+  } catch (e) { return false; }
+}
+
+function pubMaxWeek() {
+  var maxWeek = 14;
+  var start = new Date(localStorage.getItem('mon_trainStart') || '2026-08-30');
+  var end = new Date(localStorage.getItem('mon_trainEnd') || '2026-11-29');
+  if (!isNaN(start) && !isNaN(end)) {
+    var dow = start.getDay();
+    var sm = new Date(start);
+    sm.setDate(start.getDate() + ((dow === 0) ? -6 : 1 - dow));
+    maxWeek = Math.max(1, Math.floor((end - sm) / 86400000 / 7) + 1);
+  }
+  return maxWeek;
+}
+
+function pubCurrentWeek() {
+  var start = new Date(localStorage.getItem('mon_trainStart') || '2026-08-30');
+  if (isNaN(start)) return 1;
+  var dow = start.getDay();
+  var sm = new Date(start);
+  sm.setDate(start.getDate() + ((dow === 0) ? -6 : 1 - dow));
+  var w = Math.floor((Date.now() - sm.getTime()) / 86400000 / 7) + 1;
+  return Math.min(Math.max(w, 1), pubMaxWeek());
+}
+
+async function loadPubTab(force) {
+  var list = document.getElementById('pub-list');
+  if (!scriptUrl) { list.innerHTML = '<div class="empty-state"><span class="es-icon">🔗</span><p>구글 시트가 연결되지 않았습니다.</p></div>'; return; }
+  var wsel = document.getElementById('pub-week-sel');
+  if (wsel && !wsel.options.length) {
+    var mw = pubMaxWeek();
+    for (var w = 1; w <= mw; w++) {
+      var o = document.createElement('option');
+      o.value = String(w);
+      var per = computeWeekPeriodPadded(w);
+      o.textContent = w + '주차' + (per ? '(' + per + ')' : '');
+      wsel.appendChild(o);
+    }
+    wsel.value = String(pubCurrentWeek());
+  }
+  if (!force && _pub.loaded) { renderPubTab(); loadPubSelection().then(renderPubTab); return; }
+  list.innerHTML = '<div class="empty-state"><span class="es-icon">⏳</span><p>불러오는 중...</p></div>';
+  try {
+    var res = await fetch(scriptUrl + '?action=get&_ts=' + Date.now(), { redirect: 'follow', cache: 'no-store' });
+    var json = JSON.parse(await res.text());
+    if (json.status !== 'ok') throw new Error(json.message || '조회 실패');
+    _pub.records = (json.records || []).map(serverRowToRecord);
+    _pub.loaded = true;
+    await loadPubSelection();
+    renderPubTab();
+  } catch (e) {
+    list.innerHTML = '<div class="empty-state"><span class="es-icon">❌</span><p>불러오기 실패: ' + e.message + '</p></div>';
+  }
+}
+
+// (조, 주차)의 보고서 — 문서번호별 최신 1건, 저장일시 최신순
+function pubDocsFor(week, jo) {
+  var best = {};
+  _pub.records.forEach(function(r) {
+    if (pubWeekKey(r.week) !== week || String(r.jo) !== String(jo) || !r.doc_number) return;
+    var cur = best[r.doc_number];
+    if (!cur || String(r._savedAt) > String(cur._savedAt)) best[r.doc_number] = r;
+  });
+  return Object.keys(best).map(function(k) { return best[k]; })
+    .sort(function(a, b) { return String(b._savedAt).localeCompare(String(a._savedAt)); });
+}
+
+function pubState(week, jo, docs) {
+  var s = _pub.sel[week + '|' + jo];
+  if (s) {
+    var d = docs.find(function(x) { return x.doc_number === s.docNumber; });
+    if (d) return { kind: s.kind === '자동' ? 'auto' : 'sel', doc: d, sel: s };
+    return { kind: 'missing', sel: s };
+  }
+  if (docs.length === 1) return { kind: 'auto', doc: docs[0] };
+  if (docs.length === 0) return { kind: 'none' };
+  return { kind: 'pending' };
+}
+
+function pubShortDate(d) {
+  var m = String(d || '').match(/(\d{4})-(\d{2})-(\d{2})/);
+  return m ? m[2] + '/' + m[3] : '';
+}
+
+function pubDocLine(d) {
+  var rc = { '결신': '#1a6b3c', '이미신자': '#e67e00', '확신': '#1a3a9e', '보류/거부': '#888' }[d.result] || '#aaa';
+  return '<span style="font-size:10px;color:#2050c8;font-weight:700;background:#eef2ff;border-radius:4px;padding:2px 7px;">' + d.doc_number + '</span>' +
+    (d.date ? '<span style="font-size:10px;color:#1a6b3c;font-weight:700;background:#eaf6ee;border-radius:4px;padding:2px 7px;margin-left:4px;">📅 ' + pubShortDate(d.date) + '</span>' : '') +
+    (d.result ? '<span style="font-size:10px;color:#fff;background:' + rc + ';border-radius:4px;padding:2px 7px;margin-left:4px;font-weight:700;">' + d.result + '</span>' : '') +
+    ((d.location || d.name) ? '<span style="font-size:10px;color:#666;margin-left:6px;">📍 ' + (d.location || '') + ' ' + (d.name ? maskName(d.name) : '') + '</span>' : '');
+}
+
+function renderPubTab() {
+  var list = document.getElementById('pub-list');
+  var info = document.getElementById('pub-info');
+  var wsel = document.getElementById('pub-week-sel');
+  if (!list || !wsel || !_pub.loaded) return;
+  var week = wsel.value;
+  var locked = !!_pub.locks[week];
+  var admin = isAdminUser();
+  var jos = [];
+  getJoData().forEach(function(j) { if (jos.indexOf(String(j.jo)) < 0) jos.push(String(j.jo)); });
+  jos.sort(function(a, b) { return (parseInt(a, 10) || 0) - (parseInt(b, 10) || 0); });
+
+  var anyMine = jos.some(canSelectPub);
+  if (_pub.mineOnly === null) _pub.mineOnly = anyMine && !admin;
+  var rows = jos.map(function(jo) {
+    var docs = pubDocsFor(week, jo);
+    return { jo: jo, docs: docs, st: pubState(week, jo, docs), can: canSelectPub(jo) };
+  });
+  var cntOk = rows.filter(function(r) { return r.st.kind === 'sel' || r.st.kind === 'auto'; }).length;
+  var cntPend = rows.filter(function(r) { return r.st.kind === 'pending' || r.st.kind === 'missing'; }).length;
+  var cntNone = rows.filter(function(r) { return r.st.kind === 'none'; }).length;
+
+  info.innerHTML =
+    '<b>' + week + '주차</b> · 선택완료 <b style="color:#1a6b3c;">' + cntOk + '</b> · 미선택 <b style="color:#c0392b;">' + cntPend + '</b> · 미등록 <b>' + cntNone + '</b>' +
+    (locked ? ' · <b style="color:#c0392b;">🔒 관리자 확정됨 (변경 불가)</b>' : '') +
+    '<br>보고서가 2건 이상인 조는 발표할 1건을 선택하세요. 1건뿐이면 자동으로 선택됩니다. (조장 · 그룹장 · 부그룹장 선택 가능)' +
+    (anyMine && !admin ? '<br><label style="cursor:pointer;"><input type="checkbox" ' + (_pub.mineOnly ? 'checked' : '') + ' onchange="_pub.mineOnly=this.checked;renderPubTab()"> 내가 선택할 수 있는 조만 보기</label>' : '');
+
+  var shown = rows.filter(function(r) { return !(_pub.mineOnly && !r.can); });
+  if (!shown.length) { list.innerHTML = '<div class="empty-state"><span class="es-icon">🎤</span><p>표시할 조가 없습니다.</p></div>'; return; }
+
+  list.innerHTML = shown.map(function(r) {
+    var st = r.st, badge, body = '';
+    if (st.kind === 'sel') { badge = '<span style="background:#1a6b3c;color:#fff;border-radius:10px;padding:2px 9px;font-size:10px;font-weight:700;">✅ 선택됨</span>'; }
+    else if (st.kind === 'auto') { badge = '<span style="background:#e67e00;color:#fff;border-radius:10px;padding:2px 9px;font-size:10px;font-weight:700;">🔸 자동(1건)</span>'; }
+    else if (st.kind === 'pending') { badge = '<span style="background:#c0392b;color:#fff;border-radius:10px;padding:2px 9px;font-size:10px;font-weight:700;">⚠️ 미선택 (' + r.docs.length + '건 중)</span>'; }
+    else if (st.kind === 'missing') { badge = '<span style="background:#c0392b;color:#fff;border-radius:10px;padding:2px 9px;font-size:10px;font-weight:700;">⚠️ 선택한 보고서 없음</span>'; }
+    else { badge = '<span style="background:#aaa;color:#fff;border-radius:10px;padding:2px 9px;font-size:10px;font-weight:700;">— 미등록</span>'; }
+    if (st.doc) body = '<div style="margin-top:6px;">' + pubDocLine(st.doc) + '</div>' +
+      (st.sel && st.sel.selectedBy && st.kind === 'sel' ? '<div style="font-size:10px;color:#888;margin-top:3px;">선택: ' + st.sel.selectedBy + ' · ' + String(st.sel.selectedAt || '').slice(5, 16) + '</div>' : '');
+    var btn = '';
+    if (r.can && r.docs.length > 1 && (!locked || admin)) {
+      btn = '<button type="button" onclick="pubToggleOpen(\'' + r.jo + '\')" style="background:#2050c8;color:#fff;border:none;border-radius:16px;padding:6px 14px;font-size:11px;font-weight:700;cursor:pointer;">' + (st.kind === 'sel' ? '변경' : '선택') + '</button>';
+    }
+    var picker = '';
+    if (_pub.openJo === r.jo && r.can && (!locked || admin)) {
+      picker = '<div style="margin-top:8px;border-top:1px dashed #cbd5f0;padding-top:8px;">' + r.docs.map(function(d) {
+        var chosen = st.doc && st.doc.doc_number === d.doc_number && st.kind === 'sel';
+        return '<div style="display:flex;justify-content:space-between;align-items:center;gap:6px;padding:6px 0;border-bottom:1px solid #f0f0f0;">' +
+          '<div style="flex:1;min-width:0;">' + pubDocLine(d) + '</div>' +
+          '<button type="button" onclick="pubSelect(\'' + week + '\',\'' + r.jo + '\',\'' + String(d.doc_number).replace(/'/g, "\\'") + '\')" style="flex-shrink:0;background:' + (chosen ? '#1a6b3c' : '#fff') + ';color:' + (chosen ? '#fff' : '#2050c8') + ';border:1.5px solid ' + (chosen ? '#1a6b3c' : '#2050c8') + ';border-radius:14px;padding:4px 10px;font-size:11px;font-weight:700;cursor:pointer;">' + (chosen ? '✅ 선택됨' : '⭐ 선택') + '</button>' +
+          '</div>';
+      }).join('') +
+      (st.kind === 'sel' ? '<div style="text-align:right;margin-top:6px;"><button type="button" onclick="pubClear(\'' + week + '\',\'' + r.jo + '\')" style="background:none;border:none;color:#c0392b;font-size:11px;cursor:pointer;text-decoration:underline;">선택 해제</button></div>' : '') +
+      '</div>';
+    }
+    return '<div class="record-card" style="cursor:default;">' +
+      '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">' +
+      '<div style="font-size:15px;font-weight:800;color:#1a3a9e;">' + r.jo + '조 ' + badge + '</div>' + btn + '</div>' +
+      body + picker + '</div>';
+  }).join('');
+}
+
+function pubToggleOpen(jo) {
+  _pub.openJo = (_pub.openJo === jo) ? null : jo;
+  renderPubTab();
+}
+
+async function pubSelect(week, jo, docNumber) {
+  var p = getPreset() || {};
+  try {
+    showStatus('⏳ 선택 저장 중...', 'info');
+    await pubPost({
+      action: 'select_public_report', week: week, jo: jo, docNumber: docNumber,
+      selectedBy: p.name || (isAdminUser() ? '관리자' : ''), role: p.role || (isAdminUser() ? '관리자' : ''), kind: '수동'
+    });
+    await loadPubSelection();
+    _pub.openJo = null;
+    renderPubTab();
+    applyPubMarks();
+    showStatus('✅ ' + jo + '조 ' + week + '주차 발표 보고서로 선택했습니다.', 'success');
+  } catch (e) {
+    showStatus('❌ 선택 실패: ' + e.message, 'error');
+  }
+}
+
+async function pubClear(week, jo) {
+  try {
+    await pubPost({ action: 'clear_public_report', week: week, jo: jo });
+    await loadPubSelection();
+    _pub.openJo = null;
+    renderPubTab();
+    applyPubMarks();
+    showStatus('선택을 해제했습니다.', 'info');
+  } catch (e) {
+    showStatus('❌ 해제 실패: ' + e.message, 'error');
+  }
+}
+
+// ── 기록 탭: 카드별 [⭐ 발표로 선택] 버튼 ──────────────────
+function applyPubMarks() {
+  var recs = window._historyRecords || [];
+  recs.forEach(function(r, i) {
+    var box = document.getElementById('pk-' + i);
+    if (!box) return;
+    var week = pubWeekKey(r.week);
+    if (!week || !r.doc_number || !r.jo) { box.style.display = 'none'; return; }
+    var s = _pub.sel[week + '|' + r.jo];
+    var chosen = !!(s && s.docNumber === r.doc_number);
+    var locked = !!_pub.locks[week];
+    var can = canSelectPub(r.jo) && (!locked || isAdminUser());
+    if (!chosen && !can) { box.style.display = 'none'; return; }
+    box.style.display = 'block';
+    if (can) {
+      box.innerHTML = '<button type="button" onclick="event.stopPropagation();pubPickFromHistory(' + i + ')" style="background:' + (chosen ? '#1a6b3c' : '#fff') + ';color:' + (chosen ? '#fff' : '#2050c8') + ';border:1.5px solid ' + (chosen ? '#1a6b3c' : '#2050c8') + ';border-radius:16px;padding:5px 14px;font-size:11px;font-weight:700;cursor:pointer;">' +
+        (chosen ? '✅ ' + week + '주차 발표 선택됨 (해제)' : '⭐ 발표로 선택') + '</button>';
+    } else {
+      box.innerHTML = '<span style="font-size:11px;font-weight:700;color:#1a6b3c;">⭐ ' + week + '주차 발표 보고서' + (locked ? ' 🔒' : '') + '</span>';
+    }
+  });
+}
+
+async function pubPickFromHistory(i) {
+  var r = (window._historyRecords || [])[i];
+  if (!r) return;
+  var week = pubWeekKey(r.week);
+  var s = _pub.sel[week + '|' + r.jo];
+  if (s && s.docNumber === r.doc_number) await pubClear(week, String(r.jo));
+  else await pubSelect(week, String(r.jo), r.doc_number);
+}
+
 async function loadHistory() {
   // 프리셋 필터 자동 활성화 — 관리자는 내 조/그룹장 범위로 제한하지 않고 전체를 봄
   var p = getPreset();
@@ -5729,24 +6028,8 @@ async function loadHistory() {
   }
   await loadServerHistory();
 }
-async function loadServerHistory() {
-  var list = document.getElementById('history-list');
-  if (!scriptUrl) {
-    updateScbState('warn');
-    list.innerHTML = '<div class="empty-state"><span class="es-icon">🔗</span><p>구글 시트가 연결되지 않았습니다.<br><button onclick="openModal()" style="margin-top:8px;background:#2050c8;color:#fff;border:none;border-radius:6px;padding:7px 16px;cursor:pointer;font-size:12px;font-family:\'Noto Sans KR\',sans-serif;">⚙️ 지금 연결하기</button></p></div>';
-    return;
-  }
-  updateScbState('warn'); // 요청 시작 전 미연결로 리셋
-  list.innerHTML = '<div class="empty-state"><span class="es-icon">⏳</span><p>불러오는 중...</p></div>';
-  try {
-    var res = await fetch(scriptUrl + (scriptUrl.indexOf('?') > -1 ? '&' : '?') + '_ts=' + Date.now(), {
-      method: 'GET',
-      redirect: 'follow',
-      cache: 'no-store'
-    });
-    var json = await res.json();
-    if (json.status !== 'ok') throw new Error(json.message);
-    var records = (json.records || []).map(function(r) {
+// 서버(Code.gs) 한국어 헤더 행 → 화면에서 쓰는 보고서 객체
+function serverRowToRecord(r) {
       return {
         rowIndex: r.rowIndex || null,
         _savedAt: r['저장일시'] || '',
@@ -5822,9 +6105,29 @@ async function loadServerHistory() {
         q13: r['기타(13번)'] || '',
         q14: r['특이사항(공유)'] || '',
       };
+}
+
+async function loadServerHistory() {
+  var list = document.getElementById('history-list');
+  if (!scriptUrl) {
+    updateScbState('warn');
+    list.innerHTML = '<div class="empty-state"><span class="es-icon">🔗</span><p>구글 시트가 연결되지 않았습니다.<br><button onclick="openModal()" style="margin-top:8px;background:#2050c8;color:#fff;border:none;border-radius:6px;padding:7px 16px;cursor:pointer;font-size:12px;font-family:\'Noto Sans KR\',sans-serif;">⚙️ 지금 연결하기</button></p></div>';
+    return;
+  }
+  updateScbState('warn'); // 요청 시작 전 미연결로 리셋
+  list.innerHTML = '<div class="empty-state"><span class="es-icon">⏳</span><p>불러오는 중...</p></div>';
+  try {
+    var res = await fetch(scriptUrl + (scriptUrl.indexOf('?') > -1 ? '&' : '?') + '_ts=' + Date.now(), {
+      method: 'GET',
+      redirect: 'follow',
+      cache: 'no-store'
     });
+    var json = await res.json();
+    if (json.status !== 'ok') throw new Error(json.message);
+    var records = (json.records || []).map(serverRowToRecord);
     updateScbState('ok');
     renderHistory(records, 'server', true);
+    loadPubSelection().then(applyPubMarks);
   } catch (e) {
     list.innerHTML = '<div class="empty-state"><span class="es-icon">❌</span><p>불러오기 실패: ' + e.message + '<br><span style="font-size:11px;color:#888;">네트워크 연결 후 🔄 새로고침을 눌러주세요.</span></p></div>';
     updateScbState('error');
@@ -5985,11 +6288,13 @@ function renderHistory(records, src, preserveFilter) {
       (r.believer > 0 ? '<span class="stat-chip neutral">이미신자 ' + r.believer + '명</span>' : '') +
       (r.reject > 0 ? '<span class="stat-chip neutral">보류 ' + r.reject + '명</span>' : '') +
       '</div>' +
+      '<div class="pub-pick-row" id="pk-' + i + '" style="display:none;margin-top:8px;"></div>' +
       '</div>' +
       '</div>' +
       '<button class="load-btn ' + src + '" onclick="event.stopPropagation();loadRecord(' + i + ')">불러오기 →</button>' +
       '</div>';
   }).join('');
+  applyPubMarks();
   filterHistory();
 }
 
@@ -8038,6 +8343,31 @@ window.onload = function() {
       }
     } catch(e) {
       console.error('admin_load_request 처리 오류:', e);
+    }
+  })();
+
+  // ── admin 화면(전체공개보고 탭)에서 넘어온 PDF 출력 요청 처리 ─────────────
+  (function() {
+    var req = localStorage.getItem('admin_print_request');
+    if (!req) return;
+    try {
+      var obj = JSON.parse(req);
+      localStorage.removeItem('admin_print_request');
+      if (Date.now() - (obj.ts || 0) > 5 * 60 * 1000) return;
+      var recs = (obj.rows || []).map(serverRowToRecord);
+      if (!recs.length) return;
+      showStatus('⏳ 전체공개보고 PDF 준비 중... (' + recs.length + '매)', 'info');
+      function go() { renderSujuRecordsToPdf(recs, obj.filename || '전체공개보고'); }
+      if (localStorage.getItem('report_jo_data')) { setTimeout(go, 800); return; }
+      fetch(scriptUrl + '?action=get_jo', { method: 'GET', redirect: 'follow' })
+        .then(function(r) { return r.json(); })
+        .then(function(j) {
+          if (j.status === 'ok' && j.joData && j.joData.length) localStorage.setItem('report_jo_data', JSON.stringify(j.joData));
+        })
+        .catch(function() {})
+        .finally(go);
+    } catch (e) {
+      console.error('admin_print_request 처리 오류:', e);
     }
   })();
 };
