@@ -1700,7 +1700,6 @@ pre.code-block {
 <div class="server-connected-badge" id="server-connected-badge">
     <span class="scb-label">연결됨</span>
     <span class="scb-dot"></span>
-    <span class="scb-lock" onclick="openAdminAuth()" oncontextmenu="event.preventDefault();openAdminModal();" title="클릭: Admin 열기 | 길게누르기: 경로 변경" style="cursor:pointer;opacity:0.6;transition:opacity .2s;" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.6'">🔒</span>
   </div>
   <div class="hd-eyebrow">EVANGELISM FIELD REPORT</div>
   <div class="hd-title">공개 <span>보고서</span></div>
@@ -2986,12 +2985,17 @@ function _openPresetModalNow() {
 
   var h3 = document.createElement('h3');
   h3.style.cssText = 'margin:0 0 4px;font-size:16px;font-weight:800;color:#1a3ab0;display:flex;justify-content:space-between;align-items:center;';
-  h3.innerHTML = '👤 내 조 설정'
-    + '<span style="display:flex;align-items:center;gap:10px;">'
+  h3.innerHTML = '<span style="white-space:nowrap;">👤 내 조 설정</span>'
+    + '<span style="display:flex;align-items:center;gap:8px;">'
+    + (isVerifiedUser()
+      ? '<button onclick="event.stopPropagation();closePresetModal();openAdminAuth()" '
+        + 'style="background:#2050c8;border:none;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;line-height:1;padding:5px 8px;color:#fff;white-space:nowrap;" '
+        + 'title="관리자 대시보드 열기">📊 관리</button>'
+      : '')
     + (isAdminUser()
       ? '<button onclick="event.stopPropagation();onAdminLogout()" '
-        + 'style="background:none;border:1px solid rgba(200,0,0,0.3);border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;line-height:1;padding:4px 8px;color:#c00;" '
-        + 'title="관리자 인증 해제">🔓 관리자 해제</button>'
+        + 'style="background:none;border:1px solid rgba(200,0,0,0.3);border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;line-height:1;padding:4px 8px;color:#c00;white-space:nowrap;" '
+        + 'title="관리자 인증 해제">🔓 해제</button>'
       : '')
     + '<button onclick="event.stopPropagation();openPresetAdminAuth()" '
     + 'style="background:none;border:none;font-size:17px;cursor:pointer;line-height:1;padding:0 2px;'
@@ -6052,11 +6056,17 @@ function renderPubTab() {
       var gOk = gRows.filter(function(x) { return x.st.kind === 'sel' || x.st.kind === 'auto'; }).length;
       gHead = '<div style="margin:14px 2px 6px;padding:5px 12px;background:#1a3a9e;color:#fff;border-radius:8px;font-size:12px;font-weight:800;display:flex;justify-content:space-between;">' +
         '<span>' + (r.group ? r.group + '그룹' : '그룹 미지정') + '</span>' +
-        '<span style="font-weight:600;display:flex;align-items:center;gap:8px;">' + gOk + '/' + gRows.length +
-        (canConfirmGroup(r.group) ? (function() {
+        '<span style="font-weight:600;display:flex;align-items:center;gap:6px;">' + gOk + '/' + gRows.length +
+        (function() {
           var allLocked = gRows.length && gRows.every(function(x) { return pubLocked(week, x.jo); });
-          return '<button type="button" onclick="pubToggleConfirm(\'' + r.group + '\')" style="background:#fff;color:' + (allLocked ? '#555' : '#c0392b') + ';border:none;border-radius:12px;padding:3px 10px;font-size:11px;font-weight:800;cursor:pointer;">' + (allLocked ? '🔓 확정해제' : '🔒 그룹 확정') + '</button>';
-        })() : (gRows.length && gRows.every(function(x) { return pubLocked(week, x.jo); }) ? '<span>🔒 확정</span>' : '')) +
+          var state = allLocked
+            ? '<span style="background:#c0392b;color:#fff;border-radius:10px;padding:3px 9px;font-size:11px;font-weight:800;">🔒 확정됨</span>'
+            : '<span style="background:rgba(255,255,255,.22);color:#fff;border:1px solid rgba(255,255,255,.55);border-radius:10px;padding:2px 9px;font-size:11px;font-weight:700;">미확정</span>';
+          var act = canConfirmGroup(r.group)
+            ? '<button type="button" onclick="pubToggleConfirm(\'' + r.group + '\')" style="background:#fff;color:' + (allLocked ? '#555' : '#c0392b') + ';border:none;border-radius:12px;padding:3px 10px;font-size:11px;font-weight:800;cursor:pointer;">' + (allLocked ? '해제' : '확정') + '</button>'
+            : '';
+          return state + act;
+        })() +
         '</span></div>';
     }
     return gHead + '<div class="record-card" style="cursor:default;">' +
