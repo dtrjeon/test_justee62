@@ -2783,6 +2783,37 @@ function applyFormData(r) {
     });
     updateRoleText(m.id);
   });
+  // 풀복음 완료일 복원: "이름:YYYY-MM-DD|..." → 전체복음 체크 + 날짜 입력
+  (function() {
+    var gd = {};
+    String(r.gospel_date || '').split('|').forEach(function(p) {
+      var ci = p.indexOf(':'); if (ci < 0) return;
+      var nm = p.slice(0, ci).trim(), dt = p.slice(ci + 1).trim();
+      if (nm && dt) gd[nm] = dt.slice(0, 10);
+    });
+    var nameMap = { leader: v('q2_leader'), trainer: v('q2_trainer'), trainee: v('q2_trainee1') };
+    MEMBERS.forEach(function(m) {
+      var allCb = document.getElementById(m.id + '_all_gospel');
+      var dateEl = document.getElementById(m.id + '_gospel_date');
+      var wrap = document.getElementById(m.id + '-gospel-date-wrap');
+      if (!allCb) return;
+      var nm = nameMap[m.id] || r[m.id === 'trainee' ? 'trainee1' : m.id] || '';
+      var dt = gd[nm] || gd[m.label] || '';
+      // 9개 역할이 모두 있으면(전체복음) 날짜가 없어도 체크 복원
+      var roles = (r[m.id + '_part'] || '').split(', ');
+      var full = ROLES.every(function(x) { return roles.indexOf(x) > -1; });
+      if (dt || full) {
+        allCb.checked = true;
+        if (wrap) wrap.style.display = 'block';
+        if (dateEl) dateEl.value = dt;
+        updateRoleText(m.id);
+      } else {
+        allCb.checked = false;
+        if (wrap) wrap.style.display = 'none';
+        if (dateEl) dateEl.value = '';
+      }
+    });
+  })();
   sv('q8_result', r.result);
 
   // 11. 양육
@@ -6396,6 +6427,7 @@ function serverRowToRecord(r) {
         q12: r['기도제목(12번)'] || '',
         q13: r['기타(13번)'] || '',
         q14: r['특이사항(공유)'] || '',
+        gospel_date: r['풀복음 완료일'] || r['풀복음완료일'] || '',
       };
 }
 
@@ -6649,7 +6681,8 @@ function loadRecord(idx) {
     q11: r.q11 || r['문제점(11번)'] || '',
     q12: r.q12 || r['기도제목(12번)'] || '',
     q13: r.q13 || r['기타(13번)'] || '',
-    q14: r.q14 || r['특이사항(공유)'] || ''
+    q14: r.q14 || r['특이사항(공유)'] || '',
+    gospel_date: r.gospel_date || r['풀복음 완료일'] || r['풀복음완료일'] || ''
   };
 
   // 수정 모드 플래그
