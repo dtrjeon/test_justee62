@@ -2582,7 +2582,7 @@ pre.code-block {
   });
 })();
 
-const APP_VERSION  = 'index v2026.10.05b';
+const APP_VERSION  = 'index v2026.10.06';
 const LS_SEQ       = 'report_seq_counter';
 const LS_JO        = 'report_jo_data';
 const LS_SUBMITTED = 'report_submitted';
@@ -5832,11 +5832,28 @@ async function pubPost(payload) {
   return j;
 }
 
+// 서버(GAS) GET → JSON. HTML 응답(배포/권한/일시 오류)이면 원인을 알려주고 1회 자동 재시도한다.
+async function pubFetchJson(url) {
+  var lastErr;
+  for (var i = 0; i < 2; i++) {
+    try {
+      var res = await fetch(url, { redirect: 'follow', cache: 'no-store' });
+      var txt = await res.text();
+      try { return JSON.parse(txt); }
+      catch (pe) {
+        var head = txt.replace(/<script[\s\S]*?<\/script>|<style[\s\S]*?<\/style>|<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 90);
+        lastErr = new Error('서버가 JSON이 아닌 화면(HTML)을 돌려줬습니다 [' + head + '] — Code.gs 배포(액세스: 모든 사용자)와 새 버전 배포 여부를 확인하세요.');
+      }
+    } catch (ne) { lastErr = ne; }
+    if (i === 0) await new Promise(function(r) { setTimeout(r, 1200); });
+  }
+  throw lastErr;
+}
+
 async function loadPubSelection() {
   if (!scriptUrl) return false;
   try {
-    var res = await fetch(scriptUrl + '?action=get_public_selection&_ts=' + Date.now(), { redirect: 'follow', cache: 'no-store' });
-    var j = JSON.parse(await res.text());
+    var j = await pubFetchJson(scriptUrl + '?action=get_public_selection&_ts=' + Date.now());
     if (j.status !== 'ok') return false;
     var sel = {};
     (j.selections || []).forEach(function(x) { sel[pubWeekKey(x.week) + '|' + x.jo] = x; });
@@ -5888,8 +5905,7 @@ async function loadPubTab(force) {
   if (!force && _pub.loaded) { renderPubTab(); loadPubSelection().then(renderPubTab); return; }
   list.innerHTML = '<div class="empty-state"><span class="es-icon">⏳</span><p>불러오는 중...</p></div>';
   try {
-    var res = await fetch(scriptUrl + '?action=get&_ts=' + Date.now(), { redirect: 'follow', cache: 'no-store' });
-    var json = JSON.parse(await res.text());
+    var json = await pubFetchJson(scriptUrl + '?action=get&_ts=' + Date.now());
     if (json.status !== 'ok') throw new Error(json.message || '조회 실패');
     _pub.records = (json.records || []).map(serverRowToRecord);
     _pub.loaded = true;
@@ -6185,6 +6201,53 @@ async function pubDoPrint() {
   if (bg) bg.remove();
   var suffix = chosen.length === total ? '' : '_' + chosen.map(function(g) { return g || '미지정'; }).join('') + '그룹';
   await renderSujuRecordsToPdf(recs, '전체공개보고_' + week + '주차' + suffix);
+}
+
+// 확정 권한: 관리자 / 해당 그룹의 그룹장·부그룹장
+function canConfirmGroup(group) {
+  if (isAdminUser()) return true;
+  var p = getPreset();
+  return !!(p && p.name && p.scope === 'group' && group && String(p.group || '').toUpperCase() === String(group).toUpperCase());
+}
+
+// 그룹 단위 확정/확정해제 — 확정 시 해당주 보고서가 1건뿐인 조는 자동 선택으로 기록, 조원은 더 이상 변경 불가
+async function pubToggleConfirm(group) {
+  group = String(group || '').toUpperCase();
+  if (!canConfirmGroup(group)) { showStatus('해당 그룹의 그룹장·부그룹장 또는 관리자만 확정할 수 있습니다.', 'warn'); return; }
+  var wsel = document.getElementById('pub-week-sel');
+  var week = wsel ? wsel.value : '';
+  if (!week) return;
+  var cands = pubCandWeeks(week);
+  var jos = [], pend = [];
+  getJoData().forEach(function(j) {
+    if (String(j.group || '').toUpperCase() !== group) return;
+    var jo = String(j.jo);
+    if (jos.indexOf(jo) >= 0) return;
+    jos.push(jo);
+    var st = pubState(week, jo, pubDocsFor(cands, jo));
+    if (st.kind === 'pending' || st.kind === 'missing') pend.push(jo + '조');
+  });
+  if (!jos.length) { showStatus('확정할 조가 없습니다.', 'warn'); return; }
+  var allLocked = jos.every(function(jo) { return pubLocked(week, jo); });
+  var label = (group || '미지정') + '그룹 ' + week + '주차';
+  var msg = allLocked
+    ? label + ' 확정을 해제합니다.\n조원이 다시 선택을 바꿀 수 있게 됩니다.'
+    : label + ' 공개보고를 확정합니다.\n' + (pend.length ? '⚠️ 아직 선택하지 않은 조: ' + pend.join(', ') + '\n' : '') + '해당주 보고서가 1건뿐인 조는 자동 선택으로 기록되고, 이후 조원은 변경할 수 없습니다.';
+  if (!confirm(msg)) return;
+  try {
+    showStatus('⏳ 처리 중...', 'info');
+    var pr = getPreset() || {};
+    var payload = { action: 'confirm_public_week', week: week, confirmed: !allLocked, jos: jos,
+      by: pr.name || (isAdminUser() ? '관리자' : ''), role: pr.role || (isAdminUser() ? 'admin' : '') };
+    if (!isAdminUser()) payload.byRole = 'group';
+    var out = await pubPost(payload);
+    await loadPubSelection();
+    renderPubTab();
+    applyPubMarks();
+    showStatus(allLocked ? '🔓 확정을 해제했습니다.' : '🔒 ' + label + ' 확정 완료' + (out.autoAdded ? ' (자동선택 ' + out.autoAdded + '건 기록)' : ''), 'success');
+  } catch (e) {
+    showStatus('❌ 확정 처리 실패: ' + e.message, 'error');
+  }
 }
 
 async function pubSelect(week, jo, docNumber) {
