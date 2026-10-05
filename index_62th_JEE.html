@@ -155,6 +155,11 @@ body {
 }
 
 /* 내 조 칩 높이 = 아이콘 버튼 높이(34px) */
+/* 터치 영역 확대 — 보이는 크기는 그대로, 반응 영역만 6px 넓힘 */
+.topbar-right .preset-indicator, .topbar-right .icon-btn { position: relative; }
+.topbar-right .preset-indicator::after, .topbar-right .icon-btn::after {
+  content: ''; position: absolute; top: -6px; right: -4px; bottom: -6px; left: -4px;
+}
 .topbar-right .preset-indicator {
   touch-action: manipulation;
   -webkit-tap-highlight-color: rgba(32, 80, 200, 0.15);
@@ -1701,7 +1706,7 @@ pre.code-block {
       <span class="pi-dot"></span>
       <span id="preset-label">내 조 설정</span>
     </div>
-    <button class="icon-btn" onclick="openPresetModal()" title="내 조 설정" style="font-size:15px;">🔑</button>
+    <button class="icon-btn" id="admin-key-btn" onclick="openAdminKey()" title="관리자" style="font-size:15px;">🔑</button>
     <button class="icon-btn" onclick="confirmReset()" title="화면 초기화" style="font-size:15px;">🔄</button>
 
   </div>
@@ -2997,25 +3002,9 @@ function _openPresetModalNow() {
 
   var h3 = document.createElement('h3');
   h3.style.cssText = 'margin:0 0 4px;font-size:16px;font-weight:800;color:#1a3ab0;display:flex;justify-content:space-between;align-items:center;';
-  h3.innerHTML = '<span style="white-space:nowrap;">🔑 내 조 설정</span>'
-    + '<span style="display:flex;align-items:center;gap:8px;">'
-    + (isVerifiedUser()
-      ? '<button onclick="event.stopPropagation();closePresetModal();openAdminAuth()" '
-        + 'style="background:#2050c8;border:none;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;line-height:1;padding:5px 8px;color:#fff;white-space:nowrap;" '
-        + 'title="관리자 대시보드 열기">📊 관리</button>'
-      : '')
-    + (isAdminUser()
-      ? '<button onclick="event.stopPropagation();onAdminLogout()" '
-        + 'style="background:none;border:1px solid rgba(200,0,0,0.3);border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;line-height:1;padding:4px 8px;color:#c00;white-space:nowrap;" '
-        + 'title="관리자 인증 해제">🔓 해제</button>'
-      : '')
-    + '<button onclick="event.stopPropagation();openPresetAdminAuth()" '
-    + 'style="background:none;border:none;font-size:17px;cursor:pointer;line-height:1;padding:0 2px;'
-    + 'color:' + (isAdminUser() ? '#2e7d32' : '#aaa') + ';" '
-    + 'title="' + (isAdminUser() ? 'admin 인증됨' : 'admin 인증') + '">🔒</button>'
+  h3.innerHTML = '<span style="white-space:nowrap;">👤 내 조 설정</span>'
     + '<button onclick="closePresetModal()" '
-    + 'style="background:none;border:none;font-size:20px;cursor:pointer;color:#aaa;line-height:1;padding:0 2px;">✕</button>'
-    + '</span>';
+    + 'style="background:none;border:none;font-size:20px;cursor:pointer;color:#aaa;line-height:1;padding:0 2px;">✕</button>';
   var p = document.createElement('p');
   p.innerHTML = '본인 이름을 선택하면 매번 조·역할이 자동으로 채워집니다.'
     + '<br><span style="color:#c65000;font-weight:600;">⚠️ 설정해두어야 나중에 본인이 작성한 보고서를 수정·삭제할 수 있습니다.</span>';
@@ -3202,14 +3191,18 @@ function updatePresetIndicator() {
   var dot = document.querySelector('.pi-dot');
   if (p && p.name) {
     label.textContent = p.scope === 'group' ? p.name + ' (' + p.group + (p.role || '그룹장') + ')' : p.name;
-    // 🔑 = 그룹 확정 권한이 있는 그룹장·부그룹장만 표시, 조원은 초록 점
-    if (dot) {
-      if (p.scope === 'group') { dot.textContent = '🔑'; dot.style.cssText = 'width:auto;height:auto;background:none;font-size:14px;line-height:1;'; }
-      else { dot.textContent = ''; dot.style.cssText = ''; dot.style.background = '#2e7d32'; }
-    }
   } else {
     label.textContent = '내 조 설정';
-    if (dot) { dot.textContent = ''; dot.style.cssText = ''; dot.style.background = '#2050c8'; }
+  }
+  if (!dot) return;
+  // 🔑 = 관리자(ADMIN) 인증이 되어 있을 때만 표시. 그 외에는 상태 점(설정됨=초록 / 미설정=파랑)
+  if (isAdminUser()) {
+    dot.textContent = '🔑';
+    dot.style.cssText = 'width:auto;height:auto;background:none;font-size:14px;line-height:1;';
+  } else {
+    dot.textContent = '';
+    dot.style.cssText = '';
+    dot.style.background = (p && p.name) ? '#2e7d32' : '#2050c8';
   }
 }
 
@@ -5722,49 +5715,40 @@ function getAdminToken() {
   return localStorage.getItem('index_admin_token') || '';
 }
 
-// "내 조 설정" 모달의 🔒 아이콘 — 새 탭으로 이동하지 않고 그 자리에서 admin 인증만 수행
-// (인증되면 관리그룹/12조가 즉시 목록에 나타나도록 모달을 새로고침)
-function openPresetAdminAuth() {
-  if (isAdminUser()) {
-    showStatus('✅ 이미 admin 인증 상태입니다.', 'info');
-    return;
-  }
-  var pw = window.prompt('admin 비밀번호를 입력하세요');
-  if (!pw) return;
-  if (!scriptUrl) { showStatus('⚠️ 구글 시트가 연결되지 않았습니다.', 'warn'); return; }
-  fetch(scriptUrl, {
-    method: 'POST',
-    headers: { 'Content-Type': 'text/plain' },
-    body: JSON.stringify({ action: 'verify_admin', password: pw })
-  })
-    .then(function(r) { return r.json(); })
-    .then(function(json) {
-      if (json.status === 'ok' && json.level === 'admin') {
-        localStorage.setItem('index_admin_verified', '1');
-        localStorage.setItem('index_admin_token', json.token || '');
-        showStatus('✅ admin 인증 완료 — 관리그룹/12조가 표시됩니다.', 'success');
-        _openPresetModalNow(); // 목록 새로고침 (E그룹/12조 반영)
-      } else if (json.status === 'ok' && json.level === 'monitor') {
-        showStatus('🔒 이 기능(관리그룹/12조 신분 사용)은 admin 전용입니다. 열람 전용 비밀번호로는 사용할 수 없습니다.', 'warn');
-      } else {
-        showStatus('❌ 비밀번호가 올바르지 않습니다.', 'error');
-      }
-    })
-    .catch(function() {
-      showStatus('❌ 서버 인증 실패. 다시 시도하세요.', 'error');
-    });
-}
 
 // 관리자 인증 해제 — 일반 조원/그룹장 화면(본인 조·그룹만 조회)으로 되돌아감
+// 오른쪽 위 🔑 버튼: 인증 전 = 비밀번호 입력창, 인증 후 = 관리자 메뉴
+function openAdminKey() {
+  if (!isVerifiedUser()) { openAdminAuth(); return; }
+  var old = document.getElementById('admin-menu-bg');
+  if (old) old.remove();
+  var bg = document.createElement('div');
+  bg.id = 'admin-menu-bg';
+  bg.style.cssText = 'display:flex;position:fixed;top:0;right:0;bottom:0;left:0;background:rgba(10,15,30,0.55);z-index:9000;align-items:center;justify-content:center;padding:20px;';
+  var lvl = isAdminUser() ? '관리자(admin)' : '열람 전용(monitor)';
+  bg.innerHTML = '<div style="background:#fff;border-radius:14px;padding:22px 20px;width:100%;max-width:290px;box-shadow:0 8px 32px rgba(0,0,0,.25);text-align:center;">' +
+    '<div style="font-size:30px;margin-bottom:4px;">🔑</div>' +
+    '<div style="font-size:14px;font-weight:800;color:#1a3a9e;">관리자 인증됨</div>' +
+    '<div style="font-size:11px;color:#888;margin:2px 0 14px;">' + lvl + '</div>' +
+    '<button type="button" onclick="document.getElementById(\'admin-menu-bg\').remove();openAdminPage()" style="width:100%;height:42px;border:none;border-radius:10px;background:#2050c8;color:#fff;font-size:14px;font-weight:800;cursor:pointer;margin-bottom:8px;">📊 관리자 페이지 열기</button>' +
+    '<button type="button" onclick="document.getElementById(\'admin-menu-bg\').remove();onAdminLogout()" style="width:100%;height:42px;border:1px solid rgba(200,0,0,.35);border-radius:10px;background:#fff;color:#c00;font-size:14px;font-weight:700;cursor:pointer;margin-bottom:8px;">🔓 인증 해제</button>' +
+    '<button type="button" onclick="document.getElementById(\'admin-menu-bg\').remove()" style="width:100%;height:38px;border:1px solid #ddd;border-radius:10px;background:#f5f5f5;color:#555;font-size:13px;cursor:pointer;">닫기</button>' +
+    '</div>';
+  bg.addEventListener('click', function(e) { if (e.target === bg) bg.remove(); });
+  document.body.appendChild(bg);
+}
+
 function onAdminLogout() {
-  if (!isAdminUser()) return;
+  if (!isVerifiedUser()) return;
   if (!window.confirm('관리자 인증을 해제하시겠습니까?\n해제하면 본인 조/그룹만 조회할 수 있는 일반 화면으로 전환됩니다.')) return;
   localStorage.removeItem('index_admin_verified');
   localStorage.removeItem('index_admin_token');
   localStorage.removeItem('index_monitor_verified');
   localStorage.removeItem('index_admin_remember');
   showStatus('🔓 관리자 인증이 해제되었습니다.', 'info');
-  _openPresetModalNow(); // 모달 새로고침 (관리그룹/12조 항목 제거)
+  updatePresetIndicator(); // 칩의 🔑 제거
+  if (document.getElementById('preset-modal-bg')) _openPresetModalNow(); // 열려 있으면 새로고침 (관리그룹/12조 항목 제거)
+  if (currentTab === 'pub') renderPubTab();
   if (currentTab === 'history') {
     var p = getPreset();
     if (!p || !p.name) {
@@ -7520,7 +7504,9 @@ function confirmAdminAuth() {
           localStorage.removeItem('index_admin_remember');
         }
         closeAdminAuth();
-        openAdminPage();
+        updatePresetIndicator(); // 칩에 🔑 표시
+        showStatus('✅ 관리자 인증 완료', 'success');
+        if (currentTab === 'pub') renderPubTab();
         // 인증 후 기록탭 새로고침 (전체 목록 재표시)
         if (window._historyRecords && window._historyRecords.length) loadHistory();
       } else {
@@ -8954,6 +8940,7 @@ function showStatus(msg, type) {
     bar.style.display = 'none';
   }, 3200);
 }
+
 
 </script>
 <!-- 제출 완료 확인 모달 -->
