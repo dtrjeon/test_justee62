@@ -140,6 +140,8 @@ body {
 }
 
 .icon-btn {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: rgba(32, 80, 200, 0.15);
   background: transparent;
   border: 1px solid rgba(32, 80, 200, 0.2);
   color: rgba(32, 80, 200, 0.7);
@@ -150,6 +152,18 @@ body {
   font-size: .76rem;
   font-weight: 700;
   cursor: pointer;
+}
+
+/* 내 조 칩 높이 = 아이콘 버튼 높이(34px) */
+.topbar-right .preset-indicator {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: rgba(32, 80, 200, 0.15);
+  user-select: none;
+  min-width: 44px;
+  height: 34px;
+  box-sizing: border-box;
+  padding: 0 12px;
+  font-size: 12px;
 }
 
 /* 좁은 화면: 윗줄 = 내 조 표시·아이콘, 아랫줄 = 탭 4개 전부 보이게 */
@@ -1687,7 +1701,7 @@ pre.code-block {
       <span class="pi-dot"></span>
       <span id="preset-label">내 조 설정</span>
     </div>
-    <button class="icon-btn" onclick="openPresetModal()" title="내 조 설정" style="font-size:15px;">👤</button>
+    <button class="icon-btn" onclick="openPresetModal()" title="내 조 설정" style="font-size:15px;">🔑</button>
     <button class="icon-btn" onclick="confirmReset()" title="화면 초기화" style="font-size:15px;">🔄</button>
 
   </div>
@@ -2947,23 +2961,21 @@ function applyFormData(r) {
 }
 
 function openPresetModal() {
-  // 기존 모달 제거
-  var old = document.getElementById('preset-modal-bg');
-  if (old) old.remove();
-
-  // 서버에서 최신 조정보 로드 후 모달 열기
+  // 즉시 열기(캐시된 조 정보) — 서버 응답을 기다리지 않아 한 번 눌러서 바로 열린다
+  _openPresetModalNow();
+  // 서버의 최신 조정보는 뒤에서 받아오고, 바뀐 경우에만 목록을 다시 그린다
   if (scriptUrl) {
+    var before = localStorage.getItem('report_jo_data');
     fetch(scriptUrl + '?action=get_jo', { method: 'GET', redirect: 'follow' })
       .then(function(r) { return r.json(); })
       .then(function(json) {
         if (json.status === 'ok' && json.joData && json.joData.length) {
-          localStorage.setItem('report_jo_data', JSON.stringify(json.joData));
+          var after = JSON.stringify(json.joData);
+          localStorage.setItem('report_jo_data', after);
+          if (after !== before && document.getElementById('preset-modal-bg')) _openPresetModalNow();
         }
       })
-      .catch(function() {})
-      .finally(function() { _openPresetModalNow(); });
-  } else {
-    _openPresetModalNow();
+      .catch(function() {});
   }
 }
 
@@ -2985,7 +2997,7 @@ function _openPresetModalNow() {
 
   var h3 = document.createElement('h3');
   h3.style.cssText = 'margin:0 0 4px;font-size:16px;font-weight:800;color:#1a3ab0;display:flex;justify-content:space-between;align-items:center;';
-  h3.innerHTML = '<span style="white-space:nowrap;">👤 내 조 설정</span>'
+  h3.innerHTML = '<span style="white-space:nowrap;">🔑 내 조 설정</span>'
     + '<span style="display:flex;align-items:center;gap:8px;">'
     + (isVerifiedUser()
       ? '<button onclick="event.stopPropagation();closePresetModal();openAdminAuth()" '
@@ -3189,11 +3201,15 @@ function updatePresetIndicator() {
   var label = document.getElementById('preset-label');
   var dot = document.querySelector('.pi-dot');
   if (p && p.name) {
-    label.textContent = p.scope === 'group' ? p.name + ' (' + p.group + '그룹장)' : p.name;
-    if (dot) dot.style.background = '#2e7d32';
+    label.textContent = p.scope === 'group' ? p.name + ' (' + p.group + (p.role || '그룹장') + ')' : p.name;
+    // 🔑 = 그룹 확정 권한이 있는 그룹장·부그룹장만 표시, 조원은 초록 점
+    if (dot) {
+      if (p.scope === 'group') { dot.textContent = '🔑'; dot.style.cssText = 'width:auto;height:auto;background:none;font-size:14px;line-height:1;'; }
+      else { dot.textContent = ''; dot.style.cssText = ''; dot.style.background = '#2e7d32'; }
+    }
   } else {
     label.textContent = '내 조 설정';
-    if (dot) dot.style.background = '#2050c8';
+    if (dot) { dot.textContent = ''; dot.style.cssText = ''; dot.style.background = '#2050c8'; }
   }
 }
 
