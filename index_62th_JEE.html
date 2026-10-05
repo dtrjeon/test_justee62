@@ -152,6 +152,34 @@ body {
   cursor: pointer;
 }
 
+/* 좁은 화면: 윗줄 = 내 조 표시·아이콘, 아랫줄 = 탭 4개 전부 보이게 */
+@media (max-width: 600px) {
+  .topbar {
+    flex-wrap: wrap;
+    height: auto;
+    padding-top: calc(env(safe-area-inset-top, 0px) + 5px);
+    padding-bottom: 6px;
+    row-gap: 5px;
+  }
+  .topbar-right {
+    order: 1;
+    width: 100%;
+    justify-content: space-between;
+  }
+  .tab-btns {
+    order: 2;
+    flex: 1 1 100%;
+    gap: 3px;
+  }
+  .tab-btn {
+    flex: 1 1 auto;
+    padding: 0 4px;
+    font-size: .72rem;
+  }
+  .topbar-right .icon-btn { margin-left: auto; }
+  .topbar-right .icon-btn + .icon-btn { margin-left: 4px; }
+}
+
 .icon-btn.primary {
   background: linear-gradient(135deg, #2a5cd8, #1a3ab0);
   color: #fff;
