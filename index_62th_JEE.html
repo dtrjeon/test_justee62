@@ -2466,7 +2466,7 @@ pre.code-block {
   <div class="history-header">
     <h2 class="server">🎤 전체공개보고</h2>
     <div style="display:flex;align-items:center;gap:6px;">
-      <select id="pub-week-sel" onchange="renderPubTab();applyPubMarks()" style="padding:6px 8px;border-radius:8px;border:1px solid rgba(32,80,200,.25);font-size:12px;"></select>
+      <select id="pub-week-sel" onchange="renderPubTab();applyPubMarks()" style="flex:1 1 auto;min-width:210px;padding:6px 26px 6px 10px;border-radius:8px;border:1px solid rgba(32,80,200,.25);font-size:13px;"></select>
       <button type="button" class="search-go-btn" onclick="loadPubTab(true)" title="새로고침" style="white-space:nowrap;padding:6px 10px;">🔄</button>
       <button type="button" class="search-go-btn" onclick="pubPrintPdf()" title="선택된 공개보고서 PDF 출력" style="white-space:nowrap;padding:6px 10px;">🖨️</button>
     </div>
@@ -5969,12 +5969,12 @@ function renderPubTab() {
         ? R + '주차 보고서에서 선택'
         : cands.slice().sort(function(x, y) { return x - y; }).join('·') + '주차 보고서에서 선택';
       cbox.innerHTML = '<div style="font-size:11px;color:#6b6b6b;">📚 ' + lbl +
-        (R > 1 ? ' <a href="javascript:_pub.candOpen=true;renderPubTab()" style="margin-left:6px;color:#2050c8;">이전 주차 추가 ▾</a>' : '') + '</div>';
+        (R > 1 ? ' <a href="javascript:_pub.candOpen=true;renderPubTab()" style="margin-left:6px;color:#2050c8;">이전 주차 추가 <span style="font-size:18px;vertical-align:-2px;">▾</span></a>' : '') + '</div>';
     } else {
       cbox.innerHTML = '<div style="font-size:11px;color:#6b6b6b;margin-bottom:2px;">📚 선택할 주차 (복수 선택) ' +
         '<a href="javascript:pubSetCand(\'' + week + '\',\'cur\')" style="margin-left:6px;color:#2050c8;">해당주만</a> · ' +
         '<a href="javascript:pubSetCand(\'' + week + '\',\'all\')" style="color:#2050c8;">전체</a> · ' +
-        '<a href="javascript:_pub.candOpen=false;renderPubTab()" style="color:#888;">접기 ▴</a></div>' + chips;
+        '<a href="javascript:_pub.candOpen=false;renderPubTab()" style="color:#888;">접기 <span style="font-size:18px;vertical-align:-2px;">▴</span></a></div>' + chips;
     }
   }
   var cntOk = rows.filter(function(r) { return r.st.kind === 'sel' || r.st.kind === 'auto'; }).length;
