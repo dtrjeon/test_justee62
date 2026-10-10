@@ -3251,7 +3251,7 @@ function showPermTable() {
   rows.push({ key: 'jo', name: '조원', sub: '', v: [1,'자기조'], e: [1,'본인조'], d: [0,''], s: [1,'자기조'], c: [0,''], g: [0,''] });
   var meKey = isAdminUser() ? 'admin' : (me.scope === 'staff' ? 'staff:' + me.role : (me.scope === 'group' ? 'group' : (me.name ? 'jo' : '')));
   var tbl = '<table style="width:100%;border-collapse:collapse;font-size:11px;"><thead><tr style="background:#1a3a9e;color:#fff;">' +
-    ['직책','기록<br>조회','보고서<br>수정','문서<br>삭제','공개보고<br>선택','그룹<br>확정','보고대상<br>설정'].map(function(h, i) { return '<th style="padding:6px 2px;font-weight:700;font-size:10px;' + (i === 0 ? 'text-align:left;padding-left:6px;' : '') + '">' + h + '</th>'; }).join('') +
+    ['직책','기록<br>조회','보고서<br>수정','문서<br>삭제','공개보고<br>선택','그룹<br>확정','공개보고<br>대상설정'].map(function(h, i) { return '<th style="padding:6px 2px;font-weight:700;font-size:10px;' + (i === 0 ? 'text-align:left;padding-left:6px;' : '') + '">' + h + '</th>'; }).join('') +
     '</tr></thead><tbody>' +
     rows.map(function(r) {
       var mine = r.key === meKey;
