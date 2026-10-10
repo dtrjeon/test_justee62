@@ -1971,8 +1971,8 @@ window.TEST_DATA = {"records": [{"저장일시": "2026-03-14", "주차": 3, "전
     <div style="padding:8px 12px;font-size:10px;color:#888;background:#fafafa;border-bottom:1px solid #eee;">
       ※ 가로 = 주차(월/일, 월~일) · 세로 = 조 정보(조·이름·역할·단계) · 문서번호는 조 대표로 한 번만 표시 &nbsp;|&nbsp; <b style="color:#1a3a9e;">파란 굵은 글씨</b> = 조원이 복음 제시함 · 회색 = 제시 기록 없음 &nbsp;|&nbsp; 상단 조 선택 필터가 적용됩니다.
     </div>
-    <div class="tbl-scroll" style="overflow-x:auto;">
-      <table id="t6-table" style="border-collapse:collapse;font-size:10px;">
+    <div class="tbl-scroll" id="t6-scroll" style="overflow:auto;max-height:calc(100vh - 150px);">
+      <table id="t6-table" style="border-collapse:separate;border-spacing:0;font-size:10px;">
         <thead id="hd-t6"></thead>
         <tbody id="tb-t6"></tbody>
       </table>
@@ -7923,6 +7923,18 @@ function openAdminKeyModal(onSuccess) {
   inp.addEventListener('keydown', function(e) { if (e.key === 'Enter') submit(); });
 }
 
+// 문서번호에서 앞의 "62-조-" 생략 + 전도일(월/일) 추가: 62-5-관-4 → 관-4(10/11)
+function t6DocLabel(r) {
+  var d = String(r.docNumber || '');
+  var short = d.replace(/^\d+-\d+-/, '');
+  var md = '';
+  var dt = String(r.date || '').trim();
+  var m = dt.match(/(\d{1,2})[-\/.\s]+(\d{1,2})(?:\D*)$/);
+  if (m) md = Number(m[1]) + '/' + Number(m[2]);
+  else if (dt) { var x = new Date(dt); if (!isNaN(x)) md = (x.getMonth() + 1) + '/' + x.getDate(); }
+  return short + (md ? '(' + md + ')' : '');
+}
+
 function exportT6Csv() {
   var d = window._t6Export || [];
   if (!d.length) { showToast('내보낼 데이터가 없습니다.'); return; }
@@ -7933,7 +7945,7 @@ function exportT6Csv() {
   d.forEach(function(g) {
     g.ms.forEach(function(m, i) {
       var row = [m.jo, m.name, m.role || '', m.step || ''];
-      for (var w = 1; w <= maxW; w++) row.push(i === 0 ? g.cells[w - 1].map(function(r) { return r.docNumber; }).join(' / ') : '');
+      for (var w = 1; w <= maxW; w++) row.push(i === 0 ? g.cells[w - 1].map(function(r) { return t6DocLabel(r); }).join(' / ') : '');
       rows.push(row);
     });
   });
@@ -7953,14 +7965,15 @@ function renderTab6() {
   var jof = (typeof currentJo !== 'undefined') ? currentJo : '';
 
   // 헤더: 조 정보 + 주차(월/일)
-  var h = '<tr><th style="position:sticky;left:0;z-index:5;background:#1a3a9e;color:#fff;min-width:26px;padding:6px 4px;">조</th>'
-    + '<th style="position:sticky;left:26px;z-index:5;background:#1a3a9e;color:#fff;min-width:46px;padding:6px 4px;">이름</th>'
-    + '<th style="background:#1a3a9e;color:#fff;padding:6px 4px;white-space:nowrap;">역할</th>'
-    + '<th style="background:#1a3a9e;color:#fff;padding:6px 4px;white-space:nowrap;border-right:1px solid #c5cde8;">단계</th>';
+  var TH = 'position:sticky;top:0;background:#1a3a9e;color:#fff;padding:6px 4px;white-space:nowrap;';
+  var h = '<tr><th style="' + TH + 'left:0;z-index:7;width:28px;min-width:28px;max-width:28px;box-sizing:border-box;">조</th>'
+    + '<th style="' + TH + 'left:28px;z-index:7;width:52px;min-width:52px;max-width:52px;box-sizing:border-box;box-shadow:2px 0 3px rgba(0,0,0,.15);">이름</th>'
+    + '<th style="' + TH + 'z-index:6;">역할</th>'
+    + '<th style="' + TH + 'z-index:6;border-right:1px solid #c5cde8;">단계</th>';
   for (var w = 1; w <= maxW; w++) {
     var lbl = (typeof getWeekDateRangeLabel === 'function') ? getWeekDateRangeLabel(w) : '';
     lbl = lbl.replace('(일)', '');
-    h += '<th style="background:#2050c8;color:#fff;padding:5px 4px;white-space:nowrap;line-height:1.3;border-left:1px solid rgba(255,255,255,.2);">'
+    h += '<th style="position:sticky;top:0;z-index:6;background:#2050c8;color:#fff;padding:5px 4px;white-space:nowrap;line-height:1.3;border-left:1px solid rgba(255,255,255,.2);">'
       + w + '주<br><span style="font-size:8px;font-weight:400;">' + lbl + '</span></th>';
   }
   hd.innerHTML = h + '</tr>';
@@ -8008,8 +8021,8 @@ function renderTab6() {
     }
     ms.forEach(function(m, idx) {
       html += '<tr style="' + (idx === 0 ? 'border-top:2px solid #c5cde8;' : '') + '">'
-        + '<td style="position:sticky;left:0;z-index:4;background:#f0f4ff;text-align:center;font-weight:700;padding:4px;">' + m.jo + '</td>'
-        + '<td style="position:sticky;left:26px;z-index:4;background:#f0f4ff;text-align:center;font-weight:700;white-space:nowrap;padding:4px;">' + m.name + '</td>'
+        + '<td style="position:sticky;left:0;z-index:4;background:#f0f4ff;text-align:center;font-weight:700;padding:4px;width:28px;min-width:28px;max-width:28px;box-sizing:border-box;">' + m.jo + '</td>'
+        + '<td style="position:sticky;left:28px;z-index:4;background:#f0f4ff;text-align:center;font-weight:700;white-space:nowrap;padding:4px;width:52px;min-width:52px;max-width:52px;box-sizing:border-box;box-shadow:2px 0 3px rgba(0,0,0,.12);">' + m.name + '</td>'
         + '<td style="text-align:center;white-space:nowrap;padding:4px;">' + (m.role || '') + '</td>'
         + '<td style="text-align:center;padding:4px;border-right:1px solid #c5cde8;">' + (m.step || '') + '</td>';
       if (idx === 0) {
@@ -8018,8 +8031,8 @@ function renderTab6() {
           var txt = recs2.map(function(r) {
             docSet[r.docNumber] = 1;
             var did = ms.some(function(mm) { return isDidAction(memberAction(r, mm)); });
-            return '<div title="' + (r.evangType || '') + (r.date ? ' · ' + r.date : '') + '" style="white-space:nowrap;'
-              + (did ? 'font-weight:700;color:#1a3a9e;' : 'color:#999;') + '">' + r.docNumber + '</div>';
+            return '<div title="' + r.docNumber + (r.evangType ? ' · ' + r.evangType : '') + '" style="white-space:nowrap;'
+              + (did ? 'font-weight:700;color:#1a3a9e;' : 'color:#999;') + '">' + t6DocLabel(r) + '</div>';
           }).join('');
           html += '<td rowspan="' + ms.length + '" style="text-align:center;padding:3px 4px;border-left:1px solid #eef0f6;vertical-align:middle;background:#fff;">' + txt + '</td>';
         }
