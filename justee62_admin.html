@@ -7794,6 +7794,7 @@ async function deleteDupRow(key) {
         rowIndex: found[0].rowIndex,
         docNumber: r.docNumber,
         savedAt: r.savedAt,
+        deletedBy: '관리자 대시보드',
         adminToken: getAdminToken()
       })
     });
