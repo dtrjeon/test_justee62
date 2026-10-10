@@ -2165,7 +2165,8 @@ window.TEST_DATA = {"records": [{"저장일시": "2026-03-14", "주차": 3, "전
 // ── 빈 값 표시용 옅은 회색 대시 ─────────────────────────────────────────────
 var DASH = '<span style="color:#c8ccd6;">-</span>';
 // ── 조 구성 데이터 ─────────────────────────────────────────────────────────
-const ADMIN_VERSION = 'admin v2026.10.10-4';
+const ADMIN_VERSION = 'admin v2026.10.10-5';
+const GAS_EXPECTED_VERSION = 'gas v2026.10.10-5'; // Code.gs가 바뀔 때만 올림
 // 하드코딩 기준 데이터 (step 복원용)
 const HARDCODED_MEMBERS = [{
   jo: 1,
@@ -6721,7 +6722,7 @@ function checkAllVersions() {
           var gasVer = json.gasVersion || json.version || '?';
           if (elGas) {
             elGas.textContent = gasVer;
-            var expectedGas = ADMIN_VERSION.replace('admin', 'gas');
+            var expectedGas = GAS_EXPECTED_VERSION;
             elGas.style.color = gasVer === expectedGas ? '#2e7d32' : '#e65100';
             elGas.title = gasVer === expectedGas ? '✅ 최신' : '⚠️ 구버전 <span style="color:#c8ccd6;">-</span> GAS 재배포 필요';
           }

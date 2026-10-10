@@ -2600,11 +2600,27 @@ pre.code-block {
   });
 })();
 
-const APP_VERSION  = 'index v2026.10.10-4';
+const APP_VERSION  = 'index v2026.10.10-5';
 const LS_SEQ       = 'report_seq_counter';
 const LS_JO        = 'report_jo_data';
 const LS_SUBMITTED = 'report_submitted';
 const LS_PRESET    = 'report_user_preset';
+// 🔑 인증 자동 유지: '비밀번호 저장' 체크 시에만 다음 방문에도 인증 유지.
+// 미체크면 이 브라우저 탭 세션(sessionStorage 표시)이 끝난 뒤 처음 열 때 인증을 모두 해제한다.
+(function() {
+  try {
+    if (localStorage.getItem('index_admin_remember') !== '1' && !sessionStorage.getItem('index_auth_session')) {
+      ['index_admin_verified','index_admin_token','index_monitor_verified','index_delete_token','index_delete_at','index_edit_token','index_edit_at'].forEach(function(k) { localStorage.removeItem(k); });
+    }
+  } catch (e) {}
+})();
+function markAuthSession() { try { sessionStorage.setItem('index_auth_session', '1'); } catch (e) {} }
+function applyRememberChoice() {
+  var remCb = document.getElementById('admin-auth-remember');
+  if (remCb && remCb.checked) localStorage.setItem('index_admin_remember', '1');
+  else localStorage.removeItem('index_admin_remember');
+  markAuthSession();
+}
 
 // ── 스탭(그룹장 위 직책) ───────────────────────────────────────
 // edit:true  = 모든 그룹의 기록 조회 + 보고서 수정 + 공개보고(선택·확정·대상 설정) 가능
@@ -8067,6 +8083,7 @@ function confirmAdminAuth() {
         // 삭제 전용 비밀번호 — 관리자/열람 권한은 열지 않고 삭제 토큰만 저장
         localStorage.setItem('index_delete_token', json.token || '');
         localStorage.setItem('index_delete_at', String(Date.now()));
+        applyRememberChoice();
         closeAdminAuth();
         updatePresetIndicator(); updateEditLockState(); updateDeleteBtn();
         showStatus('✅ 삭제 전용 인증 완료 (문서 수정·삭제 가능)', 'success');
@@ -8074,6 +8091,7 @@ function confirmAdminAuth() {
         // 편집 전용 비밀번호 — 스탭의 타인 문서 수정 권한만 열림 (관리자/열람 권한 없음)
         localStorage.setItem('index_edit_token', json.token || '');
         localStorage.setItem('index_edit_at', String(Date.now()));
+        applyRememberChoice();
         closeAdminAuth();
         updatePresetIndicator(); updateEditLockState(); updateDeleteBtn();
         showStatus('✅ 편집 인증 완료 (보고서 수정 가능)', 'success');
@@ -8086,12 +8104,7 @@ function confirmAdminAuth() {
           localStorage.setItem('index_monitor_verified', '1');
           localStorage.removeItem('index_admin_verified');
         }
-        var remCb = document.getElementById('admin-auth-remember');
-        if (remCb && remCb.checked) {
-          localStorage.setItem('index_admin_remember', '1');
-        } else {
-          localStorage.removeItem('index_admin_remember');
-        }
+        applyRememberChoice();
         closeAdminAuth();
         updatePresetIndicator(); // 칩에 🔑 표시
         updateEditLockState(); updateDeleteBtn();
@@ -9581,7 +9594,7 @@ function showStatus(msg, type) {
     <div id="admin-auth-error" style="font-size:11px;color:#c00;min-height:16px;margin-bottom:10px;"></div>
     <label style="display:flex;align-items:center;justify-content:center;gap:6px;font-size:12px;color:#555;margin-bottom:14px;cursor:pointer;user-select:none;">
       <input type="checkbox" id="admin-auth-remember" style="width:15px;height:15px;cursor:pointer;">
-      비밀번호 저장 (다음부터 묻지 않음)
+      비밀번호 저장 (체크 시 다음 방문에도 자동 인증)
     </label>
     <div style="display:flex;gap:8px;">
       <button onclick="closeAdminAuth()" style="flex:1;height:40px;border:1px solid #ddd;border-radius:8px;background:#f5f5f5;color:#555;font-size:13px;cursor:pointer;">취소</button>
