@@ -1212,8 +1212,12 @@ window.TEST_DATA = {"records": [{"저장일시": "2026-03-14", "주차": 3, "전
 
 <div class="week-bar">
   <div style="display:flex;align-items:center;gap:4px;flex:1;">
-    <label>주차</label>
+    <label id="week-label-bar">주차</label>
     <select class="week-select" id="week-select" onchange="onWeekChange()" style="flex:1;"></select>
+    <label id="grp-label-bar" style="display:none;">그룹</label>
+    <select class="week-select" id="grp-select" onchange="renderTab6()" style="flex:1;display:none;">
+      <option value="">전체</option>
+    </select>
     <label>조</label>
     <select class="week-select" id="jo-select" onchange="onWeekChange()" style="flex:1;">
       <option value="">전체</option>
@@ -1969,7 +1973,7 @@ window.TEST_DATA = {"records": [{"저장일시": "2026-03-14", "주차": 3, "전
       </div>
     </div>
     <div style="padding:8px 12px;font-size:10px;color:#888;background:#fafafa;border-bottom:1px solid #eee;">
-      ※ 가로 = 주차(월/일, 월~일) · 세로 = 조 정보(조·이름·역할·단계) · 문서번호는 조 대표로 한 번만 표시 &nbsp;|&nbsp; <b style="color:#1a3a9e;">파란 굵은 글씨</b> = 조원이 복음 제시함 · 회색 = 제시 기록 없음 · <b style="color:#8d5524;">갈색</b> = 1·2단계 풀복음 완료일 있음 · <b>*</b> = 그중 1단계 포함 &nbsp;|&nbsp; 상단 조 선택 필터가 적용됩니다.
+      ※ 가로 = 주차(월/일, 월~일) · 세로 = 조 정보(조·이름·역할·단계) · 문서번호는 조 대표로 한 번만 표시 &nbsp;|&nbsp; <b style="color:#1a3a9e;">파란 굵은 글씨</b> = 조원이 복음 제시함 · 회색 = 제시 기록 없음 · <b style="color:#8d5524;">갈색</b> = 1·2단계 풀복음 완료일 있음 · <b>*</b> = 그중 1단계 포함 &nbsp;|&nbsp; 상단 <b>그룹·조·유형</b> 선택 필터가 적용됩니다.
     </div>
     <div class="tbl-scroll" id="t6-scroll" style="overflow:auto;max-height:calc(100vh - 150px);">
       <table id="t6-table" style="border-collapse:separate;border-spacing:0;font-size:10px;">
@@ -7979,6 +7983,29 @@ function renderTab6() {
   if (!hd || !tb) return;
   var maxW = getMaxWeek();
   var jof = (typeof currentJo !== 'undefined') ? currentJo : '';
+  var et = (typeof currentEvangType !== 'undefined') ? currentEvangType : '';
+
+  // 그룹 선택 목록(최초 1회 채움)
+  var gsel = document.getElementById('grp-select');
+  if (gsel && gsel.options.length <= 1) {
+    var gs = {};
+    MEMBERS.forEach(function(m) { if (m.group && String(m.jo) !== '12') gs[m.group] = 1; });
+    Object.keys(gs).sort().forEach(function(g) {
+      var o = document.createElement('option'); o.value = g; o.textContent = g + '그룹'; gsel.appendChild(o);
+    });
+  }
+  var gf = gsel ? gsel.value : '';
+  function matchType6(r) {
+    if (!et) return true;
+    var t = (r.evangType || '').toString();
+    if (et === '관계')     return t === '관계(팀)';
+    if (et === '질문지')   return t === '질문지(팀)';
+    if (et === '7일후')    return t === '7일후(팀)';
+    if (et === '관계전도') return t === '관계';
+    if (et === '개인')     return t === '개인';
+    if (et === 'QQ')       return t.indexOf('QQ') >= 0 || t.indexOf('qq') >= 0;
+    return true;
+  }
 
   // 헤더: 조 정보 + 주차(월/일)
   var TH = 'position:sticky;top:0;background:#1a3a9e;color:#fff;padding:6px 4px;white-space:nowrap;';
@@ -7998,13 +8025,13 @@ function renderTab6() {
   var byJoWeek = {};
   var docSet = {};
   (allData || []).forEach(function(r) {
-    if (!r.docNumber || String(r.jo) === '12') return;
+    if (!r.docNumber || String(r.jo) === '12' || !matchType6(r)) return;
     var k = String(r.jo) + '|' + Number(r.week);
     (byJoWeek[k] = byJoWeek[k] || []).push(r);
   });
 
   var members = MEMBERS.filter(function(m) {
-    return String(m.jo) !== '12' && (!jof || String(m.jo) === String(jof));
+    return String(m.jo) !== '12' && (!jof || String(m.jo) === String(jof)) && (!gf || m.group === gf);
   }).slice().sort(function(a, b) {
     var ja = Number(a.jo), jb = Number(b.jo);
     if (ja !== jb) return ja - jb;
@@ -8121,6 +8148,10 @@ function switchTab(idx) {
   });
   if (idx === 4) renderTab4();
   if (idx === 5) renderTab5();
+  // 복음제시 현황 탭: 주차 선택 대신 그룹 선택 표시 (가로 열이 이미 전체 주차)
+  var onT6 = (idx === 6);
+  ['week-label-bar', 'week-select'].forEach(function(id) { var e = document.getElementById(id); if (e) e.style.display = onT6 ? 'none' : ''; });
+  ['grp-label-bar', 'grp-select'].forEach(function(id) { var e = document.getElementById(id); if (e) e.style.display = onT6 ? '' : 'none'; });
   if (idx === 6) renderTab6();
   // tab1(복음참여)·tab2(팀전도)·tab3(복음제시)는 숨겨져 있는 동안 폭을 잴 수 없어서
   // (화면에 없으면 크기가 0으로 측정됨) 화면에 보이게 된 지금 다시 계산해야 한다.
