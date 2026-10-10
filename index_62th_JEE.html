@@ -6281,7 +6281,8 @@ function pubDocLine(d) {
   var chip = 'font-size:10px;color:#1a3a9e;font-weight:700;background:#eef0f5;border-radius:4px;padding:2px 7px;';
   var resStyle = d.result === '결신' ? 'color:#fff;background:#1a6b3c;' : 'color:#555;background:#e6e6e6;';
   var tt = String(d.target_type || '').trim();
-  if (tt === '질문지전도 대상자') tt = '질문지';
+  if (tt.indexOf('질문지') >= 0 || tt.indexOf('7일후') >= 0) tt = '';   // 이름 뒤 표시에서 제외
+  else if (tt === '지인/지인가족') tt = '지인';
   return '<span style="' + chip + 'margin-right:4px;">' + pubWeekKey(d.week) + '주</span>' +
     '<span style="' + chip + '">' + d.doc_number + '</span>' +
     (d.date ? '<span style="' + chip + 'margin-left:4px;">📅 ' + pubShortDate(d.date) + '</span>' : '') +
@@ -6434,7 +6435,7 @@ function renderPubTab() {
           var allLocked = gRows.length && gRows.every(function(x) { return pubLocked(week, x.jo); });
           if (!gRows.length) return '';
           var state = allLocked
-            ? '<span style="background:#c0392b;color:#fff;border-radius:10px;padding:3px 9px;font-size:11px;font-weight:800;">🔒 확정됨</span>'
+            ? '<span style="background:#f8c9a8;color:#8a3b12;border-radius:10px;padding:3px 9px;font-size:11px;font-weight:800;">🔒 확정됨</span>'
             : '<span style="background:rgba(255,255,255,.22);color:#fff;border:1px solid rgba(255,255,255,.55);border-radius:10px;padding:2px 9px;font-size:11px;font-weight:700;">미확정</span>';
           var act = canConfirmGroup(r.group)
             ? '<button type="button" onclick="pubToggleConfirm(\'' + r.group + '\')" style="background:#fff;color:' + (allLocked ? '#555' : '#c0392b') + ';border:none;border-radius:12px;padding:3px 10px;font-size:11px;font-weight:800;cursor:pointer;">' + (allLocked ? '해제' : '확정') + '</button>'
