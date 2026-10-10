@@ -2412,13 +2412,25 @@ pre.code-block {
         <span id="history-conn-dot" style="width:7px;height:7px;border-radius:50%;background:#e6b84a;flex-shrink:0;transition:background .3s;"></span>
         <span id="history-conn-label" style="color:rgba(140,90,20,0.8);">미연결</span>
       </div>
-      <button type="button" onclick="toggleHistoryHelp()" title="아이콘 설명 보기" style="width:24px;height:24px;border-radius:50%;border:1px solid rgba(32,80,200,0.3);background:#fff;color:#2050c8;font-size:13px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;">?</button>
+      <div onclick="toggleHistoryHelp()" style="display:flex;flex-direction:column;align-items:center;gap:2px;cursor:pointer;flex-shrink:0;">
+        <button type="button" title="수정방법·아이콘 설명 보기" style="width:24px;height:24px;border-radius:50%;border:1px solid rgba(32,80,200,0.3);background:#fff;color:#2050c8;font-size:13px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;">?</button>
+        <span style="font-size:9px;line-height:1.1;color:#2050c8;white-space:nowrap;">수정·설명</span>
+      </div>
     </div>
   </div>
   <div id="history-help-panel" style="display:none;background:#fff;border:1px solid rgba(32,80,200,0.2);border-radius:8px;padding:12px 14px;margin-bottom:10px;font-size:12px;line-height:1.6;color:#333;">
+    <div style="font-weight:700;font-size:13px;color:#1a3a9e;margin-bottom:6px;">✏️ 보고서 수정 방법</div>
+    <div style="background:#f4f7ff;border:1px solid rgba(32,80,200,0.15);border-radius:8px;padding:8px 10px;margin-bottom:12px;">
+      <div><b>① 기록 탭</b>에서 수정할 <b>문서번호</b>를 누르세요. <span style="color:#888;">(작성 탭으로 자동 이동)</span></div>
+      <div style="color:#2050c8;text-align:center;line-height:1.2;">▼</div>
+      <div><b>② 작성 탭</b>에서 고칠 부분을 수정하세요.</div>
+      <div style="color:#2050c8;text-align:center;line-height:1.2;">▼</div>
+      <div><b>③ 미리보기 탭</b>에서 <b>수정제출</b>을 누르면 완료됩니다.</div>
+      <div style="color:#888;font-size:11px;margin-top:4px;">※ 본인이 작성한 보고서만 수정할 수 있습니다. (내 조 설정 필요)</div>
+    </div>
     <div style="font-weight:700;font-size:13px;color:#1a3a9e;margin-bottom:8px;">ℹ️ 아이콘 설명</div>
     <div style="display:grid;grid-template-columns:auto 1fr;gap:4px 8px;">
-      <div>👤 내 조 / 전체보기</div><div>내가 설정한 "내 조" 기준으로만 보기 ↔ 전체(관리자) 보기 전환<br><span style="color:#888;">예: 8조 조장이 본인 조 것만 빠르게 보고 싶을 때 누름</span></div>
+      <div>👤 내 조 / 전체보기</div><div>누를 때마다 보는 범위가 바뀝니다.<br>· 조원·조장: 내 조 ↔ 내 그룹 전체<br>· 그룹장: 내 그룹 ↔ 전체 (열람만 가능)<br>· 스탭·관리자는 항상 전체를 봅니다.<br><span style="color:#888;">예: 8조 조장이 본인 조 것만 빠르게 보고 싶을 때 누름</span></div>
       <div>🔄 새로고침</div><div>서버에서 최신 데이터를 다시 받아옴 (지금 선택된 조회 조건은 유지)<br><span style="color:#888;">예: 다른 사람이 방금 제출한 보고서가 안 보일 때 누름</span></div>
       <div>➕ / ➖</div><div>검색바(주차·조회) 보이기/숨기기만 함 (조건은 안 지워짐)<br><span style="color:#888;">예: 화면을 좀 넓게 쓰고 싶을 때 검색바를 접어둠</span></div>
       <div>☑️ 선택출력</div><div>여러 건을 체크해서 한꺼번에 PDF 출력하거나 삭제하는 모드로 전환<br><span style="color:#888;">예: 이번 주차 보고서 5건을 한 번에 PDF로 뽑을 때</span></div>
