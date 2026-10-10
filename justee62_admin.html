@@ -1952,7 +1952,7 @@ window.TEST_DATA = {"records": [{"저장일시": "2026-03-14", "주차": 3, "전
   <div class="week-banner" style="background:linear-gradient(135deg,#1a3a9e,#2d5cb8);">
     <div class="wb-left">
       <div class="wb-title">복음제시 현황</div>
-      <div class="wb-sub">조원별 · 주차별 문서번호 <span style="color:#c8ccd6;">-</span> 보고서에 이름이 올라간 문서</div>
+      <div class="wb-sub">조별 · 주차별 대표 문서번호</div>
     </div>
     <div class="wb-right">
       <div class="wb-rate" id="t6-total-cnt"><span style="color:#c8ccd6;">-</span></div>
@@ -1965,11 +1965,11 @@ window.TEST_DATA = {"records": [{"저장일시": "2026-03-14", "주차": 3, "전
       <span class="tbl-head-title">🗂️ 조원별 복음제시 문서번호</span>
       <div style="display:flex;gap:6px;align-items:center;">
         <button onclick="renderTab6()" class="act-btn primary" style="font-size:11px;padding:4px 12px;">🔄 새로고침</button>
-        <button onclick="exportCsv('tb-t6','tab6_복음제시현황')" style="background:#f5f5f5;border:1px solid #ddd;color:#555;border-radius:12px;padding:4px 10px;font-size:10px;font-weight:700;cursor:pointer;">⬇ CSV</button>
+        <button onclick="exportT6Csv()" style="background:#f5f5f5;border:1px solid #ddd;color:#555;border-radius:12px;padding:4px 10px;font-size:10px;font-weight:700;cursor:pointer;">⬇ CSV</button>
       </div>
     </div>
     <div style="padding:8px 12px;font-size:10px;color:#888;background:#fafafa;border-bottom:1px solid #eee;">
-      ※ 가로 = 주차(월/일, 월~일) · 세로 = 조 정보(조·이름·역할·단계) &nbsp;|&nbsp; <b style="color:#1a3a9e;">파란 굵은 글씨</b> = 복음 제시함 · 회색 = 보고서에는 이름만 있고 제시 기록 없음 &nbsp;|&nbsp; 상단 조 선택 필터가 적용됩니다.
+      ※ 가로 = 주차(월/일, 월~일) · 세로 = 조 정보(조·이름·역할·단계) · 문서번호는 조 대표로 한 번만 표시 &nbsp;|&nbsp; <b style="color:#1a3a9e;">파란 굵은 글씨</b> = 조원이 복음 제시함 · 회색 = 제시 기록 없음 &nbsp;|&nbsp; 상단 조 선택 필터가 적용됩니다.
     </div>
     <div class="tbl-scroll" style="overflow-x:auto;">
       <table id="t6-table" style="border-collapse:collapse;font-size:10px;">
@@ -7923,6 +7923,27 @@ function openAdminKeyModal(onSuccess) {
   inp.addEventListener('keydown', function(e) { if (e.key === 'Enter') submit(); });
 }
 
+function exportT6Csv() {
+  var d = window._t6Export || [];
+  if (!d.length) { showToast('내보낼 데이터가 없습니다.'); return; }
+  var maxW = getMaxWeek();
+  var head = ['조', '이름', '역할', '단계'];
+  for (var w = 1; w <= maxW; w++) head.push(w + '주 ' + (getWeekDateRangeLabel(w) || '').replace('(일)', ''));
+  var rows = [head];
+  d.forEach(function(g) {
+    g.ms.forEach(function(m, i) {
+      var row = [m.jo, m.name, m.role || '', m.step || ''];
+      for (var w = 1; w <= maxW; w++) row.push(i === 0 ? g.cells[w - 1].map(function(r) { return r.docNumber; }).join(' / ') : '');
+      rows.push(row);
+    });
+  });
+  var csv = '\uFEFF' + rows.map(function(r) { return r.map(function(c) { return '"' + String(c).replace(/"/g, '""') + '"'; }).join(','); }).join('\n');
+  var a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
+  a.download = 'tab6_복음제시현황.csv';
+  document.body.appendChild(a); a.click(); a.remove();
+}
+
 // ── TAB6 복음제시 현황: 조원(세로) × 주차(가로) = 문서번호 ─────────────
 function renderTab6() {
   var hd = document.getElementById('hd-t6');
@@ -7964,27 +7985,48 @@ function renderTab6() {
     return ra - rb;
   });
 
-  var html = '';
-  var prevJo = null;
+  // 조 단위로 묶어 문서번호는 조의 대표 칸(조원 행 병합) 하나에만 표시
+  var joOrder = [], joMap = {};
   members.forEach(function(m) {
-    var first = String(m.jo) !== String(prevJo);
-    prevJo = m.jo;
-    html += '<tr style="' + (first ? 'border-top:2px solid #c5cde8;' : '') + '">'
-      + '<td style="position:sticky;left:0;z-index:4;background:#f0f4ff;text-align:center;font-weight:700;padding:4px;">' + m.jo + '</td>'
-      + '<td style="position:sticky;left:26px;z-index:4;background:#f0f4ff;text-align:center;font-weight:700;white-space:nowrap;padding:4px;">' + m.name + '</td>'
-      + '<td style="text-align:center;white-space:nowrap;padding:4px;">' + (m.role || '') + '</td>'
-      + '<td style="text-align:center;padding:4px;border-right:1px solid #c5cde8;">' + (m.step || '') + '</td>';
+    var k = String(m.jo);
+    if (!joMap[k]) { joMap[k] = []; joOrder.push(k); }
+    joMap[k].push(m);
+  });
+  window._t6Export = [];
+  var html = '';
+  joOrder.forEach(function(jk) {
+    var ms = joMap[jk];
+    // 주차별 대표 문서번호 목록 (조 전체 기준)
+    var cells = [];
     for (var w = 1; w <= maxW; w++) {
-      var recs = (byJoWeek[String(m.jo) + '|' + w] || []).filter(function(r) { return !!memberSlot(r, m); });
-      var cell = recs.map(function(r) {
-        docSet[r.docNumber] = 1;
-        var did = isDidAction(memberAction(r, m));
-        return '<div title="' + (r.evangType || '') + (r.date ? ' · ' + r.date : '') + '" style="white-space:nowrap;'
-          + (did ? 'font-weight:700;color:#1a3a9e;' : 'color:#999;') + '">' + r.docNumber + '</div>';
-      }).join('');
-      html += '<td style="text-align:center;padding:3px 4px;border-left:1px solid #eef0f6;vertical-align:middle;">' + (cell || '') + '</td>';
+      var recs = (byJoWeek[jk + '|' + w] || []).slice().sort(function(x, y) {
+        return String(x.docNumber).localeCompare(String(y.docNumber), undefined, { numeric: true });
+      });
+      var seen = {};
+      recs = recs.filter(function(r) { if (seen[r.docNumber]) return false; seen[r.docNumber] = 1; return true; });
+      cells.push(recs);
     }
-    html += '</tr>';
+    ms.forEach(function(m, idx) {
+      html += '<tr style="' + (idx === 0 ? 'border-top:2px solid #c5cde8;' : '') + '">'
+        + '<td style="position:sticky;left:0;z-index:4;background:#f0f4ff;text-align:center;font-weight:700;padding:4px;">' + m.jo + '</td>'
+        + '<td style="position:sticky;left:26px;z-index:4;background:#f0f4ff;text-align:center;font-weight:700;white-space:nowrap;padding:4px;">' + m.name + '</td>'
+        + '<td style="text-align:center;white-space:nowrap;padding:4px;">' + (m.role || '') + '</td>'
+        + '<td style="text-align:center;padding:4px;border-right:1px solid #c5cde8;">' + (m.step || '') + '</td>';
+      if (idx === 0) {
+        for (var w = 1; w <= maxW; w++) {
+          var recs2 = cells[w - 1];
+          var txt = recs2.map(function(r) {
+            docSet[r.docNumber] = 1;
+            var did = ms.some(function(mm) { return isDidAction(memberAction(r, mm)); });
+            return '<div title="' + (r.evangType || '') + (r.date ? ' · ' + r.date : '') + '" style="white-space:nowrap;'
+              + (did ? 'font-weight:700;color:#1a3a9e;' : 'color:#999;') + '">' + r.docNumber + '</div>';
+          }).join('');
+          html += '<td rowspan="' + ms.length + '" style="text-align:center;padding:3px 4px;border-left:1px solid #eef0f6;vertical-align:middle;background:#fff;">' + txt + '</td>';
+        }
+      }
+      html += '</tr>';
+    });
+    window._t6Export.push({ jo: jk, ms: ms, cells: cells });
   });
   tb.innerHTML = html || '<tr><td colspan="' + (4 + maxW) + '" style="padding:20px;text-align:center;color:#aaa;">표시할 조원이 없습니다</td></tr>';
   var cnt = document.getElementById('t6-total-cnt');
