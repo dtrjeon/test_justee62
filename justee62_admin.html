@@ -1969,7 +1969,7 @@ window.TEST_DATA = {"records": [{"저장일시": "2026-03-14", "주차": 3, "전
       </div>
     </div>
     <div style="padding:8px 12px;font-size:10px;color:#888;background:#fafafa;border-bottom:1px solid #eee;">
-      ※ 가로 = 주차(월/일, 월~일) · 세로 = 조 정보(조·이름·역할·단계) · 문서번호는 조 대표로 한 번만 표시 &nbsp;|&nbsp; <b style="color:#1a3a9e;">파란 굵은 글씨</b> = 조원이 복음 제시함 · 회색 = 제시 기록 없음 &nbsp;|&nbsp; 상단 조 선택 필터가 적용됩니다.
+      ※ 가로 = 주차(월/일, 월~일) · 세로 = 조 정보(조·이름·역할·단계) · 문서번호는 조 대표로 한 번만 표시 &nbsp;|&nbsp; <b style="color:#1a3a9e;">파란 굵은 글씨</b> = 조원이 복음 제시함 · 회색 = 제시 기록 없음 · <b style="color:#8d5524;">갈색</b> = 1·2단계 풀복음 완료일 있음 &nbsp;|&nbsp; 상단 조 선택 필터가 적용됩니다.
     </div>
     <div class="tbl-scroll" id="t6-scroll" style="overflow:auto;max-height:calc(100vh - 150px);">
       <table id="t6-table" style="border-collapse:separate;border-spacing:0;font-size:10px;">
@@ -8031,8 +8031,17 @@ function renderTab6() {
           var txt = recs2.map(function(r) {
             docSet[r.docNumber] = 1;
             var did = ms.some(function(mm) { return isDidAction(memberAction(r, mm)); });
-            return '<div title="' + r.docNumber + (r.evangType ? ' · ' + r.evangType : '') + '" style="white-space:nowrap;'
-              + (did ? 'font-weight:700;color:#1a3a9e;' : 'color:#999;') + '">' + t6DocLabel(r) + '</div>';
+            // 1·2단계 조원의 풀복음 완료일이 이 문서에 기록돼 있으면 갈색
+            var full12 = (function() {
+              var names = {};
+              String(r.gospelDate || '').split('|').forEach(function(pt) {
+                var ci = pt.indexOf(':');
+                if (ci > 0 && pt.slice(ci + 1).trim()) names[pt.slice(0, ci).trim()] = 1;
+              });
+              return ms.some(function(mm) { return (String(mm.step) === '1' || String(mm.step) === '2') && names[_nm(mm.name)]; });
+            })();
+            return '<div title="' + r.docNumber + (r.evangType ? ' · ' + r.evangType : '') + (full12 ? ' · 풀복음(1·2단계)' : '') + '" style="white-space:nowrap;'
+              + (full12 ? 'font-weight:700;color:#8d5524;' : did ? 'font-weight:700;color:#1a3a9e;' : 'color:#999;') + '">' + t6DocLabel(r) + '</div>';
           }).join('');
           html += '<td rowspan="' + ms.length + '" style="text-align:center;padding:3px 4px;border-left:1px solid #eef0f6;vertical-align:middle;background:#fff;">' + txt + '</td>';
         }
