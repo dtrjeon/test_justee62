@@ -2600,7 +2600,7 @@ pre.code-block {
   });
 })();
 
-const APP_VERSION  = 'index v2026.10.10-5';
+const APP_VERSION  = 'index v2026.10.10-6';
 const LS_SEQ       = 'report_seq_counter';
 const LS_JO        = 'report_jo_data';
 const LS_SUBMITTED = 'report_submitted';
@@ -6277,12 +6277,16 @@ function pubShortDate(d) {
 }
 
 function pubDocLine(d) {
-  var rc = { '결신': '#1a6b3c', '이미신자': '#e67e00', '확신': '#1a3a9e', '보류/거부': '#888' }[d.result] || '#aaa';
-  return '<span style="font-size:10px;color:#fff;font-weight:700;background:#6a4cc2;border-radius:4px;padding:2px 6px;margin-right:4px;">' + pubWeekKey(d.week) + '주</span>' +
-    '<span style="font-size:10px;color:#2050c8;font-weight:700;background:#eef2ff;border-radius:4px;padding:2px 7px;">' + d.doc_number + '</span>' +
-    (d.date ? '<span style="font-size:10px;color:#1a6b3c;font-weight:700;background:#eaf6ee;border-radius:4px;padding:2px 7px;margin-left:4px;">📅 ' + pubShortDate(d.date) + '</span>' : '') +
-    (d.result ? '<span style="font-size:10px;color:#fff;background:' + rc + ';border-radius:4px;padding:2px 7px;margin-left:4px;font-weight:700;">' + d.result + '</span>' : '') +
-    ((d.location || d.name) ? '<span style="font-size:10px;color:#666;margin-left:6px;">📍 ' + (d.location || '') + ' ' + (d.name ? maskName(d.name) : '') + '</span>' : '');
+  // 색은 최소화: 주차·문서번호·날짜는 같은 연회색 칩, 결과는 결신만 초록(나머지 회색)
+  var chip = 'font-size:10px;color:#1a3a9e;font-weight:700;background:#eef0f5;border-radius:4px;padding:2px 7px;';
+  var resStyle = d.result === '결신' ? 'color:#fff;background:#1a6b3c;' : 'color:#555;background:#e6e6e6;';
+  var tt = String(d.target_type || '').trim();
+  if (tt === '질문지전도 대상자') tt = '질문지';
+  return '<span style="' + chip + 'margin-right:4px;">' + pubWeekKey(d.week) + '주</span>' +
+    '<span style="' + chip + '">' + d.doc_number + '</span>' +
+    (d.date ? '<span style="' + chip + 'margin-left:4px;">📅 ' + pubShortDate(d.date) + '</span>' : '') +
+    (d.result ? '<span style="font-size:10px;' + resStyle + 'border-radius:4px;padding:2px 7px;margin-left:4px;font-weight:700;">' + d.result + '</span>' : '') +
+    ((d.location || d.name) ? '<span style="font-size:10px;color:#666;margin-left:6px;">📍 ' + (d.location || '') + ' ' + (d.name ? maskName(d.name) : '') + (d.name && tt ? '(' + tt + ')' : '') + '</span>' : '');
 }
 
 function renderPubTab() {
@@ -6376,11 +6380,17 @@ function renderPubTab() {
   if (!shown.length) { list.innerHTML = '<div class="empty-state"><span class="es-icon">🎤</span><p>표시할 조가 없습니다.</p></div>'; return; }
 
   var _lastGrp = null;
+  var _grpAllLocked = {};
+  shown.forEach(function(x) {
+    if (x.placeholder || !x.rep) return;
+    if (_grpAllLocked[x.group] === undefined) _grpAllLocked[x.group] = true;
+    if (!pubLocked(week, x.jo)) _grpAllLocked[x.group] = false;
+  });
   list.innerHTML = shown.map(function(r) {
     var st = r.st, badge, body = '';
     var gHeadPre = '';
-    if (st.kind === 'sel') { badge = '<span style="background:#1a6b3c;color:#fff;border-radius:10px;padding:2px 9px;font-size:10px;font-weight:700;">✅ 선택됨</span>'; }
-    else if (st.kind === 'auto') { badge = '<span style="background:#e67e00;color:#fff;border-radius:10px;padding:2px 9px;font-size:10px;font-weight:700;">🔸 자동(1건)</span>'; }
+    if (st.kind === 'sel') { badge = '<span style="background:#e6e6e6;color:#555;border-radius:10px;padding:2px 9px;font-size:10px;font-weight:700;">✅ 선택됨</span>'; }
+    else if (st.kind === 'auto') { badge = '<span style="background:#e6e6e6;color:#555;border-radius:10px;padding:2px 9px;font-size:10px;font-weight:700;">🔸 자동(1건)</span>'; }
     else if (st.kind === 'pending') { badge = '<span style="background:#c0392b;color:#fff;border-radius:10px;padding:2px 9px;font-size:10px;font-weight:700;">⚠️ 미선택 (' + r.docs.length + '건 중)</span>'; }
     else if (st.kind === 'missing') { badge = '<span style="background:#c0392b;color:#fff;border-radius:10px;padding:2px 9px;font-size:10px;font-weight:700;">⚠️ 선택한 보고서 없음</span>'; }
     else { badge = '<span style="background:#aaa;color:#fff;border-radius:10px;padding:2px 9px;font-size:10px;font-weight:700;">— 미등록</span>'; }
@@ -6388,9 +6398,10 @@ function renderPubTab() {
       (st.sel && st.sel.selectedBy && st.kind === 'sel' ? '<div style="font-size:10px;color:#888;margin-top:3px;">선택: ' + st.sel.selectedBy + ' · ' + String(st.sel.selectedAt || '').slice(5, 16) + '</div>' : '');
     var btn = '';
     var rLocked = pubLocked(week, r.jo);
-    if (rLocked) badge += ' <span style="font-size:10px;font-weight:700;color:#c0392b;">🔒확정</span>';
+    // 그룹 전체가 확정이면 그룹 헤더(🔒 확정됨)가 알려주므로 조 카드에선 생략 — 일부 조만 잠긴 경우에만 표시
+    if (rLocked && !_grpAllLocked[r.group]) badge += ' <span style="font-size:10px;font-weight:700;color:#8a4b2a;">🔒확정</span>';
     if (r.can && r.docs.length > 1 && (!rLocked || admin)) {
-      btn = '<button type="button" onclick="pubToggleOpen(\'' + r.jo + '\')" style="background:#2050c8;color:#fff;border:none;border-radius:16px;padding:6px 14px;font-size:11px;font-weight:700;cursor:pointer;">' + (st.kind === 'sel' ? '변경' : '선택') + '</button>';
+      btn = '<button type="button" onclick="pubToggleOpen(\'' + r.jo + '\')" style="background:#fff;color:#2050c8;border:1.5px solid #2050c8;border-radius:16px;padding:5px 13px;font-size:11px;font-weight:700;cursor:pointer;">' + (st.kind === 'sel' ? '변경' : '선택') + '</button>';
     }
     // 보고 수가 정해진 그룹에서는 그룹장·관리자가 보고조 선정을 해제(후보로 되돌림)할 수 있다
     if (r.group && pubCfg(week, r.group) && pubCfgGroups().indexOf(r.group) >= 0 && (!rLocked || admin)) {
