@@ -2600,7 +2600,7 @@ pre.code-block {
   });
 })();
 
-const APP_VERSION  = 'index v2026.10.10-6';
+const APP_VERSION  = 'index v2026.10.10-8';
 const LS_SEQ       = 'report_seq_counter';
 const LS_JO        = 'report_jo_data';
 const LS_SUBMITTED = 'report_submitted';
@@ -6026,7 +6026,7 @@ function resizeQ14(delta) {
 //  · 전체공개보고 탭: 주차별 조별 선택 현황 + 변경
 //  · 보고서가 1건뿐인 조는 자동 선택, 관리자가 [확정]하면 잠금 (admin 화면에서 PDF 출력)
 // ============================================================
-var _pub = { loaded: false, records: [], sel: {}, locks: {}, cfg: {}, showExcl: false, openJo: null, mineOnly: null, selLoaded: false, cand: {}, candOpen: false };
+var _pub = { loaded: false, records: [], sel: {}, locks: {}, cfg: {}, showExcl: false, openJo: null, mineOnly: null, selLoaded: false, cand: {}, candOpen: false, helpOpen: false };
 
 function pubWeekKey(v) {
   var n = parseInt(String(v == null ? '' : v).replace(/[^0-9]/g, ''), 10);
@@ -6358,7 +6358,8 @@ function renderPubTab() {
     '<b>' + week + '주차 보고</b> · 보고 ' + repRows.length + '조 · 선택완료 <b style="color:#1a6b3c;">' + cntOk + '</b> · 미선택 <b style="color:#c0392b;">' + cntPend + '</b> · 미등록 <b>' + cntNone + '</b>' +
     (cfgShort.length ? '<br><b style="color:#c0392b;">⚠️ 보고 조를 더 정해야 하는 그룹: ' + cfgShort.join(', ') + '</b> (⚙️ 설정)' : '') +
     (exclRows.length ? '<br><label style="cursor:pointer;"><input type="checkbox" ' + (_pub.showExcl ? 'checked' : '') + ' onchange="_pub.showExcl=this.checked;renderPubTab()"> 이번 주 보고 제외 조 ' + exclRows.length + '개도 보기</label>' : '') +
-    '<br>① 보고서가 2건 이상인 조는 <b>조원 중 1명</b>이 발표할 1건을 선택 → ② <b>그룹장·부그룹장</b>이 확인 후 그룹 확정(🔒). 해당주 보고서가 1건뿐이면 자동 선택됩니다. 이전 주차 보고서는 위에서 주차를 추가하세요.' +
+    '<br><a href="javascript:_pub.helpOpen=!_pub.helpOpen;renderPubTab()" style="color:#2050c8;font-weight:700;text-decoration:none;">ℹ️ 사용 방법 ' + (_pub.helpOpen ? '▲ 접기' : '▼ 펼치기') + '</a>' +
+    (_pub.helpOpen ? '<div style="margin-top:3px;">① 보고서가 2건 이상인 조는 <b>조원 중 1명</b>이 발표할 1건을 선택 → ② <b>그룹장·부그룹장</b>이 확인 후 그룹 확정(🔒). 해당주 보고서가 1건뿐이면 자동 선택됩니다. 이전 주차 보고서는 위에서 주차를 추가하세요.</div>' : '') +
     (anyMine && !admin ? '<br><label style="cursor:pointer;"><input type="checkbox" ' + (_pub.mineOnly ? 'checked' : '') + ' onchange="_pub.mineOnly=this.checked;renderPubTab()"> 내가 선택할 수 있는 조만 보기</label>' : '');
 
   var shown = rows.filter(function(r) {
@@ -6437,10 +6438,11 @@ function renderPubTab() {
           var state = allLocked
             ? '<span style="background:#f8c9a8;color:#8a3b12;border-radius:10px;padding:3px 9px;font-size:11px;font-weight:800;">🔒 확정됨</span>'
             : '<span style="background:rgba(255,255,255,.22);color:#fff;border:1px solid rgba(255,255,255,.55);border-radius:10px;padding:2px 9px;font-size:11px;font-weight:700;">미확정</span>';
-          var act = canConfirmGroup(r.group)
-            ? '<button type="button" onclick="pubToggleConfirm(\'' + r.group + '\')" style="background:#fff;color:' + (allLocked ? '#555' : '#c0392b') + ';border:none;border-radius:12px;padding:3px 10px;font-size:11px;font-weight:800;cursor:pointer;">' + (allLocked ? '해제' : '확정') + '</button>'
-            : '';
-          return state + act;
+          // 권한이 있으면 상태 표시와 버튼을 하나로: 확정됨(🔒)을 다시 누르면 해제, 미확정은 눌러서 확정
+          if (!canConfirmGroup(r.group)) return state;
+          return allLocked
+            ? '<button type="button" onclick="pubToggleConfirm(\'' + r.group + '\')" title="누르면 확정 해제" style="background:#f8c9a8;color:#8a3b12;border:none;border-radius:10px;padding:3px 10px;font-size:11px;font-weight:800;cursor:pointer;">🔒 확정됨</button>'
+            : '<button type="button" onclick="pubToggleConfirm(\'' + r.group + '\')" title="누르면 그룹 확정" style="background:#fff;color:#c0392b;border:none;border-radius:10px;padding:3px 10px;font-size:11px;font-weight:800;cursor:pointer;">확정하기</button>';
         })() +
         '</span></div>';
     }
