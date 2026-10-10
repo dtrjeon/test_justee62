@@ -3063,9 +3063,18 @@ function _openPresetModalNow() {
   // ── 스탭 섹션 (그룹장 위 직책)
   (function() {
     var stLabel = document.createElement('div');
-    stLabel.style.cssText = 'font-size:10px;font-weight:700;color:rgba(32,80,200,.5);letter-spacing:2px;margin:6px 0 4px;';
-    stLabel.textContent = '스탭';
+    stLabel.style.cssText = 'font-size:11px;font-weight:700;color:rgba(32,80,200,.7);letter-spacing:2px;margin:6px 0 4px;cursor:pointer;user-select:none;display:flex;justify-content:space-between;align-items:center;';
+    var stOpen = !!(saved && saved.scope === 'staff');
+    var stWrap = document.createElement('div');
+    stWrap.style.display = stOpen ? '' : 'none';
+    function stRefresh() {
+      stLabel.innerHTML = '<span>스탭</span><span style="font-size:11px;letter-spacing:0;">' + (stOpen ? '▲ 접기' : '▼ 펼치기') + '</span>';
+      stWrap.style.display = stOpen ? '' : 'none';
+    }
+    stLabel.onclick = function() { stOpen = !stOpen; stRefresh(); };
+    stRefresh();
     list.appendChild(stLabel);
+    list.appendChild(stWrap);
     STAFF_LIST.forEach(function(st) {
       var sb = document.createElement('button');
       sb.type = 'button';
@@ -3077,7 +3086,7 @@ function _openPresetModalNow() {
         applyPreset();
         showStatus('✅ ' + (st.role === '교사/헬퍼' ? '스탭 교사/헬퍼' : st.name + '님 (스탭 ' + st.role + ')') + ' 내 조 설정 저장!' + (st.edit ? '' : ' (열람 전용)'), 'success');
       };
-      list.appendChild(sb);
+      stWrap.appendChild(sb);
     });
   })();
 
