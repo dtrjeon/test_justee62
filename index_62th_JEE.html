@@ -3247,8 +3247,8 @@ function showPermTable() {
       v: [1,'전체'], e: [st.edit,'전체'], d: [!!(st.del || st.admin), (st.admin || st.del) ? '🔑인증' : ''],
       s: [st.edit,'전체'], c: [st.edit,'전체'], g: [st.edit, st.admin ? '전체·최대수🔑' : '전체'] });
   });
-  rows.push({ key: 'group', name: '그룹장', sub: '부그룹장 포함', v: [1,'자기그룹'], e: [1,'자기그룹'], d: [0,''], s: [1,'자기그룹'], c: [1,'자기그룹'], g: [1,'자기그룹'] });
-  rows.push({ key: 'jo', name: '조원', sub: '', v: [1,'자기조'], e: [1,'본인조'], d: [0,''], s: [1,'자기조'], c: [0,''], g: [0,''] });
+  rows.push({ key: 'group', name: '그룹장', sub: '부그룹장 포함', v: [1,'전체(열람)'], e: [1,'자기그룹'], d: [0,''], s: [1,'자기그룹'], c: [1,'자기그룹'], g: [1,'자기그룹'] });
+  rows.push({ key: 'jo', name: '조원', sub: '조장 포함', v: [1,'자기조·그룹'], e: [1,'본인조'], d: [0,''], s: [1,'자기조'], c: [0,''], g: [0,''] });
   var meKey = isAdminUser() ? 'admin' : (me.scope === 'staff' ? 'staff:' + me.role : (me.scope === 'group' ? 'group' : (me.name ? 'jo' : '')));
   var tbl = '<table style="width:100%;border-collapse:collapse;font-size:11px;"><thead><tr style="background:#1a3a9e;color:#fff;">' +
     ['직책','기록<br>조회','보고서<br>수정','문서<br>삭제','공개보고<br>선택','그룹<br>확정','공개보고<br>대상설정'].map(function(h, i) { return '<th style="padding:6px 2px;font-weight:700;font-size:10px;' + (i === 0 ? 'text-align:left;padding-left:6px;' : '') + '">' + h + '</th>'; }).join('') +
@@ -3275,6 +3275,7 @@ function closePresetModal() {
 }
 
 function savePreset(data) {
+  _histWide = false;
   localStorage.setItem(LS_PRESET, JSON.stringify(data));
   updatePresetIndicator();
 }
@@ -3297,6 +3298,7 @@ function getPreset() {
 }
 
 function clearPreset() {
+  _histWide = false;
   localStorage.removeItem(LS_PRESET);
   updatePresetIndicator();
 }
@@ -5511,10 +5513,28 @@ async function submitServer() {
 var _presetFilterActive = false;
 
 // 프리셋(내 조 설정)에 따른 필터 버튼 표시 텍스트 — 12조는 test 조라 전체보기로 표시
+var _histWide = false; // 기록 탭 범위 확장 여부 (조원/조장: 자기조→자기그룹, 그룹장: 자기그룹→전체 열람)
+
+// 내 조가 속한 그룹 (매핑 없으면 '')
+function myJoGroup(p) {
+  if (!p || !p.jo) return '';
+  var j = getJoData().find(function(x) { return String(x.jo) === String(p.jo); });
+  return (j && j.group) ? String(j.group) : '';
+}
+
+// 범위 확장(토글)이 가능한 사용자인가 — 관리자/열람전용/스탭/12조는 해당 없음
+function histWideAllowed(p) {
+  if (!p || !p.name || isVerifiedUser() || p.scope === 'staff') return false;
+  if (p.scope === 'group') return true;
+  if (p.jo && p.jo.toString() === '12') return false;
+  return !!myJoGroup(p);
+}
+
 function presetFilterLabel(p) {
   if (p.scope === 'staff') return '👤 전체보기(스탭) ✓';
-  if (p.scope === 'group') return '👤 ' + p.group + '그룹 ✓';
+  if (p.scope === 'group') return _histWide ? '👤 전체보기(열람) ✓' : '👤 ' + p.group + '그룹 ✓';
   if (p.jo && p.jo.toString() === '12') return '👤 전체보기 ✓';
+  if (_histWide && histWideAllowed(p)) return '👤 ' + myJoGroup(p) + '그룹 ✓';
   return '👤 ' + p.jo + '조 ✓';
 }
 
@@ -5540,10 +5560,16 @@ function togglePresetFilter() {
     }
     return;
   }
-  // 관리자 외에는 항상 본인 조/그룹 기록만 조회 가능 — 전체보기로 전환 불가 (12조는 예외로 항상 전체)
-  if (!(p.jo && p.jo.toString() === '12')) {
-    if (p.scope === 'staff') showStatus('스탭은 모든 그룹의 기록을 조회합니다.', 'info');
-    else showStatus(p.scope === 'group' ? '본인 그룹의 기록만 조회할 수 있습니다.' : '본인 조의 기록만 조회할 수 있습니다.', 'warn');
+  // 조원/조장: 자기조 ↔ 자기그룹, 그룹장: 자기그룹 ↔ 전체(열람) 토글. 스탭은 항상 전체.
+  if (p.scope === 'staff') {
+    showStatus('스탭은 모든 그룹의 기록을 조회합니다.', 'info');
+  } else if (histWideAllowed(p)) {
+    _histWide = !_histWide;
+    if (p.scope === 'group') showStatus(_histWide ? '👁️ 전체 기록을 열람합니다. (다른 그룹 기록은 열람만 가능)' : '본인 그룹의 기록만 조회합니다.', 'info');
+    else showStatus(_histWide ? '👁️ 내 그룹(' + myJoGroup(p) + ') 전체 기록을 열람합니다. (다른 조 기록은 열람만 가능)' : '본인 조의 기록만 조회합니다.', 'info');
+    if (typeof filterHistory === 'function') filterHistory();
+  } else if (!(p.jo && p.jo.toString() === '12')) {
+    showStatus('본인 조의 기록만 조회할 수 있습니다.', 'warn');
   }
   if (btn) {
     btn.classList.add('active');
@@ -5677,7 +5703,16 @@ function filterHistory() {
         var joGroupMap = {};
         jd.forEach(function(j) { if (j.group) joGroupMap[String(j.jo)] = j.group; });
         var rJo = (r.jo || '').toString();
-        if (joGroupMap[rJo] !== p.group) {
+        if (!_histWide && joGroupMap[rJo] !== p.group) {
+          c.style.display = 'none';
+          return;
+        }
+      } else if (p.jo && _histWide && histWideAllowed(p)) {
+        // 조원/조장 확장: 내 조가 속한 그룹 전체
+        var jd2 = getJoData();
+        var jg2 = {};
+        jd2.forEach(function(j) { if (j.group) jg2[String(j.jo)] = j.group; });
+        if (jg2[(r.jo || '').toString()] !== myJoGroup(p)) {
           c.style.display = 'none';
           return;
         }
