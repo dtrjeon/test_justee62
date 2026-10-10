@@ -5876,6 +5876,13 @@ function pubReportJos(week, group) {
   if (!c) return all;
   return all.filter(function(jo) { return c.jos.indexOf(jo) >= 0; });
 }
+// 보고 수만 정해지고 보고 조가 아직 다 정해지지 않은 그룹의 나머지 조 = "후보" (목록에 보이고, 그룹장·관리자가 선정)
+function pubCandidate(week, jo) {
+  var g = pubGroupOf(jo);
+  if (!g || pubReporting(week, jo)) return false;
+  var c = pubCfg(week, g);
+  return !!(c && pubReportJos(week, g).length < c.count);
+}
 function pubReporting(week, jo) {
   var g = pubGroupOf(jo);
   if (!g) return true;
@@ -6079,7 +6086,7 @@ function renderPubTab() {
     // 이미 선택된 문서가 후보 주차 밖이어도 목록에 포함
     if (st.doc && !docs.some(function(x) { return x.doc_number === st.doc.doc_number; })) docs.push(st.doc);
     var jd = getJoData().find(function(x) { return String(x.jo) === String(jo); }) || {};
-    return { jo: jo, group: String(jd.group || '').toUpperCase(), docs: docs, st: st, can: canSelectPub(jo, week), rep: pubReporting(week, jo) };
+    return { jo: jo, group: String(jd.group || '').toUpperCase(), docs: docs, st: st, can: canSelectPub(jo, week), rep: pubReporting(week, jo), cand: pubCandidate(week, jo) };
   });
   // 그룹별 → 조 순서로 정렬 (그룹 없는 조는 맨 뒤)
   rows.sort(function(a, b) {
@@ -6109,7 +6116,7 @@ function renderPubTab() {
     }
   }
   var repRows = rows.filter(function(r) { return r.rep; });
-  var exclRows = rows.filter(function(r) { return !r.rep; });
+  var exclRows = rows.filter(function(r) { return !r.rep && !r.cand; });
   var cntOk = repRows.filter(function(r) { return r.st.kind === 'sel' || r.st.kind === 'auto'; }).length;
   var cntPend = repRows.filter(function(r) { return r.st.kind === 'pending' || r.st.kind === 'missing'; }).length;
   var cntNone = repRows.filter(function(r) { return r.st.kind === 'none'; }).length;
@@ -6129,7 +6136,7 @@ function renderPubTab() {
     (anyMine && !admin ? '<br><label style="cursor:pointer;"><input type="checkbox" ' + (_pub.mineOnly ? 'checked' : '') + ' onchange="_pub.mineOnly=this.checked;renderPubTab()"> 내가 선택할 수 있는 조만 보기</label>' : '');
 
   var shown = rows.filter(function(r) {
-    if (!r.rep && !_pub.showExcl) return false;
+    if (!r.rep && !r.cand && !_pub.showExcl) return false;
     return !(_pub.mineOnly && !r.can && r.rep);
   });
   // 보고 조가 0개인(또는 모두 숨겨진) 설정 그룹도 머리줄은 보이게 자리표시 행을 넣는다
@@ -6163,6 +6170,10 @@ function renderPubTab() {
     if (rLocked) badge += ' <span style="font-size:10px;font-weight:700;color:#c0392b;">🔒확정</span>';
     if (r.can && r.docs.length > 1 && (!rLocked || admin)) {
       btn = '<button type="button" onclick="pubToggleOpen(\'' + r.jo + '\')" style="background:#2050c8;color:#fff;border:none;border-radius:16px;padding:6px 14px;font-size:11px;font-weight:700;cursor:pointer;">' + (st.kind === 'sel' ? '변경' : '선택') + '</button>';
+    }
+    // 보고 수가 정해진 그룹에서는 그룹장·관리자가 보고조 선정을 해제(후보로 되돌림)할 수 있다
+    if (r.group && pubCfg(week, r.group) && pubCfgGroups().indexOf(r.group) >= 0 && (!rLocked || admin)) {
+      btn += ' <a href="javascript:pubPickReporter(\'' + r.group + '\',\'' + r.jo + '\',false)" style="font-size:10px;color:#888;margin-left:6px;white-space:nowrap;">선정 해제</a>';
     }
     var picker = '';
     if (_pub.openJo === r.jo && r.can && (!rLocked || admin)) {
@@ -6201,6 +6212,14 @@ function renderPubTab() {
         '</span></div>';
     }
     if (r.placeholder) return gHead + '<div class="record-card" style="cursor:default;opacity:.7;font-size:12px;color:#777;">이번 주 보고 조가 없습니다.' + (pubCfg(week, r.group) && pubCfg(week, r.group).count > 0 ? ' (⚙️에서 보고 조를 선택하세요)' : '') + '</div>';
+    if (r.cand) {
+      var cg = pubCfg(week, r.group), canPick = pubCfgGroups().indexOf(r.group) >= 0 && (isAdminUser() || !pubLocked(week, r.jo));
+      return gHead + '<div class="record-card" style="cursor:default;border-left-color:#f0a500;"><div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">' +
+        '<div style="font-size:15px;font-weight:800;color:#1a3a9e;"><span style="font-size:11px;background:#e8eaf6;color:#1a3a9e;border-radius:6px;padding:1px 6px;margin-right:5px;">' + r.group + '</span>' + r.jo + '조 ' +
+        '<span style="background:#f0a500;color:#fff;border-radius:10px;padding:2px 9px;font-size:10px;font-weight:700;">후보 (보고 ' + cg.count + '조 중)</span></div>' +
+        (canPick ? '<button type="button" onclick="pubPickReporter(\'' + r.group + '\',\'' + r.jo + '\',true)" style="background:#2050c8;color:#fff;border:none;border-radius:16px;padding:6px 14px;font-size:11px;font-weight:700;cursor:pointer;">⭐ 보고조로 선정</button>' : '') +
+        '</div></div>';
+    }
     if (!r.rep) return gHead + '<div class="record-card" style="cursor:default;opacity:.5;padding:8px 12px;"><span style="font-size:13px;font-weight:800;color:#555;">' + r.jo + '조</span> <span style="background:#999;color:#fff;border-radius:10px;padding:2px 9px;font-size:10px;font-weight:700;">이번 주 보고 제외</span></div>';
     return gHead + '<div class="record-card" style="cursor:default;">' +
       '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">' +
@@ -6370,7 +6389,7 @@ function pubRenderCfg() {
   box.style.cssText = 'background:#fff;border-radius:16px;padding:16px 14px;width:100%;max-width:360px;max-height:88vh;overflow:auto;box-shadow:0 10px 40px rgba(0,0,0,.3);';
   var html = '<div style="font-size:16px;font-weight:800;color:#1a3ab0;margin-bottom:2px;">⚙️ 공개보고 대상 설정 — ' + d.week + '주차</div>' +
     '<div style="font-size:12px;font-weight:800;margin-bottom:6px;color:' + (pubCfgDraftTotal() > PUB_MAX_REPORTS ? '#c0392b' : '#1a6b3c') + ';">이번 주 보고 합계 ' + pubCfgDraftTotal() + ' / 최대 ' + PUB_MAX_REPORTS + '건' + (pubCfgDraftTotal() > PUB_MAX_REPORTS ? ' — ' + (pubCfgDraftTotal() - PUB_MAX_REPORTS) + '건 줄여야 저장할 수 있습니다' : '') + '</div>' +
-    '<div style="font-size:11px;color:#777;margin-bottom:10px;line-height:1.5;">그룹별로 <b>몇 개 조가 보고할지</b>와 <b>어느 조가 보고할지</b>를 정합니다. 설정하지 않은 그룹은 전체 조가 보고합니다. 보고 제외 조는 목록·PDF·확정에서 빠집니다.</div>';
+    '<div style="font-size:11px;color:#777;margin-bottom:10px;line-height:1.5;">그룹별로 <b>몇 개 조가 보고할지</b>를 정합니다. 보고할 조는 여기서 골라도 되고, <b>비워 두면 목록에서 후보 조 중 선정</b>할 수 있습니다. 설정하지 않은 그룹은 전체 조가 보고합니다.</div>';
   d.order.forEach(function(g) {
     var x = d.groups[g];
     var dis = x.locked && !admin;
@@ -6416,7 +6435,8 @@ function pubCfgStep(g, delta) {
   if (delta > 0 && pubCfgDraftTotal() + 1 > PUB_MAX_REPORTS) { showStatus('보고는 한 주에 최대 ' + PUB_MAX_REPORTS + '건입니다. 다른 그룹의 보고 수를 먼저 줄이세요.', 'warn'); return; }
   x.count = n;
   // 보고 수를 줄이면 번호가 큰 조부터 보고 조에서 뺀다(화면에서 바로 보이며 다시 선택 가능)
-  while (x.jos.length > x.count) x.jos.pop();
+  // 처음 줄일 때(미설정 → 설정)는 보고 조를 비워 두어 목록에서 후보 중 선정하게 한다. 이미 설정된 그룹은 뒤 번호부터 뺀다.
+  if (x.jos.length > x.count) { if (!x.configured && !x.dirty) x.jos = []; else while (x.jos.length > x.count) x.jos.pop(); }
   x.dirty = true;
   pubRenderCfg();
 }
@@ -6482,6 +6502,42 @@ async function pubCfgSave() {
     showStatus('✅ ' + d.week + '주차 공개보고 대상 설정을 저장했습니다.', 'success');
   } catch (e) {
     showStatus('❌ 설정 저장 실패: ' + e.message, 'error');
+  }
+}
+
+
+// 목록에서 보고조 선정/해제 — 보고 수는 그대로 두고 보고 조 목록만 바꾼다
+async function pubPickReporter(group, jo, on) {
+  var wsel = document.getElementById('pub-week-sel');
+  var week = wsel ? wsel.value : '';
+  var c = pubCfg(week, group);
+  if (!week || !c) return;
+  if (pubCfgGroups().indexOf(group) < 0) { showStatus('해당 그룹의 그룹장·부그룹장 또는 관리자만 선정할 수 있습니다.', 'warn'); return; }
+  var jos = pubReportJos(week, group).slice();
+  if (on) {
+    if (jos.length >= c.count) { showStatus('이미 보고 ' + c.count + '조가 모두 선정되었습니다. 다른 조를 먼저 선정 해제하세요.', 'warn'); return; }
+    if (jos.indexOf(jo) < 0) jos.push(jo);
+  } else {
+    if (_pub.sel[week + '|' + jo] && !confirm(jo + '조는 이미 보고서를 선택했습니다. 보고조에서 빼면 후보로 돌아가며, 선택 기록은 시트에 남습니다.')) return;
+    jos = jos.filter(function(x) { return x !== jo; });
+  }
+  jos.sort(function(a, b) { return (parseInt(a, 10) || 0) - (parseInt(b, 10) || 0); });
+  try {
+    showStatus('⏳ 저장 중...', 'info');
+    var pr = getPreset() || {};
+    var sizes = {};
+    pubAllGroups().forEach(function(g) { sizes[g] = pubGroupJos(g).length; });
+    var payload = { action: 'set_public_config', week: week, groupSizes: sizes,
+      items: [{ group: group, count: c.count, jos: jos, groupJos: pubGroupJos(group) }],
+      by: pr.name || (isAdminUser() ? '관리자' : ''), role: pr.role || (isAdminUser() ? 'admin' : '') };
+    if (!isAdminUser()) payload.byRole = 'group';
+    await pubPost(payload);
+    await loadPubSelection();
+    renderPubTab();
+    applyPubMarks();
+    showStatus(on ? '✅ ' + jo + '조를 ' + week + '주차 보고조로 선정했습니다.' : '선정을 해제했습니다.', 'success');
+  } catch (e) {
+    showStatus('❌ 저장 실패: ' + e.message, 'error');
   }
 }
 
