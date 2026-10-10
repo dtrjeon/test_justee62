@@ -2600,7 +2600,7 @@ pre.code-block {
   });
 })();
 
-const APP_VERSION  = 'index v2026.10.10-3';
+const APP_VERSION  = 'index v2026.10.10-4';
 const LS_SEQ       = 'report_seq_counter';
 const LS_JO        = 'report_jo_data';
 const LS_SUBMITTED = 'report_submitted';
@@ -3256,7 +3256,7 @@ function showPermTable() {
   STAFF_LIST.forEach(function(st) {
     rows.push({ key: 'staff:' + st.role, name: st.role === '교사/헬퍼' ? '교사/헬퍼' : st.role,
       sub: st.role === '교사/헬퍼' ? '스탭' : '스탭 ' + st.name,
-      v: [1,'전체'], e: [st.edit,'전체'], d: [!!(st.del || st.admin), (st.admin || st.del) ? '🔑인증' : ''],
+      v: [1,'전체'], e: [st.edit, st.edit ? '🔑전체' : ''], d: [!!(st.del || st.admin), (st.admin || st.del) ? '🔑인증' : ''],
       s: [st.edit,'전체'], c: [st.edit,'전체'], g: [st.edit, st.admin ? '전체·최대🔑' : '전체'] });
   });
   rows.push({ key: 'group', name: '그룹장', sub: '부그룹장 포함', v: [1,'전체(열람)'], e: [1,'자기그룹'], d: [0,''], s: [1,'자기그룹'], c: [1,'자기그룹'], g: [1,'자기그룹'] });
@@ -3336,8 +3336,8 @@ function updatePresetIndicator() {
     label.textContent = '내 조 설정';
   }
   if (!dot) return;
-  // 🔑 = 관리자(ADMIN) 인증이 되어 있을 때만 표시. 그 외에는 상태 점(설정됨=초록 / 미설정=파랑)
-  if (isAdminUser()) {
+  // 🔑 = 관리자 또는 스탭(편집/삭제) 인증이 되어 있을 때만 표시. 그 외에는 상태 점(설정됨=초록 / 미설정=파랑)
+  if (isAdminUser() || (p && p.scope === 'staff' && isStaffAuthed())) {
     dot.textContent = '🔑';
     dot.style.cssText = 'width:auto;height:auto;background:none;font-size:14px;line-height:1;';
   } else {
@@ -5272,6 +5272,12 @@ function collectFormData() {
   return {
     // 작성자 — 본인 이름 preset 기준. 수정/삭제 권한 판단에 사용됨.
     writer: (function() { var p = getPreset(); return (p && p.name) || ''; })(),
+    // 수정 제출 정보 — 서버가 '수정이력' 시트에 기록 (인증수준은 서버가 토큰으로 직접 확인)
+    is_revision: !!window._isRevision,
+    editor_name: (function() { var p = getPreset(); return (p && p.name) || ''; })(),
+    editor_role: (function() { var p = getPreset(); return p ? (p.role || (p.scope === 'group' ? '그룹장' : '조원')) : ''; })(),
+    editor_scope: (function() { var p = getPreset(); return (p && p.scope) || ''; })(),
+    authToken: window._isRevision ? bestAuthToken() : '',
     // 수정이력 — 최초 제출 시엔 비어있고, 이후 수정제출할 때마다 "이름 (시각)"이 누적됨
     edit_log: (function() {
       if (!window._isRevision) return '';
@@ -5361,7 +5367,7 @@ async function handleSubmit() {
   }
   // 수정 모드인데 권한이 없으면 차단 (본인 작성분 또는 그룹장의 관할 그룹 소속 조가 아니면 차단)
   if (window._isRevision && !hasDocOwnership()) {
-    showStatus('🔒 본인이 작성했거나 관할 그룹 소속 조의 보고서만 수정할 수 있습니다.', 'error');
+    showStatus(amStaffEditor() ? '🔑 스탭은 인증 후 다른 사람의 보고서를 수정할 수 있습니다. 오른쪽 위 🔑 버튼으로 인증해 주세요.' : '🔒 본인이 작성했거나 관할 그룹 소속 조의 보고서만 수정할 수 있습니다.', 'error');
     return;
   }
   // 주차 선택 필수 체크
@@ -5896,6 +5902,23 @@ function isStaffEditor(p) {
 // 현재 내 조 설정이 수정 권한 스탭인가
 function amStaffEditor() { return isStaffEditor(getPreset()); }
 
+// 편집 전용 세션(서기 등) — 서버가 발급한 'editor' 토큰. 6시간 유효.
+function getEditToken() {
+  var t = localStorage.getItem('index_edit_token') || '';
+  var at = parseInt(localStorage.getItem('index_edit_at') || '0', 10);
+  if (!t || !at || Date.now() - at > 6 * 3600 * 1000) return '';
+  return t;
+}
+// 스탭이 다른 사람 문서를 수정할 수 있는 🔑 인증 상태인가 (관리자 / 편집 / 삭제전용 중 하나)
+function isStaffAuthed() {
+  return (isAdminUser() && !!getAdminToken()) || !!getEditToken() || !!getDeleteToken();
+}
+// 서버에 보낼 인증 토큰 (수정 제출용)
+function bestAuthToken() {
+  if (isAdminUser() && getAdminToken()) return getAdminToken();
+  return getEditToken() || getDeleteToken() || '';
+}
+
 // admin(전체 권한) 또는 monitor(열람 전용) 중 하나라도 인증되었는지 —
 // "보기"만 필요한 곳(기록 전체 목록 등)에 쓴다. 삭제/수정/신분사용 등은
 // 반드시 isAdminUser()(admin 전용)로 따로 체크할 것.
@@ -5914,7 +5937,14 @@ function getAdminToken() {
 // 관리자 인증 해제 — 일반 조원/그룹장 화면(본인 조·그룹만 조회)으로 되돌아감
 // 오른쪽 위 🔑 버튼: 인증 전 = 비밀번호 입력창, 인증 후 = 관리자 메뉴
 function openAdminKey() {
-  if (!isVerifiedUser()) { openAdminAuth(); return; }
+  if (!isVerifiedUser()) {
+    // 편집/삭제 전용 인증만 된 상태 → 해제 여부 확인, 아니면 인증창
+    if (getEditToken() || getDeleteToken()) {
+      if (window.confirm('🔑 인증된 상태입니다 (' + (getEditToken() ? '편집' : '삭제전용') + ').\n인증을 해제하시겠습니까?')) onAdminLogout(true);
+      return;
+    }
+    openAdminAuth(); return;
+  }
   var old = document.getElementById('admin-menu-bg');
   if (old) old.remove();
   var bg = document.createElement('div');
@@ -5933,17 +5963,20 @@ function openAdminKey() {
   document.body.appendChild(bg);
 }
 
-function onAdminLogout() {
-  if (!isVerifiedUser()) return;
-  if (!window.confirm('관리자 인증을 해제하시겠습니까?\n해제하면 본인 조/그룹만 조회할 수 있는 일반 화면으로 전환됩니다.')) return;
+function onAdminLogout(skipConfirm) {
+  if (!isVerifiedUser() && skipConfirm !== true) return;
+  if (skipConfirm !== true && !window.confirm('관리자 인증을 해제하시겠습니까?\n해제하면 본인 조/그룹만 조회할 수 있는 일반 화면으로 전환됩니다.')) return;
   localStorage.removeItem('index_admin_verified');
   localStorage.removeItem('index_admin_token');
   localStorage.removeItem('index_delete_token');
   localStorage.removeItem('index_delete_at');
+  localStorage.removeItem('index_edit_token');
+  localStorage.removeItem('index_edit_at');
   localStorage.removeItem('index_monitor_verified');
   localStorage.removeItem('index_admin_remember');
   showStatus('🔓 관리자 인증이 해제되었습니다.', 'info');
   updatePresetIndicator(); // 칩의 🔑 제거
+  updateEditLockState(); updateDeleteBtn();
   if (document.getElementById('preset-modal-bg')) _openPresetModalNow(); // 열려 있으면 새로고침 (관리그룹/12조 항목 제거)
   if (currentTab === 'pub') renderPubTab();
   if (currentTab === 'history') {
@@ -8035,7 +8068,15 @@ function confirmAdminAuth() {
         localStorage.setItem('index_delete_token', json.token || '');
         localStorage.setItem('index_delete_at', String(Date.now()));
         closeAdminAuth();
-        showStatus('✅ 삭제 전용 인증 완료 (문서 삭제만 가능)', 'success');
+        updatePresetIndicator(); updateEditLockState(); updateDeleteBtn();
+        showStatus('✅ 삭제 전용 인증 완료 (문서 수정·삭제 가능)', 'success');
+      } else if (json.status === 'ok' && json.level === 'editor') {
+        // 편집 전용 비밀번호 — 스탭의 타인 문서 수정 권한만 열림 (관리자/열람 권한 없음)
+        localStorage.setItem('index_edit_token', json.token || '');
+        localStorage.setItem('index_edit_at', String(Date.now()));
+        closeAdminAuth();
+        updatePresetIndicator(); updateEditLockState(); updateDeleteBtn();
+        showStatus('✅ 편집 인증 완료 (보고서 수정 가능)', 'success');
       } else if (json.status === 'ok') {
         localStorage.setItem('index_admin_token', json.token || '');
         if (json.level === 'admin') {
@@ -8053,6 +8094,7 @@ function confirmAdminAuth() {
         }
         closeAdminAuth();
         updatePresetIndicator(); // 칩에 🔑 표시
+        updateEditLockState(); updateDeleteBtn();
         showStatus('✅ 관리자 인증 완료', 'success');
         if (currentTab === 'pub') renderPubTab();
         // 인증 후 기록탭 새로고침 (전체 목록 재표시)
@@ -9228,7 +9270,8 @@ function hasDocOwnership() {
   var p = getPreset();
 
   // 1-2) 스탭(반장·총무·서기·교사) — 모든 그룹의 보고서 수정 허용 (교사/헬퍼는 열람만)
-  if (isStaffEditor(p)) return true;
+  //      단, 🔑 인증(관리자/편집 비밀번호)을 마친 경우에만. 미인증이면 아래 본인 문서 규칙만 적용.
+  if (isStaffEditor(p) && isStaffAuthed()) return true;
 
   // 2) 그룹장(scope: 'group') — 관할 그룹에 속한 조의 보고서면 이름 일치 없이도 수정 허용
   //    (삭제는 여전히 admin 전용이라 그룹장은 삭제 불가, 수정만 가능)
@@ -9258,7 +9301,7 @@ function updateEditLockState() {
     sbtn.disabled = true;
     sbtn.style.opacity = '0.5';
     sbtn.style.cursor = 'not-allowed';
-    sbtn.title = '본인이 작성했거나 관할 그룹 소속 조의 보고서만 수정할 수 있습니다.';
+    sbtn.title = amStaffEditor() ? '🔑 인증 후 다른 사람의 보고서를 수정할 수 있습니다.' : '본인이 작성했거나 관할 그룹 소속 조의 보고서만 수정할 수 있습니다.';
   } else {
     sbtn.disabled = false;
     sbtn.style.opacity = '';
