@@ -1207,6 +1207,7 @@ window.TEST_DATA = {"records": [{"저장일시": "2026-03-14", "주차": 3, "전
   <div class="tab" onclick="switchTab(3)">📈 복음제시</div>
   <div class="tab" onclick="switchTab(4)">🔍 문서번호관리</div>
   <div class="tab" onclick="switchTab(5)">🔒 특이사항</div>
+  <div class="tab" onclick="switchTab(6)">🗂️ 복음제시 현황</div>
 </div>
 
 <div class="week-bar">
@@ -1893,6 +1894,7 @@ window.TEST_DATA = {"records": [{"저장일시": "2026-03-14", "주차": 3, "전
       </span>
       <div style="display:flex;gap:6px;align-items:center;">
         <button onclick="renderTab4()" class="act-btn primary" style="font-size:11px;padding:4px 12px;">🔄 새로고침</button>
+        <button onclick="openAdminKeyModal()" id="admin-key-btn" title="관리자 권한 인증" class="act-btn" style="font-size:13px;padding:3px 9px;background:#fff8e1;border:1px solid #f57f17;color:#f57f17;border-radius:12px;cursor:pointer;">🔑</button>
         <button onclick="exportCsv('dup-table','tab4_문서번호관리')" style="background:#f5f5f5;border:1px solid #ddd;color:#555;border-radius:12px;padding:4px 10px;font-size:10px;font-weight:700;cursor:pointer;">⬇ CSV</button>
       </div>
     </div>
@@ -1942,6 +1944,39 @@ window.TEST_DATA = {"records": [{"저장일시": "2026-03-14", "주차": 3, "전
     </div>
     <div id="sn-empty" style="padding:20px;text-align:center;font-size:12px;color:#aaa;display:none;">✅ 등록된 특이사항이 없습니다</div>
     <div id="sn-list" style="display:flex;flex-direction:column;gap:8px;padding:10px;"></div>
+  </div>
+</div>
+
+
+<div class="page" id="page-6">
+  <div class="week-banner" style="background:linear-gradient(135deg,#1a3a9e,#2d5cb8);">
+    <div class="wb-left">
+      <div class="wb-title">복음제시 현황</div>
+      <div class="wb-sub">조원별 · 주차별 문서번호 <span style="color:#c8ccd6;">-</span> 보고서에 이름이 올라간 문서</div>
+    </div>
+    <div class="wb-right">
+      <div class="wb-rate" id="t6-total-cnt"><span style="color:#c8ccd6;">-</span></div>
+      <div class="wb-rate-label">문서 수</div>
+    </div>
+  </div>
+
+  <div class="tbl-wrap" style="margin-top:8px;">
+    <div class="tbl-head" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px;">
+      <span class="tbl-head-title">🗂️ 조원별 복음제시 문서번호</span>
+      <div style="display:flex;gap:6px;align-items:center;">
+        <button onclick="renderTab6()" class="act-btn primary" style="font-size:11px;padding:4px 12px;">🔄 새로고침</button>
+        <button onclick="exportCsv('tb-t6','tab6_복음제시현황')" style="background:#f5f5f5;border:1px solid #ddd;color:#555;border-radius:12px;padding:4px 10px;font-size:10px;font-weight:700;cursor:pointer;">⬇ CSV</button>
+      </div>
+    </div>
+    <div style="padding:8px 12px;font-size:10px;color:#888;background:#fafafa;border-bottom:1px solid #eee;">
+      ※ 가로 = 주차(월/일, 월~일) · 세로 = 조 정보(조·이름·역할·단계) &nbsp;|&nbsp; <b style="color:#1a3a9e;">파란 굵은 글씨</b> = 복음 제시함 · 회색 = 보고서에는 이름만 있고 제시 기록 없음 &nbsp;|&nbsp; 상단 조 선택 필터가 적용됩니다.
+    </div>
+    <div class="tbl-scroll" style="overflow-x:auto;">
+      <table id="t6-table" style="border-collapse:collapse;font-size:10px;">
+        <thead id="hd-t6"></thead>
+        <tbody id="tb-t6"></tbody>
+      </table>
+    </div>
   </div>
 </div>
 
@@ -3222,6 +3257,7 @@ function renderAll() {
   renderTab1(accData, w);
   renderTab2(accData, w);
   renderTab3(w);
+  if (currentTab === 6) renderTab6();
   checkMismatch(allData);
   fitAllTablesToContainer();
 }
@@ -7826,6 +7862,135 @@ async function deleteDupRow(key) {
   }
 }
 
+// ── 🔑 관리자 권한 인증 (문서번호관리 탭) ─────────────────────────
+// 모니터링 권한 → 관리자 승급, 또는 관리자 세션 토큰(6시간) 만료 시 재발급
+function openAdminKeyModal(onSuccess) {
+  var old = document.getElementById('admin-key-bg');
+  if (old) old.remove();
+  var bg = document.createElement('div');
+  bg.id = 'admin-key-bg';
+  bg.style.cssText = 'position:fixed;top:0;right:0;bottom:0;left:0;background:rgba(10,15,30,.7);z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px;';
+  var st = isAdminLevel() ? (getAdminToken() ? '✅ 관리자 인증됨' : '⚠️ 관리자 (토큰 없음 — 다시 인증하세요)') : '👁️ 현재: 모니터링(열람) 권한';
+  bg.innerHTML = '<div style="background:#fff;border-radius:14px;padding:18px 16px;width:100%;max-width:320px;box-shadow:0 10px 40px rgba(0,0,0,.3);">'
+    + '<div style="font-size:15px;font-weight:800;color:#1a3ab0;margin-bottom:4px;">🔑 관리자 권한 인증</div>'
+    + '<div style="font-size:11px;color:#888;margin-bottom:10px;">' + st + '</div>'
+    + '<input id="admin-key-input" type="password" inputmode="numeric" placeholder="관리자 비밀번호" autocomplete="off" style="width:100%;box-sizing:border-box;padding:10px;border:1.5px solid #c5cde8;border-radius:8px;font-size:14px;">'
+    + '<div id="admin-key-err" style="font-size:11px;color:#c0392b;min-height:16px;margin:4px 0;"></div>'
+    + '<div style="display:flex;gap:8px;">'
+    + '<button id="admin-key-cancel" style="flex:1;padding:9px;border:1px solid #ddd;background:#f5f5f5;border-radius:8px;font-weight:700;cursor:pointer;">취소</button>'
+    + '<button id="admin-key-ok" style="flex:1;padding:9px;border:none;background:#2050c8;color:#fff;border-radius:8px;font-weight:700;cursor:pointer;">인증</button>'
+    + '</div></div>';
+  document.body.appendChild(bg);
+  var inp = document.getElementById('admin-key-input');
+  setTimeout(function() { inp.focus(); }, 50);
+  function close() { bg.remove(); }
+  document.getElementById('admin-key-cancel').onclick = close;
+  bg.addEventListener('click', function(e) { if (e.target === bg) close(); });
+  async function submit() {
+    var val = inp.value.trim().replace(/[０-９]/g, function(ch) { return String.fromCharCode(ch.charCodeAt(0) - 0xFEE0); });
+    var err = document.getElementById('admin-key-err');
+    if (!val) return;
+    if (!CFG.url) { err.textContent = '⚠️ 구글 시트 URL이 설정되지 않았습니다.'; return; }
+    var okBtn = document.getElementById('admin-key-ok');
+    okBtn.disabled = true;
+    try {
+      var res = await fetch(CFG.url, { method: 'POST', headers: { 'Content-Type': 'text/plain' },
+        body: JSON.stringify({ action: 'verify_admin', password: val }) });
+      var json = await res.json();
+      if (json.status === 'ok' && json.level === 'admin') {
+        window._authLevel = 'admin';
+        sessionStorage.setItem(LS_AUTH, 'admin');
+        localStorage.setItem('index_admin_token', json.token || '');
+        localStorage.setItem('index_admin_verified', '1');
+        localStorage.removeItem('index_monitor_verified');
+        close();
+        showToast('✅ 관리자 인증 완료');
+        if (typeof onSuccess === 'function') onSuccess();
+      } else if (json.status === 'ok') {
+        err.textContent = '❌ 이 대시보드는 관리자 비밀번호만 사용할 수 있습니다.';
+        inp.value = '';
+      } else {
+        err.textContent = '❌ 비밀번호가 올바르지 않습니다.';
+        inp.value = '';
+        inp.focus();
+      }
+    } catch (e) {
+      err.textContent = '❌ 서버 연결 실패. 다시 시도하세요.';
+    }
+    okBtn.disabled = false;
+  }
+  document.getElementById('admin-key-ok').onclick = submit;
+  inp.addEventListener('keydown', function(e) { if (e.key === 'Enter') submit(); });
+}
+
+// ── TAB6 복음제시 현황: 조원(세로) × 주차(가로) = 문서번호 ─────────────
+function renderTab6() {
+  var hd = document.getElementById('hd-t6');
+  var tb = document.getElementById('tb-t6');
+  if (!hd || !tb) return;
+  var maxW = getMaxWeek();
+  var jof = (typeof currentJo !== 'undefined') ? currentJo : '';
+
+  // 헤더: 조 정보 + 주차(월/일)
+  var h = '<tr><th style="position:sticky;left:0;z-index:5;background:#1a3a9e;color:#fff;min-width:26px;padding:6px 4px;">조</th>'
+    + '<th style="position:sticky;left:26px;z-index:5;background:#1a3a9e;color:#fff;min-width:46px;padding:6px 4px;">이름</th>'
+    + '<th style="background:#1a3a9e;color:#fff;padding:6px 4px;white-space:nowrap;">역할</th>'
+    + '<th style="background:#1a3a9e;color:#fff;padding:6px 4px;white-space:nowrap;border-right:1px solid #c5cde8;">단계</th>';
+  for (var w = 1; w <= maxW; w++) {
+    var lbl = (typeof getWeekDateRangeLabel === 'function') ? getWeekDateRangeLabel(w) : '';
+    lbl = lbl.replace('(일)', '');
+    h += '<th style="background:#2050c8;color:#fff;padding:5px 4px;white-space:nowrap;line-height:1.3;border-left:1px solid rgba(255,255,255,.2);">'
+      + w + '주<br><span style="font-size:8px;font-weight:400;">' + lbl + '</span></th>';
+  }
+  hd.innerHTML = h + '</tr>';
+
+  // (조, 주차) → 문서 목록
+  var byJoWeek = {};
+  var docSet = {};
+  (allData || []).forEach(function(r) {
+    if (!r.docNumber || String(r.jo) === '12') return;
+    var k = String(r.jo) + '|' + Number(r.week);
+    (byJoWeek[k] = byJoWeek[k] || []).push(r);
+  });
+
+  var members = MEMBERS.filter(function(m) {
+    return String(m.jo) !== '12' && (!jof || String(m.jo) === String(jof));
+  }).slice().sort(function(a, b) {
+    var ja = Number(a.jo), jb = Number(b.jo);
+    if (ja !== jb) return ja - jb;
+    var ro = { '리더': 0, '훈련자': 1 };
+    var ra = ro[a.role] !== undefined ? ro[a.role] : 2;
+    var rb = ro[b.role] !== undefined ? ro[b.role] : 2;
+    return ra - rb;
+  });
+
+  var html = '';
+  var prevJo = null;
+  members.forEach(function(m) {
+    var first = String(m.jo) !== String(prevJo);
+    prevJo = m.jo;
+    html += '<tr style="' + (first ? 'border-top:2px solid #c5cde8;' : '') + '">'
+      + '<td style="position:sticky;left:0;z-index:4;background:#f0f4ff;text-align:center;font-weight:700;padding:4px;">' + m.jo + '</td>'
+      + '<td style="position:sticky;left:26px;z-index:4;background:#f0f4ff;text-align:center;font-weight:700;white-space:nowrap;padding:4px;">' + m.name + '</td>'
+      + '<td style="text-align:center;white-space:nowrap;padding:4px;">' + (m.role || '') + '</td>'
+      + '<td style="text-align:center;padding:4px;border-right:1px solid #c5cde8;">' + (m.step || '') + '</td>';
+    for (var w = 1; w <= maxW; w++) {
+      var recs = (byJoWeek[String(m.jo) + '|' + w] || []).filter(function(r) { return !!memberSlot(r, m); });
+      var cell = recs.map(function(r) {
+        docSet[r.docNumber] = 1;
+        var did = isDidAction(memberAction(r, m));
+        return '<div title="' + (r.evangType || '') + (r.date ? ' · ' + r.date : '') + '" style="white-space:nowrap;'
+          + (did ? 'font-weight:700;color:#1a3a9e;' : 'color:#999;') + '">' + r.docNumber + '</div>';
+      }).join('');
+      html += '<td style="text-align:center;padding:3px 4px;border-left:1px solid #eef0f6;vertical-align:middle;">' + (cell || '') + '</td>';
+    }
+    html += '</tr>';
+  });
+  tb.innerHTML = html || '<tr><td colspan="' + (4 + maxW) + '" style="padding:20px;text-align:center;color:#aaa;">표시할 조원이 없습니다</td></tr>';
+  var cnt = document.getElementById('t6-total-cnt');
+  if (cnt) cnt.textContent = Object.keys(docSet).length + '건';
+}
+
 function renderTab5() {
   if (!rawData || !rawData.length) {
     showToast('먼저 데이터를 불러오세요.');
@@ -7869,7 +8034,11 @@ function renderTab5() {
 }
 
 function switchTab(idx) {
-  if (idx === 4 && !requireAdminLevel()) return; // 문서번호 관리(중복행 삭제)는 admin 전용
+  if (idx === 4 && !isAdminLevel()) { // 문서번호 관리(중복행 삭제)는 admin 전용 — 인증창 열기
+    showToast('🔒 문서번호 관리는 관리자 인증이 필요합니다.');
+    openAdminKeyModal(function() { switchTab(4); });
+    return;
+  }
   currentTab = idx;
   document.querySelectorAll('.tab').forEach(function(t, i) {
     t.classList.toggle('active', i === idx);
@@ -7879,6 +8048,7 @@ function switchTab(idx) {
   });
   if (idx === 4) renderTab4();
   if (idx === 5) renderTab5();
+  if (idx === 6) renderTab6();
   // tab1(복음참여)·tab2(팀전도)·tab3(복음제시)는 숨겨져 있는 동안 폭을 잴 수 없어서
   // (화면에 없으면 크기가 0으로 측정됨) 화면에 보이게 된 지금 다시 계산해야 한다.
   var fitTarget = { 1: 'tab1', 2: 'tab2', 3: 'tab3' }[idx];
