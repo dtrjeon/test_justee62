@@ -7710,7 +7710,7 @@ function renderTab4() {
       var isRep = k === 0;
       var badge = isRep
         ? '<span style="background:#2e7d32;color:#fff;border-radius:3px;padding:1px 5px;font-size:9px;font-weight:700;white-space:nowrap;">대표</span>'
-        : '<span style="background:#e65100;color:#fff;border-radius:3px;padding:1px 5px;font-size:9px;font-weight:700;white-space:nowrap;">삭제<br>대상</span>';
+        : '<span style="background:#e65100;color:#fff;border-radius:3px;padding:1px 5px;font-size:9px;font-weight:700;white-space:nowrap;display:inline-block;text-align:center;line-height:1.25;">삭제<br>대상</span>';
       html += '<tr style="background:' + bg + ';' + (k === 0 ? 'border-top:2px solid #c5cae9;' : '') + '">';
       if (k === 0) {
         html += '<td rowspan="' + rows.length + '" style="padding:6px 8px;font-weight:700;vertical-align:middle;">' + g.doc + '</td>' +
