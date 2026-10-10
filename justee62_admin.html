@@ -2165,7 +2165,7 @@ window.TEST_DATA = {"records": [{"저장일시": "2026-03-14", "주차": 3, "전
 // ── 빈 값 표시용 옅은 회색 대시 ─────────────────────────────────────────────
 var DASH = '<span style="color:#c8ccd6;">-</span>';
 // ── 조 구성 데이터 ─────────────────────────────────────────────────────────
-const ADMIN_VERSION = 'admin v2026.10.10';
+const ADMIN_VERSION = 'admin v2026.10.10-2';
 // 하드코딩 기준 데이터 (step 복원용)
 const HARDCODED_MEMBERS = [{
   jo: 1,
@@ -3155,7 +3155,8 @@ function parseRecords(raw) {
       gospelPlace: g('복음제시장소'),
       gospelDate: g('풀복음 완료일'),
       gospelDelivery: g('복음전달'),
-      targetType: g('대상자구분'),
+      // 통계에서는 '질문지전도 대상자'를 기존 '질문지'로 매핑해 처리
+      targetType: (function(v) { v = String(v || ''); return v.indexOf('질문지') > -1 ? '질문지' : v; })(g('대상자구분')),
       relationMember: g('관계조원'),
       religion: g('종교배경'),
       job: g('직업'),

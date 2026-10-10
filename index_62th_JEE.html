@@ -1832,7 +1832,7 @@ pre.code-block {
           <option value="지인/지인가족">지인/지인가족</option>
           <option value="가족">가족</option>
           <option value="지구촌교인">지구촌교인</option>
-          <option value="질문지">질문지</option>
+          <option value="질문지전도 대상자">질문지전도 대상자</option>
           <option value="7일후">7일후</option>
           <option value="훈련생">훈련생</option>
         </select>
@@ -2588,7 +2588,7 @@ pre.code-block {
   });
 })();
 
-const APP_VERSION  = 'index v2026.10.10';
+const APP_VERSION  = 'index v2026.10.10-2';
 const LS_SEQ       = 'report_seq_counter';
 const LS_JO        = 'report_jo_data';
 const LS_SUBMITTED = 'report_submitted';
@@ -2766,7 +2766,7 @@ function applyFormData(r) {
   // 7. 인적정보
   sv('q3_location', r.location);
   var tt = document.getElementById('q3_target_type');
-  if (tt) tt.value = r.target_type || '';
+  if (tt) tt.value = (r.target_type === '질문지') ? '질문지전도 대상자' : (r.target_type || ''); // 예전 기록('질문지') 호환
   sv('q3_name', r.name);
   sv('q3_age', r.age);
   sr('marriage', r.marriage);
@@ -4114,6 +4114,14 @@ function onEvangTypeChange() {
       if (q8r) q8r.value = '7일후';
     }
   }
+
+  // 대상자 구분 자동 설정: 질문지(팀) → 질문지전도 대상자 (7일후(팀)은 apply7ilhu가 처리)
+  var ttAuto = document.getElementById('q3_target_type');
+  if (ttAuto && type !== '7일후(팀)') {
+    if (type === '질문지(팀)') ttAuto.value = '질문지전도 대상자';
+    else if (window._prevEvangType === '질문지(팀)' && ttAuto.value === '질문지전도 대상자') ttAuto.value = '';
+  }
+  window._prevEvangType = type;
 
   if (!window._isRevision) {
     autoDocNumber();
