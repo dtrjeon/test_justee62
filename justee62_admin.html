@@ -1854,6 +1854,7 @@ window.TEST_DATA = {"records": [{"저장일시": "2026-03-14", "주차": 3, "전
     </div>
   </div>
   <div style="text-align:left;padding:4px 4px 2px;"><span style="font-size:10px;color:rgba(40,50,90,0.45);">※ 접촉횟수는 결신율 미포함</span></div>
+  <div id="contact-mismatch-warn" style="display:none;margin:4px;padding:6px 8px;font-size:10px;line-height:1.5;color:#b45309;background:#fff7e6;border:1px solid #f5c26b;border-radius:6px;text-align:left;"></div>
   <div style="text-align:right;padding:4px 4px 2px;"><span id="release-time" style="font-size:10px;color:rgba(32,80,200,0.35);font-weight:600;"></span></div>
 </div>
 
@@ -2165,7 +2166,7 @@ window.TEST_DATA = {"records": [{"저장일시": "2026-03-14", "주차": 3, "전
 // ── 빈 값 표시용 옅은 회색 대시 ─────────────────────────────────────────────
 var DASH = '<span style="color:#c8ccd6;">-</span>';
 // ── 조 구성 데이터 ─────────────────────────────────────────────────────────
-const ADMIN_VERSION = 'admin v2026.10.10-8';
+const ADMIN_VERSION = 'admin v2026.10.18-1';
 const GAS_EXPECTED_VERSION = 'gas v2026.10.10-5'; // Code.gs가 바뀔 때만 올림
 // 하드코딩 기준 데이터 (step 복원용)
 const HARDCODED_MEMBERS = [{
@@ -4596,7 +4597,7 @@ function renderTab1(data, w) {
         // 통계: 표시용으로 조 레코드 합산 — 결신율 계산 포함 전도유형 설정(CFG.gospelTypes)만 반영
         var gospelRecs = allRecs.filter(inGospelRateTypes);
         var g  = sum(gospelRecs, 'gospel');
-        var c  = sum(gospelRecs, 'contact');
+        var c  = sumContact(gospelRecs);
         var t  = sum(gospelRecs, 'target');
         var d  = sum(gospelRecs, 'decision');
         var b  = sum(gospelRecs, 'believer');
@@ -4704,6 +4705,7 @@ function renderTab1(data, w) {
   setText('wb-sub-1', '1주 ~ ' + w + '주 누적');
   setText('week-label-1', '1주~' + w + '주 누적');
   setText('acc-contact', totals.contact || '-');
+  renderContactMismatchWarn(data);
   setText('acc-decision', totals.decision || '-');
   setText('acc-believer', totals.believer || '-');
   setText('acc-confirm', totals.confirm || '-');
@@ -4744,7 +4746,7 @@ function renderTab2(data, w) {
         d = sum(joRecs, 'decision'),
         b = sum(joRecs, 'believer');
       var cf = sum(joRecs, 'confirm'),
-        c = sum(joRecs, 'contact'),
+        c = sumContact(joRecs),
         t = sum(joRecs, 'target');
       totalDecision += d;
       totalGospel += g + c;
@@ -6507,7 +6509,7 @@ function renderTab3(selectedWeek) {
     // "관계/질문지 결과" 열 — 설정(CFG.gospelTypes)에 포함된 전도유형만 반영 (기본값: 관계(팀)/질문지(팀))
     var wDataGospel = wData.filter(inGospelRateTypes);
     var gospel = sum(wDataGospel, 'gospel');
-    var rel = sum(wDataGospel, 'contact');
+    var rel = sumContact(wDataGospel);
     var ques = sum(wDataGospel, 'target');
     var decision = sum(wDataGospel, 'decision');
     var believer = sum(wDataGospel, 'believer');
@@ -8127,6 +8129,58 @@ function sum(arr, key) {
   return arr.reduce(function(a, b) {
     return a + (b[key] || 0);
   }, 0);
+}
+
+// 접촉자 수 집계 — 질문지(팀)은 같은 조 + 같은 전도일이면 보고서마다 "그날 팀 전체 접촉자 수"가
+// 중복 기재되므로 (조+전도일)당 최댓값 1회만 반영한다. 그 외 전도유형은 기존처럼 건별 합산.
+// 값이 서로 다르면(휴먼에러) 최댓값을 쓰고, 불일치는 getContactMismatches()로 경고한다.
+function _quesContactKey(r) {
+  if (r.evangType !== '질문지(팀)' || !r.jo || !r.date) return null;
+  return String(r.jo) + '|' + String(r.date).slice(0, 10);
+}
+function sumContact(recs) {
+  var total = 0, maxByKey = {};
+  recs.forEach(function(r) {
+    var c = Number(r.contact || 0);
+    var k = _quesContactKey(r);
+    if (k === null) { total += c; return; }
+    if (!(k in maxByKey) || c > maxByKey[k]) maxByKey[k] = c;
+  });
+  Object.keys(maxByKey).forEach(function(k) { total += maxByKey[k]; });
+  return total;
+}
+function getContactMismatches(recs) {
+  var groups = {};
+  recs.forEach(function(r) {
+    var k = _quesContactKey(r);
+    if (k === null) return;
+    (groups[k] = groups[k] || []).push(r);
+  });
+  var out = [];
+  Object.keys(groups).forEach(function(k) {
+    var vals = {};
+    groups[k].forEach(function(r) { vals[Number(r.contact || 0)] = 1; });
+    if (Object.keys(vals).length > 1) {
+      var parts = k.split('|');
+      out.push({
+        jo: parts[0], date: parts[1],
+        max: Math.max.apply(null, Object.keys(vals).map(Number)),
+        docs: groups[k].map(function(r) { return r.docNumber + '(' + Number(r.contact || 0) + ')'; })
+      });
+    }
+  });
+  return out;
+}
+function renderContactMismatchWarn(recs) {
+  var el = document.getElementById('contact-mismatch-warn');
+  if (!el) return;
+  var list = getContactMismatches(recs);
+  if (!list.length) { el.style.display = 'none'; el.innerHTML = ''; return; }
+  el.style.display = 'block';
+  el.innerHTML = '⚠️ 같은 조·전도일 질문지(팀)의 접촉자 수가 서로 다릅니다 (최댓값으로 집계됨). 해당 보고서를 확인해 같은 값으로 수정하세요.<br>' +
+    list.map(function(m) {
+      return m.jo + '조 ' + String(m.date).slice(5).replace('-', '/') + ' → 집계 ' + m.max + '명 [' + m.docs.join(', ') + ']';
+    }).join('<br>');
 }
 
 function setText(id, v) {
