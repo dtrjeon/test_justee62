@@ -2600,7 +2600,7 @@ pre.code-block {
   });
 })();
 
-const APP_VERSION  = 'index v2026.10.19-1';
+const APP_VERSION  = 'index v2026.10.19-2';
 const LS_SEQ       = 'report_seq_counter';
 const LS_JO        = 'report_jo_data';
 const LS_SUBMITTED = 'report_submitted';
@@ -5431,6 +5431,7 @@ async function handleSubmit() {
     showStatus(statsWarn.split('\n')[0] + ' — 수치를 확인 후 다시 제출하세요.', 'warn');
     return;
   }
+  if (checkGospelDateBeforeSave()) return;
   await submitServer();
 }
 
@@ -7184,6 +7185,7 @@ function renderHistory(records, src, preserveFilter) {
       (r.believer > 0 ? '<span class="stat-chip neutral">이미신자 ' + r.believer + '명</span>' : '') +
       (r.reject > 0 ? '<span class="stat-chip neutral">보류 ' + r.reject + '명</span>' : '') +
       '</div>' +
+      gospelDateRowHtml(r) +
       '<div class="pub-pick-row" id="pk-' + i + '" style="display:none;margin-top:8px;"></div>' +
       '</div>' +
       '</div>' +
@@ -7192,6 +7194,63 @@ function renderHistory(records, src, preserveFilter) {
   }).join('');
   applyPubMarks();
   filterHistory();
+}
+
+// 기록 카드의 "✦ 풀복음 완료" 줄 — 풀복음은 1명만, 풀복음일은 전도일과 같아야 정상.
+// gospel_date 형식: "이름:YYYY-MM-DD|이름:YYYY-MM-DD"
+function gospelDateRowHtml(r) {
+  var raw = String(r.gospel_date || '').trim();
+  if (!raw) return '';
+  var items = [];
+  raw.split('|').forEach(function(p) {
+    var ci = p.indexOf(':');
+    if (ci < 0) return;
+    var nm = p.slice(0, ci).trim(), dt = p.slice(ci + 1).trim().slice(0, 10);
+    if (nm && dt) items.push({ nm: nm, dt: dt });
+  });
+  if (!items.length) return '';
+  var evDate = String(r.date || '').trim().slice(0, 10);
+  function md(d) { var m = d.match(/^\d{4}-(\d{2})-(\d{2})/); return m ? m[1] + '/' + m[2] : d; }
+  var bad = items.length > 1 || items.some(function(x) { return evDate && x.dt !== evDate; });
+  var base = 'display:inline-block;font-size:11px;font-weight:700;border-radius:20px;padding:2px 9px;margin:6px 5px 0 0;';
+  if (!bad) {
+    return '<div>' + items.map(function(x) {
+      return '<span style="' + base + 'color:#b4531a;background:#fff3e8;border:1px solid #f3cfae;">✦ 풀복음 완료 ' + x.nm + ' ' + md(x.dt) + '</span>';
+    }).join('') + '</div>';
+  }
+  var msg = items.length > 1
+    ? '⚠ 풀복음 ' + items.length + '명 기록: ' + items.map(function(x) { return x.nm + ' ' + md(x.dt); }).join(', ')
+    : '⚠ ' + items[0].nm + ' 풀복음일 ' + md(items[0].dt) + ' ≠ 전도일 ' + md(evDate);
+  return '<div><span style="' + base + 'color:#c00;background:rgba(200,32,32,0.07);border:1px solid rgba(200,32,32,0.25);">' + msg + '</span></div>';
+}
+
+// 저장 전 검사 — 풀복음(전체복음) 완료자는 1명, 풀복음일은 전도일과 같아야 한다.
+// 다르면 전도일로 맞출지 확인. 문제가 있어 저장을 중단해야 하면 true 반환.
+function checkGospelDateBeforeSave() {
+  var rd = (document.getElementById('report-date') || {}).value || '';
+  var done = [];
+  if (typeof MEMBERS !== 'undefined') {
+    MEMBERS.forEach(function(m) {
+      var allCb = document.getElementById(m.id + '_all_gospel');
+      var dateEl = document.getElementById(m.id + '_gospel_date');
+      if (allCb && allCb.checked) done.push({ m: m, el: dateEl });
+    });
+  }
+  if (done.length > 1) {
+    showStatus('풀복음(전체복음)은 1명만 가능합니다. 확인 후 다시 제출하세요.', 'warn');
+    return true;
+  }
+  if (done.length === 1 && rd && done[0].el && done[0].el.value && done[0].el.value !== rd) {
+    var ok = confirm('전도일(' + rd + ')과 풀복음 완료일(' + done[0].el.value + ')이 다릅니다.\n풀복음 완료일을 전도일로 맞출까요?\n\n[확인] 전도일로 맞추고 저장   [취소] 저장 중단');
+    if (!ok) {
+      showStatus('풀복음 완료일을 확인 후 다시 제출하세요.', 'warn');
+      try { done[0].el.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch (e) {}
+      return true;
+    }
+    done[0].el.value = rd;
+    if (typeof syncPreview === 'function') syncPreview();
+  }
+  return false;
 }
 
 function loadRecord(idx) {
