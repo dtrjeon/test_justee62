@@ -2600,7 +2600,7 @@ pre.code-block {
   });
 })();
 
-const APP_VERSION  = 'index v2026.10.21-11';
+const APP_VERSION  = 'index v2026.10.21-12';
 const LS_SEQ       = 'report_seq_counter';
 const LS_JO        = 'report_jo_data';
 const LS_SUBMITTED = 'report_submitted';
@@ -2616,6 +2616,7 @@ const LS_PRESET    = 'report_user_preset';
 })();
 function markAuthSession() { try { sessionStorage.setItem('index_auth_session', '1'); } catch (e) {} }
 function applyRememberChoice() {
+  try { localStorage.setItem('index_auth_who', _authWhoOf(getPreset())); } catch (e) {}
   var remCb = document.getElementById('admin-auth-remember');
   if (remCb && remCb.checked) localStorage.setItem('index_admin_remember', '1');
   else localStorage.removeItem('index_admin_remember');
@@ -3302,10 +3303,31 @@ function closePresetModal() {
   if (bg) bg.remove();
 }
 
+// 🔑 관리자/편집/삭제 인증은 인증한 '내 조 설정'(사람)에 묶인다 — 다른 사람으로 바꾸면 인증이 풀린다.
+function _authWhoOf(p) { return (p && p.name) ? (p.scope || '') + '|' + (p.group || '') + '|' + p.name : ''; }
+function _hasKeyAuth() { return isVerifiedUser() || !!getEditToken() || !!getDeleteToken(); }
+function _clearKeyAuth() {
+  ['index_admin_verified','index_admin_token','index_monitor_verified','index_delete_token','index_delete_at','index_edit_token','index_edit_at','index_admin_remember','index_auth_who'].forEach(function(k) { localStorage.removeItem(k); });
+}
 function savePreset(data) {
   _histWide = false;
+  var released = false;
+  try {
+    if (_hasKeyAuth()) {
+      var bound = localStorage.getItem('index_auth_who');
+      if (bound === null) bound = _authWhoOf(getPreset()); // 이전 버전에서 인증된 경우: 지금까지의 설정자에 묶음
+      var nw = _authWhoOf(data);
+      if (bound && bound !== nw) { _clearKeyAuth(); released = true; }
+      else if (!bound) localStorage.setItem('index_auth_who', nw);
+    }
+  } catch (e) {}
   localStorage.setItem(LS_PRESET, JSON.stringify(data));
   updatePresetIndicator();
+  if (released) {
+    try { updateEditLockState(); updateDeleteBtn(); } catch (e) {}
+    try { if (currentTab === 'pub') renderPubTab(); } catch (e) {}
+    showStatus('🔓 사용자가 바뀌어 🔑 인증이 해제되었습니다.', 'info');
+  }
 }
 
 // 인증창에 표시할 현재 '내 조 설정' 이름 — 예: (계인선)
@@ -6069,6 +6091,7 @@ function onAdminLogout(skipConfirm) {
   localStorage.removeItem('index_edit_at');
   localStorage.removeItem('index_monitor_verified');
   localStorage.removeItem('index_admin_remember');
+  localStorage.removeItem('index_auth_who');
   try { sessionStorage.removeItem('pub_cfg_pw_ok'); sessionStorage.removeItem('pub_cfg_pw'); sessionStorage.removeItem('pub_cfg_pw_who'); } catch (e) {} // 그룹장 인증도 함께 해제
   showStatus('🔓 관리자 인증이 해제되었습니다.', 'info');
   updatePresetIndicator(); // 칩의 🔑 제거
