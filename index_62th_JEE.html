@@ -2600,7 +2600,7 @@ pre.code-block {
   });
 })();
 
-const APP_VERSION  = 'index v2026.10.21-12';
+const APP_VERSION  = 'index v2026.10.21-13';
 const LS_SEQ       = 'report_seq_counter';
 const LS_JO        = 'report_jo_data';
 const LS_SUBMITTED = 'report_submitted';
@@ -6692,7 +6692,7 @@ var _pubCfgDraft = null;
 // 그룹장·부그룹장이 대상 설정/변경(⚙️ 설정, 보고조 선정·해제)을 하려면 비밀번호 인증이 필요하다.
 // 관리자·스탭(수정 권한)은 기존 인증 방식 그대로. 한 번 인증하면 이 탭을 닫기 전까지 유지.
 // ※ 브라우저 쪽 확인이므로 서버(Code.gs)에서 따로 막는 것은 아니다.
-var PUB_CFG_GROUP_PW = '9191';
+var PUB_CFG_GROUP_PW = '5600';
 function pubCfgNeedsPw() {
   if (isAdminUser() || amStaffEditor()) return false;
   var p = getPreset();

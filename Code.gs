@@ -26,7 +26,7 @@ var MONITOR_PW = '9191';
 // 공개보고 대상 설정/보고조 선정·변경 전용 비밀번호 (그룹장·부그룹장용).
 // set_public_config 요청이 그룹장 신분(byRole='group')으로 오면 body.groupPw가 이 값과 같아야 한다.
 // (MONITOR_PW와 값이 같아도 서로 독립적으로 바꿀 수 있다)
-var GROUP_CFG_PW = '9191';
+var GROUP_CFG_PW = '5600';
 // 공개보고 대상 설정·그룹 확정 요청을 해도 되는지 — admin/editor 토큰 또는 그룹장 비밀번호
 function canManagePublicWeek(body) {
   var lvl = getTokenLevel(body && body.adminToken) || getTokenLevel(body && body.authToken) || '';
@@ -238,7 +238,7 @@ function doGet(e) {
 
     // ── 버전 조회 ─────────────────────────────────────────────
     if (action === 'get_version') {
-      return ok({ version: 'gas v2026.10.21-2', gasVersion: 'gas v2026.10.21-2', updated: nowKST() });
+      return ok({ version: 'gas v2026.10.21-3', gasVersion: 'gas v2026.10.21-3', updated: nowKST() });
     }
 
     return err('알 수 없는 action: ' + action);
