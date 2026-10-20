@@ -27,6 +27,12 @@ var MONITOR_PW = '9191';
 // set_public_config 요청이 그룹장 신분(byRole='group')으로 오면 body.groupPw가 이 값과 같아야 한다.
 // (MONITOR_PW와 값이 같아도 서로 독립적으로 바꿀 수 있다)
 var GROUP_CFG_PW = '9191';
+// 공개보고 대상 설정·그룹 확정 요청을 해도 되는지 — admin/editor 토큰 또는 그룹장 비밀번호
+function canManagePublicWeek(body) {
+  var lvl = getTokenLevel(body && body.adminToken) || getTokenLevel(body && body.authToken) || '';
+  if (lvl === 'admin' || lvl === 'editor') return true;
+  return String(body && body.byRole || '') === 'group' && String(body && body.groupPw || '') === GROUP_CFG_PW;
+}
 // 문서 삭제 전용 비밀번호 (예: 반장용). 이 비밀번호로 인증하면 '문서 삭제'만 가능하고
 // 관리자 기능(조정보·그룹설정·최대 보고 수 변경 등)은 열리지 않는다. 비어 있으면 사용하지 않는다.
 var DELETE_PW_LIST = [];
@@ -232,7 +238,7 @@ function doGet(e) {
 
     // ── 버전 조회 ─────────────────────────────────────────────
     if (action === 'get_version') {
-      return ok({ version: 'gas v2026.10.21-1', gasVersion: 'gas v2026.10.21-1', updated: nowKST() });
+      return ok({ version: 'gas v2026.10.21-2', gasVersion: 'gas v2026.10.21-2', updated: nowKST() });
     }
 
     return err('알 수 없는 action: ' + action);
@@ -339,10 +345,10 @@ function doPost(e) {
     // ── 공개보고 그룹 확정/확정해제 (admin 또는 그룹장·부그룹장; body.jos = 그 그룹의 조 목록) ─────────────
     // 그룹장·부그룹장은 index의 "내 조 설정"(클라이언트) 기준이라 서버가 신원을 검증하지 못한다.
     // 확정한 사람의 이름/역할을 확정 행에 기록해 추적한다.
+    // 허용: ① admin 토큰 ② 편집(editor) 토큰(스탭 수정 권한) ③ 그룹장·부그룹장 비밀번호(groupPw)
     if (action === 'confirm_public_week') {
-      if (String(body.byRole || '') !== 'group') {
-        var authErr = requireAdminToken(body);
-        if (authErr) return authErr;
+      if (!canManagePublicWeek(body)) {
+        return err('🔒 그룹 확정/해제는 그룹장·부그룹장 비밀번호 또는 관리자 인증이 필요합니다.');
       }
       return confirmPublicWeek(body);
     }
@@ -350,10 +356,7 @@ function doPost(e) {
     // ── 공개보고 대상 설정 (admin 또는 그룹장·부그룹장) ─────────
     // 허용: ① admin 토큰 ② 편집(editor)/삭제 토큰(스탭 수정 권한) ③ 그룹장·부그룹장 비밀번호(groupPw)
     if (action === 'set_public_config') {
-      var cfgLevel = getTokenLevel(body.adminToken) || getTokenLevel(body.authToken) || '';
-      var cfgOk = (cfgLevel === 'admin' || cfgLevel === 'editor') ||
-                  (String(body.byRole || '') === 'group' && String(body.groupPw || '') === GROUP_CFG_PW);
-      if (!cfgOk) {
+      if (!canManagePublicWeek(body)) {
         return err('🔒 공개보고 대상 설정은 그룹장·부그룹장 비밀번호 또는 관리자 인증이 필요합니다.');
       }
       return setPublicConfig(body);

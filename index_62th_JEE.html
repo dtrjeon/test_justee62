@@ -2600,7 +2600,7 @@ pre.code-block {
   });
 })();
 
-const APP_VERSION  = 'index v2026.10.21-3';
+const APP_VERSION  = 'index v2026.10.21-4';
 const LS_SEQ       = 'report_seq_counter';
 const LS_JO        = 'report_jo_data';
 const LS_SUBMITTED = 'report_submitted';
@@ -3275,7 +3275,7 @@ function showPermTable() {
       v: [1,'전체'], e: [st.edit, st.edit ? '🔑전체' : ''], d: [!!(st.del || st.admin), (st.admin || st.del) ? '🔑인증' : ''],
       s: [st.edit,'전체'], c: [st.edit,'전체'], g: [st.edit, st.admin ? '전체·최대🔑' : '전체'] });
   });
-  rows.push({ key: 'group', name: '그룹장', sub: '부그룹장 포함', v: [1,'전체(열람)'], e: [1,'자기그룹'], d: [0,''], s: [1,'자기그룹'], c: [1,'자기그룹'], g: [1,'자기그룹🔑'] });
+  rows.push({ key: 'group', name: '그룹장', sub: '부그룹장 포함', v: [1,'전체(열람)'], e: [1,'자기그룹'], d: [0,''], s: [1,'자기그룹'], c: [1,'자기그룹🔑'], g: [1,'자기그룹🔑'] });
   rows.push({ key: 'jo', name: '조원', sub: '조장 포함', v: [1,'조·그룹'], e: [1,'본인조'], d: [0,''], s: [1,'자기조'], c: [0,''], g: [0,''] });
   var meKey = isAdminUser() ? 'admin' : (me.scope === 'staff' ? 'staff:' + me.role : (me.scope === 'group' ? 'group' : (me.name ? 'jo' : '')));
   var tbl = '<table style="width:100%;border-collapse:collapse;font-size:11px;table-layout:auto;"><thead><tr style="background:#1a3a9e;color:#fff;">' +
@@ -6862,6 +6862,7 @@ async function pubPickReporter(group, jo, on) {
 async function pubToggleConfirm(group) {
   group = String(group || '').toUpperCase();
   if (!canConfirmGroup(group)) { showStatus('해당 그룹의 그룹장·부그룹장, 스탭(수정 권한) 또는 관리자만 확정할 수 있습니다.', 'warn'); return; }
+  if (!(await pubCfgAuth())) return; // 그룹장·부그룹장은 비밀번호 인증 필요 (대상 설정과 동일)
   var wsel = document.getElementById('pub-week-sel');
   var week = wsel ? wsel.value : '';
   if (!week) return;
@@ -6889,7 +6890,7 @@ async function pubToggleConfirm(group) {
     // 해제할 때는 설정 변경 등으로 남은 잠금까지 정리하도록 그룹 전체 조를 보낸다
     var payload = { action: 'confirm_public_week', week: week, confirmed: !allLocked, jos: allLocked ? allJos : jos,
       by: pr.name || (isAdminUser() ? '관리자' : ''), role: pr.role || (isAdminUser() ? 'admin' : '') };
-    if (!isAdminUser()) payload.byRole = 'group';
+    if (!isAdminUser()) { payload.byRole = 'group'; payload.groupPw = pubCfgStoredPw(); }
     var out = await pubPost(payload);
     await loadPubSelection();
     renderPubTab();
