@@ -2600,7 +2600,7 @@ pre.code-block {
   });
 })();
 
-const APP_VERSION  = 'index v2026.10.21-1';
+const APP_VERSION  = 'index v2026.10.21-2';
 const LS_SEQ       = 'report_seq_counter';
 const LS_JO        = 'report_jo_data';
 const LS_SUBMITTED = 'report_submitted';
@@ -3275,7 +3275,7 @@ function showPermTable() {
       v: [1,'전체'], e: [st.edit, st.edit ? '🔑전체' : ''], d: [!!(st.del || st.admin), (st.admin || st.del) ? '🔑인증' : ''],
       s: [st.edit,'전체'], c: [st.edit,'전체'], g: [st.edit, st.admin ? '전체·최대🔑' : '전체'] });
   });
-  rows.push({ key: 'group', name: '그룹장', sub: '부그룹장 포함', v: [1,'전체(열람)'], e: [1,'자기그룹'], d: [0,''], s: [1,'자기그룹'], c: [1,'자기그룹'], g: [1,'자기그룹'] });
+  rows.push({ key: 'group', name: '그룹장', sub: '부그룹장 포함', v: [1,'전체(열람)'], e: [1,'자기그룹'], d: [0,''], s: [1,'자기그룹'], c: [1,'자기그룹'], g: [1,'자기그룹🔑'] });
   rows.push({ key: 'jo', name: '조원', sub: '조장 포함', v: [1,'조·그룹'], e: [1,'본인조'], d: [0,''], s: [1,'자기조'], c: [0,''], g: [0,''] });
   var meKey = isAdminUser() ? 'admin' : (me.scope === 'staff' ? 'staff:' + me.role : (me.scope === 'group' ? 'group' : (me.name ? 'jo' : '')));
   var tbl = '<table style="width:100%;border-collapse:collapse;font-size:11px;table-layout:auto;"><thead><tr style="background:#1a3a9e;color:#fff;">' +
@@ -6593,6 +6593,53 @@ function pubCfgGroups() {
 
 var _pubCfgDraft = null;
 
+// ── 🔑 공개보고 대상 설정 비밀번호 (그룹장·부그룹장) ─────────────────────
+// 그룹장·부그룹장이 대상 설정/변경(⚙️ 설정, 보고조 선정·해제)을 하려면 비밀번호 인증이 필요하다.
+// 관리자·스탭(수정 권한)은 기존 인증 방식 그대로. 한 번 인증하면 이 탭을 닫기 전까지 유지.
+// ※ 브라우저 쪽 확인이므로 서버(Code.gs)에서 따로 막는 것은 아니다.
+var PUB_CFG_GROUP_PW = '9191';
+function pubCfgNeedsPw() {
+  if (isAdminUser() || amStaffEditor()) return false;
+  var p = getPreset();
+  return !!(p && p.name && p.scope === 'group');
+}
+function pubAskPw() {
+  return new Promise(function(resolve) {
+    var old = document.getElementById('pub-pw-bg'); if (old) old.remove();
+    var bg = document.createElement('div');
+    bg.id = 'pub-pw-bg';
+    bg.style.cssText = 'display:flex;position:fixed;top:0;right:0;bottom:0;left:0;background:rgba(10,15,30,0.7);z-index:470;align-items:center;justify-content:center;padding:16px;';
+    bg.innerHTML = '<div style="background:#fff;border-radius:16px;padding:18px 16px;width:100%;max-width:300px;box-shadow:0 10px 40px rgba(0,0,0,.3);">' +
+      '<div style="font-size:15px;font-weight:800;color:#1a3ab0;margin-bottom:4px;">🔑 비밀번호 인증</div>' +
+      '<div style="font-size:11px;color:#777;margin-bottom:10px;line-height:1.5;">공개보고 대상 설정·변경은 그룹장·부그룹장 비밀번호가 필요합니다.</div>' +
+      '<input id="pub-pw-input" type="password" inputmode="numeric" autocomplete="off" placeholder="비밀번호" style="width:100%;box-sizing:border-box;padding:10px;border:1.5px solid #2050c8;border-radius:10px;font-size:16px;">' +
+      '<div id="pub-pw-err" style="font-size:11px;color:#c0392b;min-height:16px;margin-top:4px;"></div>' +
+      '<div style="display:flex;gap:8px;margin-top:6px;">' +
+      '<button type="button" id="pub-pw-cancel" style="flex:1;padding:10px;border-radius:10px;border:1px solid #ccc;background:#fff;font-size:13px;">취소</button>' +
+      '<button type="button" id="pub-pw-ok" style="flex:1;padding:10px;border-radius:10px;border:none;background:#2050c8;color:#fff;font-size:13px;font-weight:700;">확인</button></div></div>';
+    document.body.appendChild(bg);
+    var inp = document.getElementById('pub-pw-input');
+    function done(v) { bg.remove(); resolve(v); }
+    function submit() {
+      if (inp.value === PUB_CFG_GROUP_PW) { done(true); return; }
+      document.getElementById('pub-pw-err').textContent = '비밀번호가 맞지 않습니다.';
+      inp.value = ''; inp.focus();
+    }
+    document.getElementById('pub-pw-ok').onclick = submit;
+    document.getElementById('pub-pw-cancel').onclick = function() { done(false); };
+    inp.addEventListener('keydown', function(e) { if (e.key === 'Enter') submit(); });
+    setTimeout(function() { inp.focus(); }, 50);
+  });
+}
+async function pubCfgAuth() {
+  if (!pubCfgNeedsPw()) return true;
+  try { if (sessionStorage.getItem('pub_cfg_pw_ok') === '1') return true; } catch (e) {}
+  var ok = await pubAskPw();
+  if (ok) { try { sessionStorage.setItem('pub_cfg_pw_ok', '1'); } catch (e) {} }
+  else showStatus('비밀번호 인증이 필요합니다.', 'warn');
+  return ok;
+}
+
 // 설정창에서 보고 있는 값 기준 합계(화면에 없는 그룹은 저장된 값/기본값)
 function pubCfgDraftTotal() {
   var d = _pubCfgDraft;
@@ -6601,7 +6648,8 @@ function pubCfgDraftTotal() {
   }, 0);
 }
 
-function pubOpenCfg() {
+async function pubOpenCfg() {
+  if (!(await pubCfgAuth())) return;
   var wsel = document.getElementById('pub-week-sel');
   var week = wsel ? wsel.value : '';
   var groups = pubCfgGroups();
@@ -6726,6 +6774,7 @@ function pubCfgReset(g) {
 }
 
 async function pubCfgSave() {
+  if (!(await pubCfgAuth())) return;
   var d = _pubCfgDraft;
   if (!d) return;
   var items = [], warn = [], notes = [];
@@ -6776,6 +6825,7 @@ async function pubPickReporter(group, jo, on) {
   var c = pubCfg(week, group);
   if (!week || !c) return;
   if (pubCfgGroups().indexOf(group) < 0) { showStatus('해당 그룹의 그룹장·부그룹장, 스탭(수정 권한) 또는 관리자만 선정할 수 있습니다.', 'warn'); return; }
+  if (!(await pubCfgAuth())) return;
   var jos = pubReportJos(week, group).slice();
   if (on) {
     if (jos.length >= c.count) { showStatus('이미 보고 ' + c.count + '조가 모두 선정되었습니다. 다른 조를 먼저 선정 해제하세요.', 'warn'); return; }
