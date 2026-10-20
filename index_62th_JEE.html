@@ -2600,7 +2600,7 @@ pre.code-block {
   });
 })();
 
-const APP_VERSION  = 'index v2026.10.21-4';
+const APP_VERSION  = 'index v2026.10.21-5';
 const LS_SEQ       = 'report_seq_counter';
 const LS_JO        = 'report_jo_data';
 const LS_SUBMITTED = 'report_submitted';
@@ -3306,6 +3306,14 @@ function savePreset(data) {
   _histWide = false;
   localStorage.setItem(LS_PRESET, JSON.stringify(data));
   updatePresetIndicator();
+}
+
+// 인증창에 표시할 현재 '내 조 설정' 이름 — 예: (계인선)
+function authWhoText() {
+  try {
+    var p = getPreset();
+    return (p && p.name) ? '(' + p.name + ')' : '';
+  } catch (e) { return ''; }
 }
 
 function whoAmILabel() {
@@ -6611,7 +6619,8 @@ function pubAskPw() {
     bg.id = 'pub-pw-bg';
     bg.style.cssText = 'display:flex;position:fixed;top:0;right:0;bottom:0;left:0;background:rgba(10,15,30,0.7);z-index:470;align-items:center;justify-content:center;padding:16px;';
     bg.innerHTML = '<div style="background:#fff;border-radius:16px;padding:18px 16px;width:100%;max-width:300px;box-shadow:0 10px 40px rgba(0,0,0,.3);">' +
-      '<div style="font-size:15px;font-weight:800;color:#1a3ab0;margin-bottom:4px;">🔑 비밀번호 인증</div>' +
+      '<div style="font-size:15px;font-weight:800;color:#1a3ab0;margin-bottom:2px;">🔑 비밀번호 인증</div>' +
+      '<div style="font-size:12px;color:#666;margin-bottom:6px;">' + authWhoText() + '</div>' +
       '<div style="font-size:11px;color:#777;margin-bottom:10px;line-height:1.5;">공개보고 대상 설정·변경은 그룹장·부그룹장 비밀번호가 필요합니다.</div>' +
       '<input id="pub-pw-input" type="password" inputmode="numeric" autocomplete="off" placeholder="비밀번호" style="width:100%;box-sizing:border-box;padding:10px;border:1.5px solid #2050c8;border-radius:10px;font-size:16px;">' +
       '<div id="pub-pw-err" style="font-size:11px;color:#c0392b;min-height:16px;margin-top:4px;"></div>' +
@@ -8211,6 +8220,8 @@ function openAdminAuth() {
   }
   var bg = document.getElementById('admin-auth-bg');
   if (!bg) return openAdminPage();
+  var whoEl = document.getElementById('admin-auth-who');
+  if (whoEl) whoEl.textContent = authWhoText();
   bg.style.display = 'flex';
   setTimeout(function() {
     var inp = document.getElementById('admin-auth-input');
@@ -9742,7 +9753,8 @@ function showStatus(msg, type) {
 <div id="admin-auth-bg" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:9000;align-items:center;justify-content:center;">
   <div style="background:#fff;border-radius:14px;padding:28px 24px;width:280px;box-shadow:0 8px 32px rgba(0,0,0,0.2);text-align:center;">
     <div style="font-size:32px;margin-bottom:8px;">🔒</div>
-    <div style="font-size:14px;font-weight:700;color:#1a3a9e;margin-bottom:16px;">관리자 인증</div>
+    <div style="font-size:14px;font-weight:700;color:#1a3a9e;margin-bottom:4px;">관리자 인증</div>
+    <div id="admin-auth-who" style="font-size:12px;color:#666;min-height:16px;margin-bottom:12px;"></div>
     <input type="text" inputmode="numeric" pattern="[0-9]*" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" id="admin-auth-input" maxlength="10" placeholder="비밀번호 입력"
       style="width:100%;height:42px;font-size:18px;text-align:center;border:1.5px solid #c5cde8;border-radius:8px;outline:none;letter-spacing:4px;margin-bottom:8px;"
       onkeydown="if(event.key==='Enter')confirmAdminAuth()">
