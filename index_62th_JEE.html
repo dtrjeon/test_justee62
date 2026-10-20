@@ -2600,7 +2600,7 @@ pre.code-block {
   });
 })();
 
-const APP_VERSION  = 'index v2026.10.21-5';
+const APP_VERSION  = 'index v2026.10.21-6';
 const LS_SEQ       = 'report_seq_counter';
 const LS_JO        = 'report_jo_data';
 const LS_SUBMITTED = 'report_submitted';
@@ -5969,7 +5969,37 @@ function getAdminToken() {
 
 // 관리자 인증 해제 — 일반 조원/그룹장 화면(본인 조·그룹만 조회)으로 되돌아감
 // 오른쪽 위 🔑 버튼: 인증 전 = 비밀번호 입력창, 인증 후 = 관리자 메뉴
+// 그룹장·부그룹장 비밀번호 인증(공개보고 설정·확정용) 상태/해제
+function pubGroupAuthActive() {
+  try { return sessionStorage.getItem('pub_cfg_pw_ok') === '1'; } catch (e) { return false; }
+}
+function pubGroupAuthRelease() {
+  try { sessionStorage.removeItem('pub_cfg_pw_ok'); sessionStorage.removeItem('pub_cfg_pw'); } catch (e) {}
+  showStatus('🔓 그룹장 인증이 해제되었습니다.', 'info');
+}
+function openGroupAuthMenu() {
+  var old = document.getElementById('group-auth-menu-bg'); if (old) old.remove();
+  var bg = document.createElement('div');
+  bg.id = 'group-auth-menu-bg';
+  bg.style.cssText = 'display:flex;position:fixed;top:0;right:0;bottom:0;left:0;background:rgba(10,15,30,0.55);z-index:9000;align-items:center;justify-content:center;padding:20px;';
+  bg.innerHTML = '<div style="background:#fff;border-radius:14px;padding:22px 20px;width:100%;max-width:290px;box-shadow:0 8px 32px rgba(0,0,0,.25);text-align:center;">' +
+    '<div style="font-size:30px;margin-bottom:4px;">🔑</div>' +
+    '<div style="font-size:14px;font-weight:800;color:#1a3a9e;">그룹장 인증됨</div>' +
+    '<div style="font-size:11px;color:#888;margin:2px 0 14px;">' + (authWhoText() || '공개보고 설정·확정') + '</div>' +
+    '<button type="button" id="gam-release" style="width:100%;height:42px;border:1px solid rgba(200,0,0,.35);border-radius:10px;background:#fff;color:#c0392b;font-size:14px;font-weight:700;margin-bottom:8px;">🔓 그룹장 인증 해제</button>' +
+    '<button type="button" id="gam-admin" style="width:100%;height:42px;border:none;border-radius:10px;background:#2050c8;color:#fff;font-size:14px;font-weight:700;margin-bottom:8px;">관리자 인증하기</button>' +
+    '<button type="button" id="gam-close" style="width:100%;height:38px;border:1px solid #ddd;border-radius:10px;background:#f5f5f5;color:#555;font-size:13px;">닫기</button></div>';
+  bg.addEventListener('click', function(e) { if (e.target === bg) bg.remove(); });
+  document.body.appendChild(bg);
+  document.getElementById('gam-release').onclick = function() { bg.remove(); pubGroupAuthRelease(); };
+  document.getElementById('gam-admin').onclick = function() { bg.remove(); openAdminAuth(); };
+  document.getElementById('gam-close').onclick = function() { bg.remove(); };
+}
+
 function openAdminKey() {
+  if (pubGroupAuthActive() && !isVerifiedUser() && !getEditToken() && !getDeleteToken()) {
+    openGroupAuthMenu(); return;
+  }
   if (!isVerifiedUser()) {
     // 편집/삭제 전용 인증만 된 상태 → 해제 여부 확인, 아니면 인증창
     if (getEditToken() || getDeleteToken()) {
@@ -6007,6 +6037,7 @@ function onAdminLogout(skipConfirm) {
   localStorage.removeItem('index_edit_at');
   localStorage.removeItem('index_monitor_verified');
   localStorage.removeItem('index_admin_remember');
+  try { sessionStorage.removeItem('pub_cfg_pw_ok'); sessionStorage.removeItem('pub_cfg_pw'); } catch (e) {} // 그룹장 인증도 함께 해제
   showStatus('🔓 관리자 인증이 해제되었습니다.', 'info');
   updatePresetIndicator(); // 칩의 🔑 제거
   updateEditLockState(); updateDeleteBtn();
