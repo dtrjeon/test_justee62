@@ -2600,7 +2600,7 @@ pre.code-block {
   });
 })();
 
-const APP_VERSION  = 'index v2026.10.20-1';
+const APP_VERSION  = 'index v2026.10.21-1';
 const LS_SEQ       = 'report_seq_counter';
 const LS_JO        = 'report_jo_data';
 const LS_SUBMITTED = 'report_submitted';
@@ -4589,7 +4589,8 @@ function onRoleItemChange(who) {
     // 풀복음 완료일 = 전도일 자동 입력 (비어 있을 때만)
     var gdEl = document.getElementById(who + '_gospel_date');
     var rdEl = document.getElementById('report-date');
-    if (gdEl && rdEl && !gdEl.value) {
+    var isRelTeam = ((document.getElementById('evang_type') || {}).value || '') === '관계(팀)';
+    if (isRelTeam && gdEl && rdEl && !gdEl.value) {
       gdEl.value = rdEl.value || new Date().toISOString().split('T')[0];
       if (typeof syncPreview === 'function') syncPreview();
     }
@@ -7247,6 +7248,8 @@ function gospelDateRowHtml(r) {
 // 저장 전 검사 — 풀복음(전체복음) 완료자는 1명, 풀복음일은 전도일과 같아야 한다.
 // 다르면 전도일로 맞출지 확인. 문제가 있어 저장을 중단해야 하면 true 반환.
 function checkGospelDateBeforeSave() {
+  // 풀복음 처리는 관계(팀) 전도에만 적용
+  if (((document.getElementById('evang_type') || {}).value || '') !== '관계(팀)') return false;
   var rd = (document.getElementById('report-date') || {}).value || '';
   var done = [];
   if (typeof MEMBERS !== 'undefined') {
