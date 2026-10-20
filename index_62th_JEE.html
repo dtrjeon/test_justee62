@@ -2600,7 +2600,7 @@ pre.code-block {
   });
 })();
 
-const APP_VERSION  = 'index v2026.10.21-7';
+const APP_VERSION  = 'index v2026.10.21-8';
 const LS_SEQ       = 'report_seq_counter';
 const LS_JO        = 'report_jo_data';
 const LS_SUBMITTED = 'report_submitted';
@@ -3349,6 +3349,14 @@ function onClearPreset() {
   }
 }
 
+// 자물쇠 아이콘(SVG, 얇은 선) — open=true: 열린 자물쇠(인증됨) / false: 닫힌 자물쇠(인증 전)
+function lockSvg(open, color) {
+  var body = open
+    ? '<rect x="235" y="470" width="555" height="378" rx="62"/><path d="M476 645A57 57 0 1 1 548 645V733A36 36 0 0 1 476 733Z"/><path d="M320 236C370 190 425 168 480 168C610 168 708 270 708 395C708 420 704 445 690 467"/>'
+    : '<rect x="235" y="428" width="555" height="376" rx="62"/><path d="M476 602A57 57 0 1 1 548 602V690A36 36 0 0 1 476 690Z"/><path d="M290 428C290 300 395 217 512 217C629 217 733 300 733 428"/>';
+  return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="200 130 630 760" width="14" height="17" fill="none" stroke="' + (color || 'currentColor') + '" stroke-width="44" stroke-linecap="round" stroke-linejoin="round" style="display:block;">' + body + '</svg>';
+}
+
 function updatePresetIndicator() {
   var p = getPreset();
   var label = document.getElementById('preset-label');
@@ -3360,13 +3368,22 @@ function updatePresetIndicator() {
     label.textContent = '내 조 설정';
   }
   if (!dot) return;
-  // 🔑 = 관리자 또는 스탭(편집/삭제) 인증이 되어 있을 때만 표시. 그 외에는 상태 점(설정됨=초록 / 미설정=파랑)
-  if (isAdminUser() || (p && p.scope === 'staff' && isStaffAuthed())) {
-    dot.textContent = '🔑';
-    dot.style.cssText = 'width:auto;height:auto;background:none;font-size:14px;line-height:1;';
+  // 인증됨(관리자·스탭 편집/삭제·그룹장 비밀번호) = 열린 자물쇠 / 인증이 필요한 직책(스탭·그룹장)인데 인증 전 = 닫힌 자물쇠
+  // 그 외(조원·미설정)는 상태 점(설정됨=초록 / 미설정=파랑)
+  var authed = isAdminUser() || (p && p.scope === 'staff' && isStaffAuthed()) || (p && p.scope === 'group' && pubGroupAuthActive());
+  var needsAuth = p && p.name && (p.scope === 'staff' || p.scope === 'group');
+  if (authed) {
+    dot.innerHTML = lockSvg(true, '#1a6b3c');
+    dot.style.cssText = 'width:auto;height:auto;background:none;line-height:1;display:inline-flex;align-items:center;';
+    dot.title = '인증됨';
+  } else if (needsAuth) {
+    dot.innerHTML = lockSvg(false, '#8a94b8');
+    dot.style.cssText = 'width:auto;height:auto;background:none;line-height:1;display:inline-flex;align-items:center;';
+    dot.title = '인증 전';
   } else {
-    dot.textContent = '';
+    dot.innerHTML = '';
     dot.style.cssText = '';
+    dot.title = '';
     dot.style.background = (p && p.name) ? '#2e7d32' : '#2050c8';
   }
 }
@@ -5976,6 +5993,7 @@ function pubGroupAuthActive() {
 function pubGroupAuthRelease() {
   try { sessionStorage.removeItem('pub_cfg_pw_ok'); sessionStorage.removeItem('pub_cfg_pw'); } catch (e) {}
   showStatus('🔓 그룹장 인증이 해제되었습니다.', 'info');
+  updatePresetIndicator();
 }
 function openGroupAuthMenu() {
   var old = document.getElementById('group-auth-menu-bg'); if (old) old.remove();
@@ -6685,7 +6703,7 @@ async function pubCfgAuth() {
   if (!pubCfgNeedsPw()) return true;
   try { if (sessionStorage.getItem('pub_cfg_pw_ok') === '1' && sessionStorage.getItem('pub_cfg_pw')) return true; } catch (e) {}
   var ok = await pubAskPw();
-  if (ok) { try { sessionStorage.setItem('pub_cfg_pw_ok', '1'); sessionStorage.setItem('pub_cfg_pw', PUB_CFG_GROUP_PW); } catch (e) {} }
+  if (ok) { try { sessionStorage.setItem('pub_cfg_pw_ok', '1'); sessionStorage.setItem('pub_cfg_pw', PUB_CFG_GROUP_PW); } catch (e) {} updatePresetIndicator(); }
   else showStatus('비밀번호 인증이 필요합니다.', 'warn');
   return ok;
 }
