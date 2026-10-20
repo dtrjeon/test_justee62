@@ -2600,7 +2600,7 @@ pre.code-block {
   });
 })();
 
-const APP_VERSION  = 'index v2026.10.21-2';
+const APP_VERSION  = 'index v2026.10.21-3';
 const LS_SEQ       = 'report_seq_counter';
 const LS_JO        = 'report_jo_data';
 const LS_SUBMITTED = 'report_submitted';
@@ -6121,6 +6121,7 @@ function pubReporting(week, jo) {
 
 async function pubPost(payload) {
   if (isAdminUser()) payload.adminToken = getAdminToken();
+  else if (typeof getEditToken === 'function' && getEditToken()) payload.authToken = getEditToken(); // 스탭(수정 권한) 편집 토큰
   var res = await fetch(scriptUrl, {
     method: 'POST', redirect: 'follow',
     headers: { 'Content-Type': 'text/plain' },
@@ -6631,11 +6632,14 @@ function pubAskPw() {
     setTimeout(function() { inp.focus(); }, 50);
   });
 }
+function pubCfgStoredPw() {
+  try { return sessionStorage.getItem('pub_cfg_pw') || ''; } catch (e) { return ''; }
+}
 async function pubCfgAuth() {
   if (!pubCfgNeedsPw()) return true;
-  try { if (sessionStorage.getItem('pub_cfg_pw_ok') === '1') return true; } catch (e) {}
+  try { if (sessionStorage.getItem('pub_cfg_pw_ok') === '1' && sessionStorage.getItem('pub_cfg_pw')) return true; } catch (e) {}
   var ok = await pubAskPw();
-  if (ok) { try { sessionStorage.setItem('pub_cfg_pw_ok', '1'); } catch (e) {} }
+  if (ok) { try { sessionStorage.setItem('pub_cfg_pw_ok', '1'); sessionStorage.setItem('pub_cfg_pw', PUB_CFG_GROUP_PW); } catch (e) {} }
   else showStatus('비밀번호 인증이 필요합니다.', 'warn');
   return ok;
 }
@@ -6803,7 +6807,7 @@ async function pubCfgSave() {
     pubAllGroups().forEach(function(g) { sizes[g] = pubGroupJos(g).length; });
     var payload = { action: 'set_public_config', week: d.week, items: items, groupSizes: sizes,
       by: pr.name || (isAdminUser() ? '관리자' : ''), role: pr.role || (isAdminUser() ? 'admin' : '') };
-    if (!isAdminUser()) payload.byRole = 'group';
+    if (!isAdminUser()) { payload.byRole = 'group'; payload.groupPw = pubCfgStoredPw(); }
     if (d.maxDirty && isAdminUser()) payload.maxReports = d.max;
     await pubPost(payload);
     await loadPubSelection();
@@ -6843,7 +6847,7 @@ async function pubPickReporter(group, jo, on) {
     var payload = { action: 'set_public_config', week: week, groupSizes: sizes,
       items: [{ group: group, count: c.count, jos: jos, groupJos: pubGroupJos(group) }],
       by: pr.name || (isAdminUser() ? '관리자' : ''), role: pr.role || (isAdminUser() ? 'admin' : '') };
-    if (!isAdminUser()) payload.byRole = 'group';
+    if (!isAdminUser()) { payload.byRole = 'group'; payload.groupPw = pubCfgStoredPw(); }
     await pubPost(payload);
     await loadPubSelection();
     renderPubTab();

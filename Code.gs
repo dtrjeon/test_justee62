@@ -10,6 +10,8 @@ var SHEET_ID = '1ERh4TN23-NTKyLwuw3dtHhSkVzCzqvg1plh6AMbGK1o';
 // ── 시트 이름 상수 ────────────────────────────────────────────
 var SHEET_REPORT = '전도보고서';   // 보고서 데이터 시트
 var SHEET_JO     = '조정보';       // 조 구성원 시트
+var SHEET_PUBLIC = '공개보고선택';
+var SHEET_PUBLIC_CFG = '공개보고설정';  // 주차·그룹별 공개보고 대상(보고 조 수 / 보고 조) 설정 시트  // 주차별·조별 공개 발표 보고서 선택 시트
 var SHEET_GROUP  = '그룹설정';      // 그룹 편성 설정 시트 (관리자+그룹장 이메일 통합 관리)
 // SHEET_EMAIL('이메일') 은 SHEET_GROUP으로 통합됨 — 기존 시트는 읽기 폴백으로만 사용
 
@@ -21,6 +23,17 @@ var ADMIN_PW   = '7463';
 // 7463과 동일한 admin 권한을 갖는 추가 비밀번호들 (예: 다른 관리자 인원용)
 var ADMIN_PW_EXTRA = ['7963', '7834'];
 var MONITOR_PW = '9191';
+// 공개보고 대상 설정/보고조 선정·변경 전용 비밀번호 (그룹장·부그룹장용).
+// set_public_config 요청이 그룹장 신분(byRole='group')으로 오면 body.groupPw가 이 값과 같아야 한다.
+// (MONITOR_PW와 값이 같아도 서로 독립적으로 바꿀 수 있다)
+var GROUP_CFG_PW = '9191';
+// 문서 삭제 전용 비밀번호 (예: 반장용). 이 비밀번호로 인증하면 '문서 삭제'만 가능하고
+// 관리자 기능(조정보·그룹설정·최대 보고 수 변경 등)은 열리지 않는다. 비어 있으면 사용하지 않는다.
+var DELETE_PW_LIST = [];
+// 문서 '수정' 전용 비밀번호 (예: 서기 등 스탭). 이 비밀번호로 🔑 인증하면 스탭이 다른 사람의
+// 보고서를 수정(제출)할 수 있다. 삭제/관리자 기능은 열리지 않는다. 비어 있으면 사용하지 않는다.
+// ※ 사용할 비밀번호를 여기에 직접 추가: 예) var EDIT_PW_LIST = ['1234'];
+var EDIT_PW_LIST = [];
 
 // ── 세션 토큰 캐시 키 접두사 / 유효시간 ─────────────────────
 // CacheService는 항목당 최대 21600초(6시간)까지만 보관 가능 — GAS 자체 제약.
@@ -212,9 +225,14 @@ function doGet(e) {
       return getGroupSettings();
     }
 
+    // ── 공개보고 선택 현황 조회 ──────────────────────────────
+    if (action === 'get_public_selection') {
+      return ok(getPublicSelection());
+    }
+
     // ── 버전 조회 ─────────────────────────────────────────────
     if (action === 'get_version') {
-      return ok({ version: 'gas v2026.09.14', gasVersion: 'gas v2026.09.14', updated: nowKST() });
+      return ok({ version: 'gas v2026.10.21-1', gasVersion: 'gas v2026.10.21-1', updated: nowKST() });
     }
 
     return err('알 수 없는 action: ' + action);
@@ -246,6 +264,10 @@ function doPost(e) {
       var pw = String(body.password || '');
       if (pw === ADMIN_PW || ADMIN_PW_EXTRA.indexOf(pw) > -1) {
         return ok({ verified: true, level: 'admin', token: issueAuthToken('admin') });
+      } else if (DELETE_PW_LIST.length && DELETE_PW_LIST.indexOf(pw) > -1) {
+        return ok({ verified: true, level: 'deleter', token: issueAuthToken('deleter') });
+      } else if (EDIT_PW_LIST.length && EDIT_PW_LIST.indexOf(pw) > -1) {
+        return ok({ verified: true, level: 'editor', token: issueAuthToken('editor') });
       } else if (pw === MONITOR_PW) {
         return ok({ verified: true, level: 'monitor', token: issueAuthToken('monitor') });
       } else {
@@ -296,15 +318,52 @@ function doPost(e) {
 
     // ── 문서 삭제 (문서번호 전체) (admin 전용) ───────────────
     if (action === 'delete_doc') {
-      var authErr = requireAdminToken(body);
-      if (authErr) return authErr;
+      // admin 또는 삭제 전용(deleter) 토큰이면 허용
+      var delLevel = getTokenLevel(body.adminToken);
+      if (delLevel !== 'admin' && delLevel !== 'deleter') {
+        return err('🔒 문서 삭제 권한이 필요합니다. 비밀번호를 다시 인증해주세요. (세션이 만료되었을 수 있습니다)');
+      }
+      body.deletedBy = String(body.deletedBy || '미상').slice(0, 80) + ' [' + delLevel + ']';
       return deleteDoc(body);
+    }
+
+    // ── 공개보고 선택/해제 (조장·그룹장·부그룹장이 사용 — 일반 토큰 불필요) ──
+    // 주차가 확정(잠금)된 경우에는 admin 토큰이 있어야만 변경 가능
+    if (action === 'select_public_report') {
+      return selectPublicReport(body);
+    }
+    if (action === 'clear_public_report') {
+      return clearPublicReport(body);
+    }
+
+    // ── 공개보고 그룹 확정/확정해제 (admin 또는 그룹장·부그룹장; body.jos = 그 그룹의 조 목록) ─────────────
+    // 그룹장·부그룹장은 index의 "내 조 설정"(클라이언트) 기준이라 서버가 신원을 검증하지 못한다.
+    // 확정한 사람의 이름/역할을 확정 행에 기록해 추적한다.
+    if (action === 'confirm_public_week') {
+      if (String(body.byRole || '') !== 'group') {
+        var authErr = requireAdminToken(body);
+        if (authErr) return authErr;
+      }
+      return confirmPublicWeek(body);
+    }
+
+    // ── 공개보고 대상 설정 (admin 또는 그룹장·부그룹장) ─────────
+    // 허용: ① admin 토큰 ② 편집(editor)/삭제 토큰(스탭 수정 권한) ③ 그룹장·부그룹장 비밀번호(groupPw)
+    if (action === 'set_public_config') {
+      var cfgLevel = getTokenLevel(body.adminToken) || getTokenLevel(body.authToken) || '';
+      var cfgOk = (cfgLevel === 'admin' || cfgLevel === 'editor') ||
+                  (String(body.byRole || '') === 'group' && String(body.groupPw || '') === GROUP_CFG_PW);
+      if (!cfgOk) {
+        return err('🔒 공개보고 대상 설정은 그룹장·부그룹장 비밀번호 또는 관리자 인증이 필요합니다.');
+      }
+      return setPublicConfig(body);
     }
 
     // ── 특정 행만 삭제 (admin 전용) ──────────────────────────
     if (action === 'delete_doc_row') {
       var authErr = requireAdminToken(body);
       if (authErr) return authErr;
+      body.deletedBy = String(body.deletedBy || '미상').slice(0, 80) + ' [admin]';
       return deleteDocRow(body);
     }
 
@@ -324,6 +383,15 @@ function saveReport(data) {
   var sheet = ss.getSheetByName(SHEET_REPORT);
   if (!sheet) return err('시트 없음: ' + SHEET_REPORT);
 
+  // ── 수정 제출(is_revision) 검증 + 수정자 인증수준 확인 ─────────────
+  //  스탭(반장·총무·서기·교사)이 수정 제출하려면 🔑 인증 토큰(admin/editor/deleter)이 필요하다.
+  var LVL_LABEL = { admin: '관리자', editor: '편집', deleter: '삭제전용', monitor: '열람전용' };
+  var editLevel = data.is_revision ? (getTokenLevel(data.authToken) || '') : '';
+  if (data.is_revision && data.editor_scope === 'staff' &&
+      ['admin', 'editor', 'deleter'].indexOf(editLevel) === -1) {
+    return err('🔑 스탭이 다른 사람의 보고서를 수정하려면 인증이 필요합니다. 🔑 버튼으로 인증 후 다시 제출해 주세요.');
+  }
+
   var BASE_COLS = [
     '저장일시','주차','전도일','문서번호','전도유형','횟수','조',
     '훈련자(조장)','훈련자','훈련생',
@@ -337,7 +405,7 @@ function saveReport(data) {
     '훈련생역할','훈련생행동',
     '결과','즉석양육','후속양육','하지못한사유',
     '느낀점(10번)','문제점(11번)','기도제목(12번)','기타(13번)','풀복음 완료일',
-    '특이사항(공유)'
+    '특이사항(공유)','수정이력'
   ];
 
   if (sheet.getLastRow() === 0) {
@@ -413,7 +481,8 @@ function saveReport(data) {
     '기도제목(12번)': data.q12 || '',
     '기타(13번)': data.q13 || '',
     '풀복음 완료일': data.gospel_date || '',
-    '특이사항(공유)': data.q14 || ''
+    '특이사항(공유)': data.q14 || '',
+    '수정이력': data.edit_log || ''
   };
 
   var hMap = buildHeaderMap(sheet);
@@ -438,6 +507,25 @@ function saveReport(data) {
       sendSpecialNoteEmail(data, now);
     } catch(e) {
       Logger.log('특이사항 이메일 발송 오류: ' + e.message);
+    }
+  }
+
+  // ── 수정 제출이면 '수정이력' 시트에 누가·언제·어떤 인증으로 수정했는지 기록 ──
+  if (data.is_revision) {
+    try {
+      var hs = ss.getSheetByName('수정이력');
+      if (!hs) {
+        hs = ss.insertSheet('수정이력');
+        hs.appendRow(['수정일시','문서번호','조','전도일','수정자','역할','인증수준','수정내용 요약']);
+      }
+      hs.appendRow([
+        now, data.doc_number || '', data.jo || '', data.date || '',
+        data.editor_name || '', data.editor_role || '',
+        editLevel ? LVL_LABEL[editLevel] : '미인증(본인/관할)',
+        data.edit_log || ''
+      ]);
+    } catch(e) {
+      Logger.log('수정이력 기록 오류: ' + e.message);
     }
   }
 
@@ -1027,6 +1115,382 @@ function deleteDocRow(body) {
   SpreadsheetApp.flush();
   return ok({ deleted: 1, rowIndex: rowIndex, docNumber: docNumber, savedAt: actualSaved,
               sheetName: sheet.getName(), lastRowBefore: lastRowBefore, lastRowAfter: sheet.getLastRow() });
+}
+
+
+// ============================================================
+//  공개보고 선택 (전체공개보고)
+//  ── 매주 각 조가 발표할 공개보고서 1건을 고른다.
+//  ── 시트 "공개보고선택" 열: 주차 | 조 | 문서번호 | 저장일시 | 선택자 | 선택자역할 | 선택구분 | 선택시각
+//  ── 조 = "__LOCK__" 인 행은 해당 주차가 확정(잠금)되었다는 표시
+//  ── 문서번호만 저장하므로, 선택 후 보고서를 수정제출해도 최신본이 출력된다.
+// ============================================================
+var PUBLIC_COLS = ['주차','조','문서번호','저장일시','선택자','선택자역할','선택구분','선택시각'];
+var PUBLIC_LOCK = '__LOCK__';
+
+function ensurePublicSheet() {
+  var ss = getSS();
+  var sheet = ss.getSheetByName(SHEET_PUBLIC);
+  if (!sheet) {
+    sheet = ss.insertSheet(SHEET_PUBLIC);
+    sheet.appendRow(PUBLIC_COLS);
+    var hdr = sheet.getRange(1, 1, 1, PUBLIC_COLS.length);
+    hdr.setBackground('#1a3a9e').setFontColor('#ffffff').setFontWeight('bold');
+    // 주차/조/문서번호는 숫자·날짜로 자동 변환되지 않도록 텍스트 서식
+    try {
+      // 새 시트는 기본 1000행이라 2행부터 1000개 범위를 잡으면 범위 초과 오류가 난다 → 시트 크기에 맞춘다
+      var nrows = Math.max(1, Math.min(1000, sheet.getMaxRows() - 1));
+      sheet.getRange(2, 1, nrows, 4).setNumberFormat('@');
+    } catch (fe) { /* 서식 지정 실패는 무시 — 값 저장에는 영향 없음 */ }
+  }
+  return sheet;
+}
+
+function pubWeekKey(v) {
+  var n = parseInt(String(v).replace(/[^0-9]/g, ''), 10);
+  return isNaN(n) ? String(v || '').trim() : String(n);
+}
+
+// 시트 전체를 읽어 [{row, week, jo, doc, savedAt, by, role, kind, at}] 로 반환
+function readPublicRows(sheet) {
+  var last = sheet.getLastRow();
+  if (last < 2) return [];
+  var vals = sheet.getRange(2, 1, last - 1, PUBLIC_COLS.length).getValues();
+  var out = [];
+  vals.forEach(function(r, i) {
+    if (!r[0] && !r[1]) return;
+    out.push({
+      row: i + 2,
+      week: pubWeekKey(r[0]),
+      jo: String(r[1] || '').trim(),
+      doc: String(r[2] || '').trim(),
+      savedAt: (r[3] instanceof Date) ? Utilities.formatDate(r[3], 'Asia/Seoul', 'yyyy-MM-dd HH:mm:ss') : String(r[3] || ''),
+      by: String(r[4] || ''),
+      role: String(r[5] || ''),
+      kind: String(r[6] || ''),
+      at: (r[7] instanceof Date) ? Utilities.formatDate(r[7], 'Asia/Seoul', 'yyyy-MM-dd HH:mm:ss') : String(r[7] || '')
+    });
+  });
+  return out;
+}
+
+function getPublicSelection() {
+  var sheet = ensurePublicSheet();
+  var rows = readPublicRows(sheet);
+  var selections = [];
+  var locks = {};
+  rows.forEach(function(r) {
+    if (r.jo === PUBLIC_LOCK) { locks[r.week + '|' + r.doc] = { by: r.by, role: r.role, at: r.at }; return; } // 잠금 행: 문서번호 칸 = 대상 조
+    selections.push({ week: r.week, jo: r.jo, docNumber: r.doc, savedAt: r.savedAt,
+                      selectedBy: r.by, role: r.role, kind: r.kind, selectedAt: r.at });
+  });
+  var config = {};
+  try { config = readPublicCfgMap(); } catch (ce) { config = {}; }  // 설정 시트 오류가 선택 조회를 막지 않도록
+  return { selections: selections, locks: locks, config: config };
+}
+
+// 전도보고서 시트에서 (조, 주차)별 문서번호 목록(문서번호 중복은 최신 저장일시 1건)
+function reportDocsByWeekJo() {
+  var sheet = getSS().getSheetByName(SHEET_REPORT);
+  var map = {}; // week -> jo -> { doc: savedAt }
+  if (!sheet) return map;
+  var data = sheet.getDataRange().getValues();
+  if (data.length < 2) return map;
+  var headers = data[0].map(function(h) { return String(h).trim(); });
+  var iW = headers.indexOf('주차'), iJ = headers.indexOf('조'), iD = headers.indexOf('문서번호'), iS = headers.indexOf('저장일시');
+  if (iW < 0 || iJ < 0 || iD < 0) return map;
+  for (var i = 1; i < data.length; i++) {
+    var doc = String(data[i][iD] || '').trim();
+    if (!doc) continue;
+    var w = pubWeekKey(data[i][iW]);
+    var jo = String(data[i][iJ] || '').trim();
+    if (!map[w]) map[w] = {};
+    if (!map[w][jo]) map[w][jo] = {};
+    var sv = (data[i][iS] instanceof Date) ? Utilities.formatDate(data[i][iS], 'Asia/Seoul', 'yyyy-MM-dd HH:mm:ss') : String(data[i][iS] || '');
+    if (!map[w][jo][doc] || sv > map[w][jo][doc]) map[w][jo][doc] = sv;
+  }
+  return map;
+}
+
+// 조 단위 확정(잠금): 잠금 행 = [주차, '__LOCK__', 대상 조, '', 확정자, 확정자역할, '확정', 시각]
+function isPublicLocked(rows, week, jo) {
+  return rows.some(function(r) { return r.jo === PUBLIC_LOCK && r.week === week && r.doc === String(jo); });
+}
+
+// body: { week(보고주차), jo, docNumber, selectedBy, role, adminToken? }
+function selectPublicReport(body) {
+  body = body || {};
+  var jo  = String(body.jo || '').trim();
+  var doc = String(body.docNumber || '').trim();
+  if (!jo || !doc) return err('jo, docNumber 필요');
+
+  var lock = LockService.getScriptLock();
+  lock.waitLock(20000);
+  try {
+    var map = reportDocsByWeekJo();
+    // 선택은 "보고주차(body.week)" 기준으로 저장한다. 문서는 그 조의 어느 주차 보고서여도 된다
+    // (예: 6주차 보고에 5주차 문서 선택). body.week가 없으면 문서가 있는 주차를 보고주차로 본다.
+    var docWeek = '';
+    Object.keys(map).forEach(function(w) {
+      if (map[w][jo] && map[w][jo][doc] !== undefined) docWeek = w;
+    });
+    if (!docWeek) return err('해당 조의 보고서를 찾을 수 없습니다: ' + doc);
+    var week = pubWeekKey(body.week) || docWeek;
+    var savedAt = map[docWeek][jo][doc];
+
+    var sheet = ensurePublicSheet();
+    var rows = readPublicRows(sheet);
+    var isAdmin = getTokenLevel(body.adminToken) === 'admin';
+    if (isPublicLocked(rows, week, jo) && !isAdmin) {
+      return err('🔒 ' + jo + '조는 그룹장이 확정해서 변경할 수 없습니다. (그룹장에게 확정해제를 요청하세요)');
+    }
+
+    var entry = [week, jo, doc, savedAt, String(body.selectedBy || ''), String(body.role || ''),
+                 String(body.kind || '수동'), nowKST()];
+    var exist = rows.filter(function(r) { return r.week === week && r.jo === jo; })[0];
+    if (exist) {
+      sheet.getRange(exist.row, 1, 1, PUBLIC_COLS.length).setNumberFormat('@').setValues([entry]);
+    } else {
+      var nr = Math.max(sheet.getLastRow() + 1, 2);
+      sheet.getRange(nr, 1, 1, PUBLIC_COLS.length).setNumberFormat('@').setValues([entry]);
+    }
+    SpreadsheetApp.flush();
+    return ok({ week: week, jo: jo, docNumber: doc });
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+// body: { week, jo, adminToken? } — 선택 해제
+function clearPublicReport(body) {
+  body = body || {};
+  var jo = String(body.jo || '').trim();
+  var week = pubWeekKey(body.week);
+  if (!jo || !week) return err('week, jo 필요');
+  var lock = LockService.getScriptLock();
+  lock.waitLock(20000);
+  try {
+    var sheet = ensurePublicSheet();
+    var rows = readPublicRows(sheet);
+    var isAdmin = getTokenLevel(body.adminToken) === 'admin';
+    if (isPublicLocked(rows, week, jo) && !isAdmin) {
+      return err('🔒 ' + jo + '조는 그룹장이 확정해서 변경할 수 없습니다. (그룹장에게 확정해제를 요청하세요)');
+    }
+    var exist = rows.filter(function(r) { return r.week === week && r.jo === jo; })[0];
+    if (exist) sheet.deleteRow(exist.row);
+    SpreadsheetApp.flush();
+    return ok({ cleared: exist ? 1 : 0 });
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+// ============================================================
+//  공개보고 대상 설정 — 주차·그룹별로 "몇 개 조가 보고할지 / 어느 조가 보고할지"
+//  시트 "공개보고설정" 열: 주차 | 그룹 | 보고수 | 보고조 | 설정자 | 설정자역할 | 설정시각
+//  · 행이 없는 (주차, 그룹)은 설정 없음 = 그 그룹의 모든 조가 보고 (기존 동작)
+//  · 보고조는 "1,2" 처럼 쉼표 구분 텍스트
+// ============================================================
+var PUBLIC_MAX_REPORTS = 11;  // 한 주 최대 보고 수 기본값 (주차별로 '공개보고설정' 시트의 __MAX__ 행으로 바꿀 수 있음)
+var PUBLIC_MAX_KEY = '__MAX__';
+var PUBLIC_CFG_COLS = ['주차','그룹','보고수','보고조','설정자','설정자역할','설정시각'];
+
+function ensurePublicCfgSheet() {
+  var ss = getSS();
+  var sheet = ss.getSheetByName(SHEET_PUBLIC_CFG);
+  if (!sheet) {
+    sheet = ss.insertSheet(SHEET_PUBLIC_CFG);
+    sheet.appendRow(PUBLIC_CFG_COLS);
+    sheet.getRange(1, 1, 1, PUBLIC_CFG_COLS.length).setBackground('#1a3a9e').setFontColor('#ffffff').setFontWeight('bold');
+    try {
+      var nrows = Math.max(1, Math.min(1000, sheet.getMaxRows() - 1));
+      sheet.getRange(2, 1, nrows, 4).setNumberFormat('@');
+    } catch (fe) { /* 서식 실패는 무시 */ }
+  }
+  return sheet;
+}
+
+function readPublicCfgRows(sheet) {
+  var last = sheet.getLastRow();
+  if (last < 2) return [];
+  var vals = sheet.getRange(2, 1, last - 1, PUBLIC_CFG_COLS.length).getValues();
+  var out = [];
+  vals.forEach(function(r, i) {
+    if (!r[0]) return;
+    var cnt = parseInt(String(r[2]).replace(/[^0-9]/g, ''), 10);
+    out.push({
+      row: i + 2,
+      week: pubWeekKey(r[0]),
+      group: String(r[1] || '').trim().toUpperCase(),
+      count: isNaN(cnt) ? 0 : cnt,
+      jos: String(r[3] || '').split(',').map(function(x) { return x.trim(); }).filter(function(x) { return x; }),
+      by: String(r[4] || ''),
+      role: String(r[5] || ''),
+      at: (r[6] instanceof Date) ? Utilities.formatDate(r[6], 'Asia/Seoul', 'yyyy-MM-dd HH:mm:ss') : String(r[6] || '')
+    });
+  });
+  return out;
+}
+
+// → { "주차|그룹": {count, jos:[...], by, role, at} }
+function readPublicCfgMap() {
+  var map = {};
+  readPublicCfgRows(ensurePublicCfgSheet()).forEach(function(r) {
+    map[r.week + '|' + r.group] = { count: r.count, jos: r.jos, by: r.by, role: r.role, at: r.at };
+  });
+  return map;
+}
+
+// body: { week, items:[{group, count, jos:[...], groupJos:[...], reset?}], by, role, adminToken? }
+//  - reset:true → 설정 행 삭제(= 그 그룹 전체 조 보고)
+//  - 그룹의 조 중 하나라도 이미 확정(잠금)이면 admin 토큰이 있어야 변경 가능
+function setPublicConfig(body) {
+  body = body || {};
+  var week = pubWeekKey(body.week);
+  var items = body.items || [];
+  if (!week) return err('week 필요');
+  var newMax = (body.maxReports === undefined || body.maxReports === null || body.maxReports === '') ? null : parseInt(body.maxReports, 10);
+  if (newMax !== null && (isNaN(newMax) || newMax < 1 || newMax > 99)) return err('최대 보고 수는 1~99 사이여야 합니다.');
+  if (!items.length && newMax === null) return err('items 필요');
+  var lock = LockService.getScriptLock();
+  lock.waitLock(20000);
+  try {
+    var isAdmin = getTokenLevel(body.adminToken) === 'admin';
+    if (newMax !== null && !isAdmin) return err('최대 보고 수는 관리자만 변경할 수 있습니다.');
+    var pubRows = readPublicRows(ensurePublicSheet());
+    var sheet = ensurePublicCfgSheet();
+    var by = String(body.by || '관리자'), role = String(body.role || 'admin');
+    var saved = 0, reset = 0;
+    // 먼저 검증(전부 통과해야 반영) — 일부만 반영되는 것을 막는다
+    var plan = [];
+    for (var i = 0; i < items.length; i++) {
+      var it = items[i] || {};
+      var group = String(it.group || '').trim().toUpperCase();
+      if (!group) return err('그룹 필요');
+      var groupJos = (it.groupJos || []).map(function(j) { return String(j).trim(); }).filter(function(j) { return j; });
+      var jos = (it.jos || []).map(function(j) { return String(j).trim(); }).filter(function(j) { return j; });
+      var uniq = [];
+      jos.forEach(function(j) { if (uniq.indexOf(j) < 0) uniq.push(j); });
+      jos = uniq;
+      var count = parseInt(it.count, 10);
+      if (!it.reset) {
+        if (isNaN(count) || count < 0) return err(group + '그룹: 보고 수가 올바르지 않습니다.');
+        if (groupJos.length && count > groupJos.length) return err(group + '그룹: 보고 수(' + count + ')가 그룹 조 수(' + groupJos.length + ')보다 많습니다.');
+        if (jos.length > count) return err(group + '그룹: 보고 조(' + jos.length + '개)가 보고 수(' + count + ')보다 많습니다.');
+        if (groupJos.length) {
+          for (var k = 0; k < jos.length; k++) {
+            if (groupJos.indexOf(jos[k]) < 0) return err(group + '그룹에 속하지 않은 조: ' + jos[k]);
+          }
+        }
+      }
+      if (!isAdmin) {
+        var check = groupJos.concat(jos);
+        var locked = check.filter(function(j) { return isPublicLocked(pubRows, week, j); });
+        if (locked.length) return err('🔒 ' + group + '그룹은 확정되어 있어 변경할 수 없습니다. (확정해제 후 변경하세요)');
+      }
+      plan.push({ group: group, count: count, jos: jos, reset: !!it.reset });
+    }
+    var cfgRows = readPublicCfgRows(sheet);
+    // 주차 합계 검증: 이번 요청에 없는 그룹은 저장된 보고 수, 설정이 없으면 그 그룹의 전체 조 수로 계산
+    var sizes = body.groupSizes || {};
+    var inReq = {};
+    plan.forEach(function(p) { inReq[p.group] = p; });
+    var total = 0, seen = {};
+    Object.keys(sizes).forEach(function(gk) {
+      var G = String(gk).toUpperCase(), size = parseInt(sizes[gk], 10) || 0;
+      seen[G] = 1;
+      if (inReq[G]) total += inReq[G].reset ? size : Math.min(inReq[G].count, size || inReq[G].count);
+      else {
+        var ex = cfgRows.filter(function(r) { return r.week === week && r.group === G; })[0];
+        total += ex ? Math.min(ex.count, size) : size;
+      }
+    });
+    plan.forEach(function(p) { if (!seen[p.group] && !p.reset) total += p.count; });
+    var maxRow = cfgRows.filter(function(r) { return r.week === week && r.group === PUBLIC_MAX_KEY; })[0];
+    var maxAllowed = newMax !== null ? newMax : (maxRow && maxRow.count > 0 ? maxRow.count : PUBLIC_MAX_REPORTS);
+    if (total > maxAllowed) return err('보고 합계가 ' + total + '건입니다. 이번 주 최대 ' + maxAllowed + '건까지만 가능합니다.');
+    if (newMax !== null) {
+      var mEntry = [week, PUBLIC_MAX_KEY, String(newMax), '', by, role, nowKST()];
+      if (maxRow) sheet.getRange(maxRow.row, 1, 1, PUBLIC_CFG_COLS.length).setNumberFormat('@').setValues([mEntry]);
+      else {
+        var mr = Math.max(sheet.getLastRow() + 1, 2);
+        sheet.getRange(mr, 1, 1, PUBLIC_CFG_COLS.length).setNumberFormat('@').setValues([mEntry]);
+        cfgRows.push({ row: mr, week: week, group: PUBLIC_MAX_KEY });
+      }
+    }
+    var delRows = [];
+    plan.forEach(function(p) {
+      var exist = cfgRows.filter(function(r) { return r.week === week && r.group === p.group; })[0];
+      if (p.reset) {
+        if (exist) { delRows.push(exist.row); reset++; }
+        return;
+      }
+      var entry = [week, p.group, String(p.count), p.jos.join(','), by, role, nowKST()];
+      if (exist) {
+        sheet.getRange(exist.row, 1, 1, PUBLIC_CFG_COLS.length).setNumberFormat('@').setValues([entry]);
+      } else {
+        var nr = Math.max(sheet.getLastRow() + 1, 2);
+        sheet.getRange(nr, 1, 1, PUBLIC_CFG_COLS.length).setNumberFormat('@').setValues([entry]);
+        cfgRows.push({ row: nr, week: week, group: p.group }); // 같은 요청 안의 중복 그룹 방지
+      }
+      saved++;
+    });
+    delRows.sort(function(x, y) { return y - x; }).forEach(function(rw) { sheet.deleteRow(rw); });
+    SpreadsheetApp.flush();
+    return ok({ week: week, saved: saved, reset: reset });
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+// body: { week, confirmed: true|false, adminToken }
+//  - 확정: 보고서가 정확히 1건뿐인데 아직 선택이 없는 조는 "자동" 선택으로 기록한 뒤 잠금
+//  - 확정해제: 잠금만 해제 (선택 내용은 유지)
+function confirmPublicWeek(body) {
+  body = body || {};
+  var week = pubWeekKey(body.week);
+  if (!week) return err('week 필요');
+  var jos = (body.jos || []).map(function(j) { return String(j).trim(); }).filter(function(j) { return j && j !== '12'; });
+  if (!jos.length) return err('jos(확정할 조 목록) 필요');
+  var lock = LockService.getScriptLock();
+  lock.waitLock(20000);
+  try {
+    var sheet = ensurePublicSheet();
+    var rows = readPublicRows(sheet);
+
+    if (body.confirmed === false || body.confirmed === 'false') {
+      var del = rows.filter(function(r) { return r.jo === PUBLIC_LOCK && r.week === week && jos.indexOf(r.doc) >= 0; })
+        .map(function(r) { return r.row; }).sort(function(x, y) { return y - x; });
+      del.forEach(function(rw) { sheet.deleteRow(rw); });
+      SpreadsheetApp.flush();
+      return ok({ week: week, confirmed: false, jos: jos, released: del.length });
+    }
+
+    var map = reportDocsByWeekJo();
+    var weekDocs = map[week] || {};
+    var added = 0, locked = 0;
+    var by = String(body.by || '관리자'), role = String(body.role || 'admin');
+    jos.forEach(function(jo) {
+      var docs = Object.keys(weekDocs[jo] || {});
+      var has = rows.some(function(r) { return r.week === week && r.jo === jo; });
+      if (docs.length === 1 && !has) {
+        var nr = Math.max(sheet.getLastRow() + 1, 2);
+        sheet.getRange(nr, 1, 1, PUBLIC_COLS.length).setNumberFormat('@')
+          .setValues([[week, jo, docs[0], weekDocs[jo][docs[0]], '자동', '', '자동', nowKST()]]);
+        added++;
+      }
+      if (!isPublicLocked(rows, week, jo)) {
+        var nr2 = Math.max(sheet.getLastRow() + 1, 2);
+        sheet.getRange(nr2, 1, 1, PUBLIC_COLS.length).setNumberFormat('@')
+          .setValues([[week, PUBLIC_LOCK, jo, '', by, role, '확정', nowKST()]]);
+        locked++;
+      }
+    });
+    SpreadsheetApp.flush();
+    return ok({ week: week, confirmed: true, jos: jos, autoAdded: added, locked: locked });
+  } finally {
+    lock.releaseLock();
+  }
 }
 
 // ── 유틸: 시트 수동 생성 트리거 ─────────────────────────────
