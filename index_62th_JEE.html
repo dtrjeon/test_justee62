@@ -2600,7 +2600,7 @@ pre.code-block {
   });
 })();
 
-const APP_VERSION  = 'index v2026.10.19-3';
+const APP_VERSION  = 'index v2026.10.20-1';
 const LS_SEQ       = 'report_seq_counter';
 const LS_JO        = 'report_jo_data';
 const LS_SUBMITTED = 'report_submitted';
@@ -7206,6 +7206,8 @@ function renderHistory(records, src, preserveFilter) {
 // 기록 카드의 "✦ 풀복음 완료" 줄 — 풀복음은 1명만, 풀복음일은 전도일과 같아야 정상.
 // gospel_date 형식: "이름:YYYY-MM-DD|이름:YYYY-MM-DD"
 function gospelDateRowHtml(r) {
+  // 풀복음 표기는 관계(팀) 전도에만 해당
+  if (String(r.evang_type || r['전도유형'] || '').trim() !== '관계(팀)') return '';
   var raw = String(r.gospel_date || '').trim();
   var base0 = 'display:inline-block;font-size:11px;font-weight:700;border-radius:20px;padding:2px 9px;margin:6px 5px 0 0;';
   if (!raw) {
