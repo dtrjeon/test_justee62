@@ -2600,7 +2600,7 @@ pre.code-block {
   });
 })();
 
-const APP_VERSION  = 'index v2026.10.21-10';
+const APP_VERSION  = 'index v2026.10.21-11';
 const LS_SEQ       = 'report_seq_counter';
 const LS_JO        = 'report_jo_data';
 const LS_SUBMITTED = 'report_submitted';
@@ -5987,11 +5987,25 @@ function getAdminToken() {
 // 관리자 인증 해제 — 일반 조원/그룹장 화면(본인 조·그룹만 조회)으로 되돌아감
 // 오른쪽 위 🔑 버튼: 인증 전 = 비밀번호 입력창, 인증 후 = 관리자 메뉴
 // 그룹장·부그룹장 비밀번호 인증(공개보고 설정·확정용) 상태/해제
+// 인증은 인증한 '내 조 설정'(이름·그룹)에 묶인다 — 다른 사람으로 바꾸면 인증은 풀린다.
+function pubGroupAuthWho() {
+  try {
+    var p = getPreset();
+    return (p && p.name) ? (p.scope || '') + '|' + (p.group || '') + '|' + p.name : '';
+  } catch (e) { return ''; }
+}
 function pubGroupAuthActive() {
-  try { return sessionStorage.getItem('pub_cfg_pw_ok') === '1'; } catch (e) { return false; }
+  try {
+    if (sessionStorage.getItem('pub_cfg_pw_ok') !== '1') return false;
+    var who = pubGroupAuthWho();
+    if (who && sessionStorage.getItem('pub_cfg_pw_who') === who) return true;
+    // 인증한 사람과 현재 설정이 다르면 인증 해제
+    sessionStorage.removeItem('pub_cfg_pw_ok'); sessionStorage.removeItem('pub_cfg_pw'); sessionStorage.removeItem('pub_cfg_pw_who');
+    return false;
+  } catch (e) { return false; }
 }
 function pubGroupAuthRelease() {
-  try { sessionStorage.removeItem('pub_cfg_pw_ok'); sessionStorage.removeItem('pub_cfg_pw'); } catch (e) {}
+  try { sessionStorage.removeItem('pub_cfg_pw_ok'); sessionStorage.removeItem('pub_cfg_pw'); sessionStorage.removeItem('pub_cfg_pw_who'); } catch (e) {}
   showStatus('🔓 그룹장 인증이 해제되었습니다.', 'info');
   updatePresetIndicator();
 }
@@ -6055,7 +6069,7 @@ function onAdminLogout(skipConfirm) {
   localStorage.removeItem('index_edit_at');
   localStorage.removeItem('index_monitor_verified');
   localStorage.removeItem('index_admin_remember');
-  try { sessionStorage.removeItem('pub_cfg_pw_ok'); sessionStorage.removeItem('pub_cfg_pw'); } catch (e) {} // 그룹장 인증도 함께 해제
+  try { sessionStorage.removeItem('pub_cfg_pw_ok'); sessionStorage.removeItem('pub_cfg_pw'); sessionStorage.removeItem('pub_cfg_pw_who'); } catch (e) {} // 그룹장 인증도 함께 해제
   showStatus('🔓 관리자 인증이 해제되었습니다.', 'info');
   updatePresetIndicator(); // 칩의 🔑 제거
   updateEditLockState(); updateDeleteBtn();
@@ -6691,7 +6705,7 @@ function pubAskPw() {
   });
 }
 function pubCfgStoredPw() {
-  try { return sessionStorage.getItem('pub_cfg_pw') || ''; } catch (e) { return ''; }
+  try { return pubGroupAuthActive() ? (sessionStorage.getItem('pub_cfg_pw') || '') : ''; } catch (e) { return ''; }
 }
 async function pubCfgAuth() {
   // 스탭(수정 권한: 총무·서기 등)은 🔑 인증(관리자/편집)이 되어 있어야 한다 — 안 되어 있으면 인증창을 연다
@@ -6701,9 +6715,9 @@ async function pubCfgAuth() {
     return false;
   }
   if (!pubCfgNeedsPw()) return true;
-  try { if (sessionStorage.getItem('pub_cfg_pw_ok') === '1' && sessionStorage.getItem('pub_cfg_pw')) return true; } catch (e) {}
+  if (pubGroupAuthActive() && pubCfgStoredPw()) return true;
   var ok = await pubAskPw();
-  if (ok) { try { sessionStorage.setItem('pub_cfg_pw_ok', '1'); sessionStorage.setItem('pub_cfg_pw', PUB_CFG_GROUP_PW); } catch (e) {} updatePresetIndicator(); }
+  if (ok) { try { sessionStorage.setItem('pub_cfg_pw_ok', '1'); sessionStorage.setItem('pub_cfg_pw', PUB_CFG_GROUP_PW); sessionStorage.setItem('pub_cfg_pw_who', pubGroupAuthWho()); } catch (e) {} updatePresetIndicator(); }
   else showStatus('비밀번호 인증이 필요합니다.', 'warn');
   return ok;
 }
