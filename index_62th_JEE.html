@@ -2600,7 +2600,7 @@ pre.code-block {
   });
 })();
 
-const APP_VERSION  = 'index v2026.10.21-6';
+const APP_VERSION  = 'index v2026.10.21-7';
 const LS_SEQ       = 'report_seq_counter';
 const LS_JO        = 'report_jo_data';
 const LS_SUBMITTED = 'report_submitted';
@@ -6676,6 +6676,12 @@ function pubCfgStoredPw() {
   try { return sessionStorage.getItem('pub_cfg_pw') || ''; } catch (e) { return ''; }
 }
 async function pubCfgAuth() {
+  // 스탭(수정 권한: 총무·서기 등)은 🔑 인증(관리자/편집)이 되어 있어야 한다 — 안 되어 있으면 인증창을 연다
+  if (amStaffEditor() && !isAdminUser() && !getEditToken()) {
+    showStatus('🔑 인증이 필요합니다. 비밀번호를 입력해 인증한 뒤 다시 눌러 주세요.', 'warn');
+    if (typeof openAdminAuth === 'function') openAdminAuth();
+    return false;
+  }
   if (!pubCfgNeedsPw()) return true;
   try { if (sessionStorage.getItem('pub_cfg_pw_ok') === '1' && sessionStorage.getItem('pub_cfg_pw')) return true; } catch (e) {}
   var ok = await pubAskPw();
