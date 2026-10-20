@@ -1167,7 +1167,7 @@ tr:last-child td {
 </style>
 </head>
 <body>
-<div style="position:fixed;top:2px;left:4px;font-size:9px;color:rgba(255,255,255,0.35);z-index:99999;pointer-events:none;font-family:monospace;letter-spacing:.3px;">v2026.10.10-8</div>
+<div style="position:fixed;top:2px;left:4px;font-size:9px;color:rgba(255,255,255,0.35);z-index:99999;pointer-events:none;font-family:monospace;letter-spacing:.3px;" id="admin-ver-corner"></div>
 <script>
 // ── 테스트 모드 데이터 ──────────────────────────────────────────────────────
 // 테스트 모드 ON: window.TEST_MODE = true
@@ -2166,7 +2166,8 @@ window.TEST_DATA = {"records": [{"저장일시": "2026-03-14", "주차": 3, "전
 // ── 빈 값 표시용 옅은 회색 대시 ─────────────────────────────────────────────
 var DASH = '<span style="color:#c8ccd6;">-</span>';
 // ── 조 구성 데이터 ─────────────────────────────────────────────────────────
-const ADMIN_VERSION = 'admin v2026.10.21-8';
+const ADMIN_VERSION = 'admin v2026.10.21-9';
+(function() { var vc = document.getElementById('admin-ver-corner'); if (vc) vc.textContent = ADMIN_VERSION.replace('admin ', ''); })();
 const GAS_EXPECTED_VERSION = 'gas v2026.10.21-2'; // Code.gs가 바뀔 때만 올림
 // 하드코딩 기준 데이터 (step 복원용)
 const HARDCODED_MEMBERS = [{
@@ -6673,6 +6674,8 @@ function buildGospelTypeChecks() {
 // ── 설정 모달 ────────────────────────────────────────────────────────────────
 function openSettings() {
   // 버전 표시
+  var vc = document.getElementById('admin-ver-corner');
+  if (vc) vc.textContent = ADMIN_VERSION.replace('admin ', '');
   var va = document.getElementById('ver-admin');
   if (va) va.textContent = ADMIN_VERSION;
   document.getElementById('set-url').value = CFG.url;
@@ -6738,7 +6741,7 @@ function checkAllVersions() {
   }
 
   // ── Index 버전 확인 — index.html 직접 fetch ────────────────
-  var INDEX_URL = 'https://dtrjeon.github.io/test_justee62/index.html';
+  var INDEX_URL = 'https://dtrjeon.github.io/test_justee62/index_62th_JEE.html'; // index.html은 이동용 페이지라 버전이 없다 — 실제 보고서 앱 파일을 읽는다
   fetch(INDEX_URL, { cache: 'no-cache' })
     .then(function(r) { return r.text(); })
     .then(function(html) {
