@@ -26,12 +26,22 @@ var MONITOR_PW = '9191';
 // 공개보고 대상 설정/보고조 선정·변경 전용 비밀번호 (그룹장·부그룹장용).
 // set_public_config 요청이 그룹장 신분(byRole='group')으로 오면 body.groupPw가 이 값과 같아야 한다.
 // (MONITOR_PW와 값이 같아도 서로 독립적으로 바꿀 수 있다)
+// ※ 이 값은 '초기값(기본값)'이다. admin 설정 화면에서 비밀번호를 바꾸면 Script Properties(코드 밖)에 저장되고
+//    그 값이 우선 적용된다. 한 번 바꾼 뒤에는 이 코드값은 사용되지 않는다.
 var GROUP_CFG_PW = '5600';
+var GROUP_PW_PROP = 'GROUP_CFG_PW';
+function getGroupCfgPw() {
+  try {
+    var v = PropertiesService.getScriptProperties().getProperty(GROUP_PW_PROP);
+    if (v) return String(v);
+  } catch (e) {}
+  return GROUP_CFG_PW;
+}
 // 공개보고 대상 설정·그룹 확정 요청을 해도 되는지 — admin/editor 토큰 또는 그룹장 비밀번호
 function canManagePublicWeek(body) {
   var lvl = getTokenLevel(body && body.adminToken) || getTokenLevel(body && body.authToken) || '';
   if (lvl === 'admin' || lvl === 'editor') return true;
-  return String(body && body.byRole || '') === 'group' && String(body && body.groupPw || '') === GROUP_CFG_PW;
+  return String(body && body.byRole || '') === 'group' && String(body && body.groupPw || '') === getGroupCfgPw();
 }
 // 문서 삭제 전용 비밀번호 (예: 반장용). 이 비밀번호로 인증하면 '문서 삭제'만 가능하고
 // 관리자 기능(조정보·그룹설정·최대 보고 수 변경 등)은 열리지 않는다. 비어 있으면 사용하지 않는다.
@@ -279,6 +289,29 @@ function doPost(e) {
       } else {
         return err('비밀번호가 올바르지 않습니다');
       }
+    }
+
+    // ── 그룹장·부그룹장 비밀번호 확인 (index 인증창용) ─────────────
+    if (action === 'verify_group_pw') {
+      if (String(body.password || '') === getGroupCfgPw()) return ok({ verified: true });
+      return err('비밀번호가 올바르지 않습니다');
+    }
+    // ── 그룹장·부그룹장 비밀번호 변경 (admin 전용) ────────────────
+    if (action === 'set_group_pw') {
+      var gpErr = requireAdminToken(body);
+      if (gpErr) return gpErr;
+      var np = String(body.newPassword || '').trim();
+      if (np.length < 4 || np.length > 20 || /\s/.test(np)) return err('비밀번호는 공백 없이 4~20자로 입력해 주세요.');
+      PropertiesService.getScriptProperties().setProperty(GROUP_PW_PROP, np);
+      return ok({ changed: true });
+    }
+    // 서버에 변경된 비밀번호가 저장돼 있는지 (값은 알려주지 않음) — admin 전용
+    if (action === 'group_pw_status') {
+      var gsErr = requireAdminToken(body);
+      if (gsErr) return gsErr;
+      var cust = false;
+      try { cust = !!PropertiesService.getScriptProperties().getProperty(GROUP_PW_PROP); } catch (e2) {}
+      return ok({ custom: cust });
     }
 
     // ── 보고서 제출 ──────────────────────────────────────────

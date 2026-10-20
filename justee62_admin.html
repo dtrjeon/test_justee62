@@ -2093,6 +2093,17 @@ window.TEST_DATA = {"records": [{"저장일시": "2026-03-14", "주차": 3, "전
       <button class="modal-btn" style="flex:1;font-size:11px;" onclick="loadGroupSettings()">☁️ 서버에서 불러오기</button>
     </div>
     <div id="group-sync-status" style="font-size:10px;color:var(--text3);margin-top:4px;"></div>
+
+    <!-- 그룹장·부그룹장 비밀번호 (공개보고 대상설정·그룹확정용) — 서버(Script Properties)에 저장, admin 전용 -->
+    <div style="margin-top:10px;padding:8px;background:#f4f7ff;border:1px solid rgba(32,80,200,0.2);border-radius:8px;">
+      <div style="font-size:11px;font-weight:800;color:#1a3ab0;margin-bottom:2px;">🔑 그룹장·부그룹장 비밀번호</div>
+      <div style="font-size:9px;color:#777;line-height:1.5;margin-bottom:6px;">공개보고 대상 설정·그룹 확정/해제에 쓰는 비밀번호입니다. 관리자(admin) 인증 후 변경할 수 있고, 현재 값은 표시되지 않습니다.</div>
+      <div style="display:flex;gap:6px;">
+        <input type="password" id="set-group-pw" autocomplete="new-password" placeholder="새 비밀번호 (4~20자)" style="flex:1;min-width:0;padding:7px;border:1px solid rgba(0,0,20,0.18);border-radius:6px;font-size:16px;">
+        <button class="modal-btn" type="button" style="font-size:11px;white-space:nowrap;" onclick="saveGroupPw()">변경</button>
+      </div>
+      <div id="group-pw-status" style="font-size:10px;color:var(--text3);margin-top:4px;"></div>
+    </div>
     <div style="font-size:9px;color:#aaa;margin-top:4px;line-height:1.6;">
       ※ 이메일 여러 개는 쉼표로 구분 &nbsp;|&nbsp; 구글 시트 <b>그룹설정</b> 탭에 자동 저장됩니다.
     </div>
@@ -2166,7 +2177,7 @@ window.TEST_DATA = {"records": [{"저장일시": "2026-03-14", "주차": 3, "전
 // ── 빈 값 표시용 옅은 회색 대시 ─────────────────────────────────────────────
 var DASH = '<span style="color:#c8ccd6;">-</span>';
 // ── 조 구성 데이터 ─────────────────────────────────────────────────────────
-const ADMIN_VERSION = 'admin v2026.10.21-13';
+const ADMIN_VERSION = 'admin v2026.10.21-14';
 (function() { var vc = document.getElementById('admin-ver-corner'); if (vc) vc.textContent = ADMIN_VERSION.replace('admin ', ''); })();
 const GAS_EXPECTED_VERSION = 'gas v2026.10.21-3'; // Code.gs가 바뀔 때만 올림
 // 하드코딩 기준 데이터 (step 복원용)
@@ -7341,6 +7352,31 @@ function cycleJoGroup(el, jo) {
       if (grpInput) grpInput.value = next;
     }
   });
+}
+
+// 그룹장·부그룹장 비밀번호 변경 — 서버가 admin 토큰을 확인한다(Code.gs set_group_pw)
+async function saveGroupPw() {
+  var st = document.getElementById('group-pw-status');
+  function say(t, c) { if (st) { st.textContent = t; st.style.color = c || 'var(--text3)'; } }
+  if (!isAdminLevel()) { say('🔒 관리자(admin) 인증 후 변경할 수 있습니다.', 'var(--red)'); return; }
+  if (!CFG.url) { say('⚠️ 위쪽에서 서버(GAS) 주소를 먼저 설정해 주세요.', 'var(--red)'); return; }
+  var inp = document.getElementById('set-group-pw');
+  var pw = (inp.value || '').trim();
+  if (pw.length < 4 || pw.length > 20 || /\s/.test(pw)) { say('비밀번호는 공백 없이 4~20자로 입력해 주세요.', 'var(--red)'); return; }
+  if (!confirm('그룹장·부그룹장 비밀번호를 변경합니다.\n변경 후에는 새 비밀번호로만 인증됩니다.\n계속할까요?')) return;
+  say('저장 중…');
+  try {
+    var res = await fetch(CFG.url, { method: 'POST', headers: { 'Content-Type': 'text/plain' },
+      body: JSON.stringify({ action: 'set_group_pw', newPassword: pw, adminToken: getAdminToken() }) });
+    var json = await res.json();
+    if (json.status === 'ok') {
+      inp.value = '';
+      say('✅ 변경되었습니다. 새 비밀번호를 그룹장·부그룹장에게 알려 주세요.', 'var(--green)');
+      showToast('✅ 그룹장 비밀번호 변경 완료');
+    } else {
+      say('❌ ' + (json.message || '변경 실패') + (String(json.message || '').indexOf('알 수 없는 action') > -1 ? ' (Code.gs 재배포가 필요합니다)' : ''), 'var(--red)');
+    }
+  } catch (e) { say('❌ 서버 연결 실패: ' + e.message, 'var(--red)'); }
 }
 
 function saveSettings() {
