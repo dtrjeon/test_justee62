@@ -2600,7 +2600,7 @@ pre.code-block {
   });
 })();
 
-const APP_VERSION  = 'index v2026.10.21-9';
+const APP_VERSION  = 'index v2026.10.21-10';
 const LS_SEQ       = 'report_seq_counter';
 const LS_JO        = 'report_jo_data';
 const LS_SUBMITTED = 'report_submitted';
@@ -6931,14 +6931,20 @@ async function pubToggleConfirm(group) {
   var week = wsel ? wsel.value : '';
   if (!week) return;
   var cands = pubCandWeeks(week);
-  var jos = [], pend = [];
+  var jos = [], pend = [], unselected = [];
   var allJos = pubGroupJos(group);
   var repJos = group ? pubReportJos(week, group) : allJos;
   repJos.forEach(function(jo) {
     jos.push(jo);
     var st = pubState(week, jo, pubDocsFor(cands, jo));
     if (st.kind === 'pending' || st.kind === 'missing') pend.push(jo + '조');
+    if (st.kind === 'pending') unselected.push(jo + '조'); // 보고서가 2건 이상인데 아직 1건도 선택하지 않은 조
   });
+  // 확정(잠금)하려는 경우에만: 선택하지 않은 조가 있으면 막는다 (확정 해제는 그대로 가능)
+  if (unselected.length && !jos.every(function(jo) { return pubLocked(week, jo); })) {
+    showStatus('⚠️ 아직 보고서를 선택하지 않은 조가 있어 확정할 수 없습니다: ' + unselected.join(', ') + ' — 선택한 뒤 확정하세요.', 'warn');
+    return;
+  }
   if (!jos.length) { showStatus('이번 주 보고 조가 없어 확정할 수 없습니다. (⚙️에서 보고 조를 선택하세요)', 'warn'); return; }
   var c0 = group ? pubCfg(week, group) : null;
   if (c0 && jos.length < c0.count && !confirm('⚠️ 보고 조가 ' + c0.count + '개로 설정되었는데 ' + jos.length + '개만 선정되어 있습니다.\n그래도 확정할까요?')) return;
