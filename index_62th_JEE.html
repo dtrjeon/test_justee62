@@ -1971,15 +1971,16 @@ pre.code-block {
         </tr></thead>
         <tbody><tr>
           <td class="stats-td-1"><input type="number" inputmode="numeric" pattern="[0-9]*" min="0" id="t_contact" value="1" oninput="syncPreview()"></td>
-          <td class="stats-td-2"><input type="number" inputmode="numeric" pattern="[0-9]*" min="0" id="t_gospel" value="1" oninput="syncPreview()"></td>
+          <td class="stats-td-2"><input type="number" inputmode="numeric" pattern="[0-9]*" min="0" id="t_gospel" value="1" oninput="syncPreview();statSumCheck(true)"></td>
           <td class="stats-td-2"><input type="number" inputmode="numeric" pattern="[0-9]*" min="0" id="t_target" value="1" oninput="syncPreview()"></td>
-          <td class="stats-td-3"><input type="number" inputmode="numeric" pattern="[0-9]*" min="0" id="t_decision" placeholder="0" oninput="syncPreview()"></td>
-          <td class="stats-td-3"><input type="number" inputmode="numeric" pattern="[0-9]*" min="0" id="t_reject" placeholder="0" oninput="syncPreview()"></td>
-          <td class="stats-td-3"><input type="number" inputmode="numeric" pattern="[0-9]*" min="0" id="t_confirm" placeholder="0" oninput="syncPreview()"></td>
-          <td class="stats-td-3"><input type="number" inputmode="numeric" pattern="[0-9]*" min="0" id="t_believer" placeholder="0" oninput="syncPreview()"></td>
+          <td class="stats-td-3"><input type="number" inputmode="numeric" pattern="[0-9]*" min="0" id="t_decision" placeholder="0" oninput="syncPreview();statSumCheck(true)"></td>
+          <td class="stats-td-3"><input type="number" inputmode="numeric" pattern="[0-9]*" min="0" id="t_reject" placeholder="0" oninput="syncPreview();statSumCheck(true)"></td>
+          <td class="stats-td-3"><input type="number" inputmode="numeric" pattern="[0-9]*" min="0" id="t_confirm" placeholder="0" oninput="syncPreview();statSumCheck(true)"></td>
+          <td class="stats-td-3"><input type="number" inputmode="numeric" pattern="[0-9]*" min="0" id="t_believer" placeholder="0" oninput="syncPreview();statSumCheck(true)"></td>
         </tr></tbody>
       </table>
     </div>
+    <div id="stat-sum-warn" style="display:none;margin-top:6px;background:#fdecea;border:1px solid rgba(192,0,0,0.25);border-radius:8px;padding:7px 10px;font-size:12px;font-weight:700;color:#c0392b;line-height:1.5;"></div>
     <p class="note-small" style="color:#777;margin-top:2px;">※ 접촉자횟수는 현장전도시 질문지전도 설문용지(앞/뒷면)를 설명한 횟수를 포함합니다. / 복음제시결과는 자동등록됩니다.</p>
     <div id="cond8-section" style="display:none;margin-top:14px;margin-bottom:14px;"><div class="sec-lbl">8. 역할 배분 <span style="font-weight:400;color:rgba(32,80,200,0.4);text-transform:none;letter-spacing:0;">(그 외 대답)</span></div>
       <div id="role-debug-badge" style="font-size:9px;color:rgba(32,80,200,0.5);margin-bottom:6px;letter-spacing:0;"></div>
@@ -2600,7 +2601,7 @@ pre.code-block {
   });
 })();
 
-const APP_VERSION  = 'index v2026.10.21-21';
+const APP_VERSION  = 'index v2026.10.22-1';
 const LS_SEQ       = 'report_seq_counter';
 const LS_JO        = 'report_jo_data';
 const LS_SUBMITTED = 'report_submitted';
@@ -5499,6 +5500,8 @@ async function handleSubmit() {
     showStatus(statsWarn.split('\n')[0] + ' — 수치를 확인 후 다시 제출하세요.', 'warn');
     return;
   }
+  var sumWarn = statSumProblem(true);
+  if (sumWarn && !confirm(sumWarn + '\n\n그래도 제출하시겠습니까?')) return;
   if (checkGospelDateBeforeSave()) return;
   await submitServer();
 }
@@ -7669,7 +7672,26 @@ function resetForm() {
 
 // 임상(A4) 양식 삭제로 내부 로직은 제거됨 — 폼 전반의 다른 이벤트 핸들러들이
 // 여전히 이 함수를 호출하므로(오류 방지를 위해) 빈 함수로 유지
+// 통계 합계 점검: 결신 + 보류/거절 + 확신 + 이미신자 = 복음제시 (7일후(팀)은 통계가 항상 0이라 제외)
+function statSumProblem(strict) {
+  if (v('evang_type') === '7일후(팀)') return '';
+  function n(id) { var x = parseInt((document.getElementById(id) || {}).value, 10); return isNaN(x) ? 0 : x; }
+  var g = n('t_gospel'), d = n('t_decision'), r = n('t_reject'), c = n('t_confirm'), b = n('t_believer');
+  var sum = d + r + c + b;
+  if (sum === g) return '';
+  if (!strict && sum === 0) return ''; // 아직 결과가 반영되기 전(입력 중)에는 알리지 않는다
+  return '⚠️ 통계가 맞지 않습니다: 결신 ' + d + ' + 보류/거절 ' + r + ' + 확신 ' + c + ' + 이미신자 ' + b + ' = ' + sum + '명, 복음제시는 ' + g + '명입니다. (합계가 복음제시와 같아야 합니다)';
+}
+function statSumCheck(fromUser) {
+  var el = document.getElementById('stat-sum-warn');
+  var msg = statSumProblem(false);
+  if (el) { el.style.display = msg ? 'block' : 'none'; el.textContent = msg; }
+  if (msg && fromUser) showStatus(msg, 'warn');
+  return msg;
+}
+
 function syncPreview() {
+  try { statSumCheck(false); } catch (e) {}
   // 7일후(팀): 결과는 최종결과와 동일하게 저장하되, 통계(복음제시·결신·보류/거절·확신·이미신자)는 항상 0
   if (v('evang_type') === '7일후(팀)') {
     ['t_gospel', 't_decision', 't_reject', 't_confirm', 't_believer'].forEach(function(id) {
