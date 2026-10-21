@@ -1774,6 +1774,7 @@ pre.code-block {
       </div>
       <div class="fld">
         <div class="lbl">복음제시</div>
+        <div style="position:relative;">
         <select id="evang_type" onchange="onEvangTypeChange()" style="width:100%;height:44px;font-size:13px;padding:0 4px;">
           <option value="">구분 선택</option>
           <option value="관계(팀)">관계(팀)</option>
@@ -1783,14 +1784,14 @@ pre.code-block {
           <option value="관계">관계</option>
           <option value="QQ">QQ</option>
         </select>
+        <div onclick="openEvangPicker()" style="position:absolute;inset:0;cursor:pointer;"></div>
+        </div>
       </div>
       <div class="fld">
         <div class="lbl">횟수</div>
         <input type="number" inputmode="numeric" pattern="[0-9]*" min="0" id="evang_count" placeholder="0" oninput="autoDocNumber();syncPreview()" style="width:100%;text-align:center;height:44px;font-size:16px;padding:0 4px;">
       </div>
     </div>
-    <!-- 복음제시 구분 설명 (관계 / 개인 선택 시 회색 안내) -->
-    <div id="evang_type_hint" style="display:none;margin:-4px 0 10px;font-size:12px;color:#8a8a8a;line-height:1.4;"></div>
     <!-- 개인전도 시 조원 선택 -->
     <div id="personal-member-wrap" style="display:none;margin-bottom:10px;">
       <select id="personal_member" onchange="onPersonalMemberChange()" style="width:100%;background:#fff;border:1px solid rgba(32,80,200,0.3);border-radius:6px;padding:9px 10px;font-size:16px;color:#0f1428;outline:none;background:#f0f6ff;">
@@ -2929,7 +2930,6 @@ function applyFormData(r) {
     if (dateEl) dateEl.value = r.date;
   }
 
-  updateEvangTypeHint();
   // 17. 7일후(팀) 자동설정 — 모든 필드 복원 후 마지막에 적용
   _pre7ilhu = null; // 불러오기 시에는 스냅샷 복원 차단
   if (r.evang_type === '7일후(팀)') {
@@ -4169,22 +4169,68 @@ function autoWeekFromDate() {
   }
 }
 
-// 복음제시 구분 설명문구 (회색) — 관계 / 개인 선택 시 표시
-var EVANG_TYPE_HINTS = {
-  '관계': '관계 : 조원 중 1명이 불참인 경우',
-  '개인': '개인 : 개인전도 (조원 중 2명이 불참인 경우)'
-};
-function updateEvangTypeHint() {
-  var el = document.getElementById('evang_type_hint');
+// 복음제시 구분 선택 팝업 — 관계 / 개인에 회색 설명문구 표시
+var EVANG_TYPE_ITEMS = [
+  { v: '', t: '구분 선택' },
+  { v: '관계(팀)', t: '관계(팀)' },
+  { v: '질문지(팀)', t: '질문지(팀)' },
+  { v: '7일후(팀)', t: '7일후(팀)' },
+  { v: '개인', t: '개인', d: '개인전도 (조원 중 2명이 불참인 경우)' },
+  { v: '관계', t: '관계', d: '조원 중 1명이 불참인 경우' },
+  { v: 'QQ', t: 'QQ' }
+];
+function openEvangPicker() {
   var sel = document.getElementById('evang_type');
-  if (!el || !sel) return;
-  var t = EVANG_TYPE_HINTS[sel.value] || '';
-  el.textContent = t;
-  el.style.display = t ? 'block' : 'none';
+  if (!sel || document.getElementById('evang-picker')) return;
+  var cur = sel.value;
+  var ov = document.createElement('div');
+  ov.id = 'evang-picker';
+  ov.style.cssText = 'position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,0.45);display:flex;align-items:center;justify-content:center;padding:16px;';
+  var box = document.createElement('div');
+  box.style.cssText = 'background:#fafafa;border-radius:24px;width:100%;max-width:420px;max-height:90vh;overflow-y:auto;padding:12px 0 8px;';
+  EVANG_TYPE_ITEMS.forEach(function (it) {
+    var row = document.createElement('div');
+    row.style.cssText = 'display:flex;align-items:center;gap:16px;padding:14px 24px;cursor:pointer;';
+    var dot = document.createElement('span');
+    var on = (it.v === cur);
+    dot.style.cssText = 'flex:none;width:22px;height:22px;border-radius:50%;box-sizing:border-box;border:2px solid ' + (on ? '#4db6d6' : '#8a8a8a') + ';' + (on ? 'background:radial-gradient(#4db6d6 0 45%,transparent 50%);' : '');
+    var txt = document.createElement('div');
+    var main = document.createElement('div');
+    main.style.cssText = 'font-size:17px;color:#111;';
+    main.textContent = it.t;
+    txt.appendChild(main);
+    if (it.d) {
+      var sub = document.createElement('div');
+      sub.style.cssText = 'font-size:12px;color:#8a8a8a;margin-top:2px;line-height:1.35;';
+      sub.textContent = it.d;
+      txt.appendChild(sub);
+    }
+    row.appendChild(dot);
+    row.appendChild(txt);
+    row.onclick = function () {
+      closeEvangPicker();
+      if (sel.value !== it.v) {
+        sel.value = it.v;
+        sel.dispatchEvent(new Event('change', { bubbles: true }));
+      }
+    };
+    box.appendChild(row);
+  });
+  var done = document.createElement('div');
+  done.textContent = '닫기';
+  done.style.cssText = 'text-align:center;font-weight:700;font-size:16px;padding:16px;cursor:pointer;';
+  done.onclick = closeEvangPicker;
+  box.appendChild(done);
+  ov.appendChild(box);
+  ov.addEventListener('click', function (e) { if (e.target === ov) closeEvangPicker(); });
+  document.body.appendChild(ov);
+}
+function closeEvangPicker() {
+  var ov = document.getElementById('evang-picker');
+  if (ov) ov.remove();
 }
 
 function onEvangTypeChange() {
-  updateEvangTypeHint();
   var type = v('evang_type');
   var wrap = document.getElementById('personal-member-wrap');
   // 전도자 선택(조원): 개인만 표시
