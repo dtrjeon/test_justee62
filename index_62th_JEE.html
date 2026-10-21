@@ -1789,6 +1789,8 @@ pre.code-block {
         <input type="number" inputmode="numeric" pattern="[0-9]*" min="0" id="evang_count" placeholder="0" oninput="autoDocNumber();syncPreview()" style="width:100%;text-align:center;height:44px;font-size:16px;padding:0 4px;">
       </div>
     </div>
+    <!-- 복음제시 구분 설명 (관계 / 개인 선택 시 회색 안내) -->
+    <div id="evang_type_hint" style="display:none;margin:-4px 0 10px;font-size:12px;color:#8a8a8a;line-height:1.4;"></div>
     <!-- 개인전도 시 조원 선택 -->
     <div id="personal-member-wrap" style="display:none;margin-bottom:10px;">
       <select id="personal_member" onchange="onPersonalMemberChange()" style="width:100%;background:#fff;border:1px solid rgba(32,80,200,0.3);border-radius:6px;padding:9px 10px;font-size:16px;color:#0f1428;outline:none;background:#f0f6ff;">
@@ -2927,6 +2929,7 @@ function applyFormData(r) {
     if (dateEl) dateEl.value = r.date;
   }
 
+  updateEvangTypeHint();
   // 17. 7일후(팀) 자동설정 — 모든 필드 복원 후 마지막에 적용
   _pre7ilhu = null; // 불러오기 시에는 스냅샷 복원 차단
   if (r.evang_type === '7일후(팀)') {
@@ -4166,7 +4169,22 @@ function autoWeekFromDate() {
   }
 }
 
+// 복음제시 구분 설명문구 (회색) — 관계 / 개인 선택 시 표시
+var EVANG_TYPE_HINTS = {
+  '관계': '관계 : 조원 중 1명이 불참인 경우',
+  '개인': '개인 : 개인전도 (조원 중 2명이 불참인 경우)'
+};
+function updateEvangTypeHint() {
+  var el = document.getElementById('evang_type_hint');
+  var sel = document.getElementById('evang_type');
+  if (!el || !sel) return;
+  var t = EVANG_TYPE_HINTS[sel.value] || '';
+  el.textContent = t;
+  el.style.display = t ? 'block' : 'none';
+}
+
 function onEvangTypeChange() {
+  updateEvangTypeHint();
   var type = v('evang_type');
   var wrap = document.getElementById('personal-member-wrap');
   // 전도자 선택(조원): 개인만 표시
