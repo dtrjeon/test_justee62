@@ -252,7 +252,7 @@ function doGet(e) {
 
     // ── 버전 조회 ─────────────────────────────────────────────
     if (action === 'get_version') {
-      return ok({ version: 'gas v2026.10.21-4', gasVersion: 'gas v2026.10.21-4', updated: nowKST() });
+      return ok({ version: 'gas v2026.10.21-5', gasVersion: 'gas v2026.10.21-5', updated: nowKST() });
     }
 
     return err('알 수 없는 action: ' + action);
@@ -327,6 +327,9 @@ function doPost(e) {
     // ── 인적정보 사진 인식(Claude 비전 OCR) ──────────────────
     // (일반 조원 누구나 사용 가능한 기능이라 토큰 검증 대상이 아님 —
     //  보고서 폼을 채워주는 보조 기능일 뿐, 데이터를 직접 변경하지 않음)
+    if (action === 'ocrFullReport') {
+      return ocrFullReport(body.imageDataUrl, body.hintYear);
+    }
     if (action === 'ocrFieldInfo') {
       return ocrFieldInfo(body.imageDataUrl);
     }
@@ -1664,6 +1667,100 @@ function addMissingColumns() {
 //  ── 일반 조원 누구나 호출 가능한 보조 기능 — 폼을 채워줄 뿐 데이터를
 //     직접 저장/변경하지 않으므로 admin 토큰 검증 대상이 아님 ──
 // ============================================================
+// ─────────────────────────────────────────────────────────────
+//  ocrFullReport — 공개보고서 전체(이 앱이 만든 보고서 이미지 또는 일부 사진)를 Claude 비전으로 인식
+//  사진에 보이는 항목만 채우고 나머지는 빈 문자열("")로 돌려준다. (인적정보만 찍은 사진도 처리)
+// ─────────────────────────────────────────────────────────────
+function ocrFullReport(imageDataUrl, hintYear) {
+  var apiKey = PropertiesService.getScriptProperties().getProperty('ANTHROPIC_API_KEY');
+  if (!apiKey) {
+    return ok({ status: 'error', message: 'ANTHROPIC_API_KEY 스크립트 속성이 설정되지 않았습니다. 관리자에게 문의해주세요.' });
+  }
+  var m = String(imageDataUrl || '').match(/^data:(image\/[a-zA-Z0-9.+-]+);base64,(.+)$/);
+  if (!m) {
+    return ok({ status: 'error', message: '이미지 데이터 형식이 올바르지 않습니다.' });
+  }
+  var year = parseInt(hintYear, 10);
+  if (!year || year < 2000 || year > 2100) year = new Date().getFullYear();
+
+  var instruction =
+    '이 이미지는 한국 전도폭발훈련(EE) "공개보고서"(현장전도 보고서) 입니다. 앱이 만든 인쇄본 이미지이거나 손글씨/일부만 찍은 사진일 수 있습니다.\n' +
+    '보이는 내용을 읽어 아래 JSON 스키마로만 응답하세요. 설명, 코드블록 표시(```) 없이 JSON 객체 하나만 출력하세요.\n' +
+    '읽을 수 없거나 사진에 없는 항목은 빈 문자열("")(배열/객체 항목은 비움)로 두고, 절대로 추측해서 채우지 마세요.\n' +
+    '※ 이 보고서는 ' + year + '년에 작성되었습니다. 전도일 연도가 흐려서 헷갈리면 ' + year + '년으로 읽으세요.\n\n' +
+    '보고서 양식 안내:\n' +
+    '- 오른쪽 위 "< 62·7·관계·5 >" 는 문서번호(기수-조-유형-횟수, 개인전도는 62-조-개인-이름-횟수)입니다. 하이픈(-)으로 정리해서 적으세요. 예: 62-7-관계-5\n' +
+    '- 왼쪽 위 체크박스(관계/질문지/칠일후/개인/QQ) 중 체크된 것이 전도 유형입니다.\n' +
+    '- 전도일 표: 전도일(년 월 일 요일), 내용표(대상자, 복음제시, 결신, 보류/거절, 확신, 이미신자 숫자), 대상자 이름, 전화번호, 현장불참자, 접촉자 수(질문지).\n' +
+    '- 1. N조 / 기수 / 반 / 그룹  2. 훈련자(조장), 훈련자, 훈련생 이름\n' +
+    '- 3. ○○(거주지)에 사시는 ○○세 되신 ○혼의 ○자 분을 ○○(만난 장소)에서 만났습니다. 관계는 ○○(훈련자/조장 등)의 지인/지인가족 입니다.\n' +
+    '- 4. 종교 배경, 직업  5. 천국 확신(있었고/없었고), 이유 질문 대답(믿음/행위/불확실/대답안함), 진단\n' +
+    '- 6. 훈련생/훈련자/훈련자(조장) 각각 이름, 맡은 부분(간증, 서론, 은혜, 인간, 하나님, 그리스도, 믿음, 결신, 즉석양육 중), 제시하였고/참관하였고/불참하였고, 그리고 결과\n' +
+    '- 7. 즉석 양육(했고/안했고), 후속 양육(하지 못함/24시간 내외 전화/예배 참석 약속/7일 후 재 방문 약속/새가족반 연결 등), 못한 이유\n' +
+    '- 8. 현장실습에서 느낀점: (성령의 인도하심) 칸, (개선점) 칸  9. 기도제목\n\n' +
+    '스키마:\n' +
+    '{\n' +
+    '  "doc_number": "문서번호",\n' +
+    '  "type_checked": "관계|질문지|칠일후|개인|QQ 중 체크된 것",\n' +
+    '  "date": "YYYY-MM-DD",\n' +
+    '  "stat_target": "내용표 대상자 숫자", "stat_gospel": "복음제시", "stat_decision": "결신", "stat_reject": "보류/거절", "stat_confirm": "확신", "stat_believer": "이미신자",\n' +
+    '  "contact": "접촉자 수(질문지) 숫자만",\n' +
+    '  "name": "대상자 이름(별표로 가려져 있으면 보이는 그대로)",\n' +
+    '  "jo": "조 번호(숫자만)", "leader": "훈련자(조장) 이름", "trainer": "훈련자 이름", "trainee": "훈련생 이름",\n' +
+    '  "location": "거주지역(짧게)", "age": "나이(숫자만)", "gender": "여자 또는 남자", "marriage": "기혼 또는 미혼",\n' +
+    '  "meet_place": "만난 장소",\n' +
+    '  "relation_name": "관계 문장에 나온 사람 이름(역할 괄호 제외)",\n' +
+    '  "target_type": "지인/지인가족|가족|지구촌교인|질문지전도 대상자|7일후|훈련생 중 하나",\n' +
+    '  "religion": "기독교|천주교|불교|무교|이슬람|천부교|대순진리교|유교 중 하나 또는 그대로",\n' +
+    '  "job": "직업",\n' +
+    '  "heaven": "있었고 또는 없었고", "reason": "믿음|행위|불확실|대답안함 중 하나",\n' +
+    '  "diagnosis": "진단(이미신자|머리신자|확신부족신자|비신자|착각비신자 등)",\n' +
+    '  "roles": [ { "role": "훈련자(조장)|훈련자|훈련생", "name": "이름", "action": "제시하였고|참관하였고|불참하였고", "parts": ["간증","서론", ...] } ],\n' +
+    '  "result": "결과(이미신자|머리신자|결신|확신|보류/거부 등)",\n' +
+    '  "immed_nurture": "했고 또는 안했고", "followup": "후속양육 항목", "followup_reason": "못한 이유",\n' +
+    '  "q10": "(성령의 인도하심) 칸 내용 원문", "q11": "(개선점) 칸 내용 원문", "q12": "9. 기도제목 원문"\n' +
+    '}';
+
+  var payload = {
+    model: 'claude-sonnet-4-6',
+    max_tokens: 3000,
+    messages: [{
+      role: 'user',
+      content: [
+        { type: 'image', source: { type: 'base64', media_type: m[1], data: m[2] } },
+        { type: 'text', text: instruction }
+      ]
+    }]
+  };
+
+  var res;
+  try {
+    res = UrlFetchApp.fetch('https://api.anthropic.com/v1/messages', {
+      method: 'post',
+      contentType: 'application/json',
+      headers: { 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' },
+      payload: JSON.stringify(payload),
+      muteHttpExceptions: true
+    });
+  } catch (e) {
+    return ok({ status: 'error', message: '네트워크 오류: ' + e.message });
+  }
+  var code = res.getResponseCode();
+  var body;
+  try { body = JSON.parse(res.getContentText()); } catch (e) { return ok({ status: 'error', message: 'API 응답을 해석할 수 없습니다.' }); }
+  if (code !== 200) {
+    var apiMsg = (body.error && body.error.message) ? body.error.message : ('HTTP ' + code);
+    return ok({ status: 'error', message: 'Claude API 오류: ' + apiMsg });
+  }
+  var textBlock = null;
+  (body.content || []).forEach(function(block) { if (!textBlock && block.type === 'text') textBlock = block; });
+  if (!textBlock || !textBlock.text) return ok({ status: 'error', message: '인식 결과가 비어 있습니다.' });
+  var cleaned = textBlock.text.replace(/```json|```/g, '').trim();
+  var parsedFields;
+  try { parsedFields = JSON.parse(cleaned); } catch (e) { return ok({ status: 'error', message: '응답 형식을 해석하지 못했습니다.' }); }
+  return ok({ parsed: parsedFields });
+}
+
 function ocrFieldInfo(imageDataUrl) {
   var apiKey = PropertiesService.getScriptProperties().getProperty('ANTHROPIC_API_KEY');
   if (!apiKey) {
