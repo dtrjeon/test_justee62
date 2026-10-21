@@ -2601,7 +2601,7 @@ pre.code-block {
   });
 })();
 
-const APP_VERSION  = 'index v2026.10.22-1';
+const APP_VERSION='index v2026.10.22-2';
 const LS_SEQ       = 'report_seq_counter';
 const LS_JO        = 'report_jo_data';
 const LS_SUBMITTED = 'report_submitted';
@@ -5195,8 +5195,12 @@ function onTestimony6Change() {
       _lastSavedDiagResult = saved;
       // 7일후(팀)는 이미 지난주 결신 통계에 반영됐으므로 이번 방문은 중복 집계하지 않는다
       if (v('evang_type') !== '7일후(팀)') {
+        // 결신·보류/거절·확신은 비우고 이미신자만 1 (이전 선택 결과가 남아 중복 집계되지 않도록)
+        ['t_decision', 't_reject', 't_confirm'].forEach(function(id) {
+          var e = document.getElementById(id); if (e) e.value = '';
+        });
         var cntEl = document.getElementById('t_believer');
-        if (cntEl) cntEl.value = (parseInt(cntEl.value) || 0) + 1;
+        if (cntEl) cntEl.value = 1;
         showStatus('✅ 이미신자 통계에 반영되었습니다.', 'success');
       }
     }
@@ -5214,6 +5218,11 @@ function onTestimony6Change() {
     if (badgeEl) badgeEl.innerHTML = '<span class="diag-badge orange">머리신자</span>';
     document.getElementById('diag-card').style.display = 'block';
     document.getElementById('diag-final-row').style.display = 'none';
+    // 결과 미확정 상태 → 이전에 반영된 통계(이미신자 등)를 비운다 (영접 선택 시 다시 반영)
+    ['t_decision', 't_reject', 't_confirm', 't_believer'].forEach(function(id) {
+      var e = document.getElementById(id); if (e) e.value = '';
+    });
+    _lastSavedDiagResult = '';
 
   } else {
     resetDiagCard();
