@@ -3381,13 +3381,14 @@ function lockSvg(open, color) {
 
 function updatePresetIndicator() {
   var p = getPreset();
-  // 오른쪽 위 🔑 버튼: 열람 전용(monitor) 인증 중이면 초록색, 그 외에는 기본(금색)
+  // 오른쪽 위 🔑 버튼: 인증 전 = 회색 / 열람 전용(monitor) = 초록 / 관리자·편집·삭제 인증 = 금색
   try {
     var kb = document.getElementById('admin-key-btn');
     if (kb) {
       var mon = isVerifiedUser() && !isAdminUser();
-      kb.style.filter = mon ? 'hue-rotate(80deg) saturate(1.4)' : '';
-      kb.title = mon ? '열람 전용 인증됨' : '관리자';
+      var anyAuth = isVerifiedUser() || !!getEditToken() || !!getDeleteToken();
+      kb.style.filter = mon ? 'hue-rotate(80deg) saturate(1.4)' : (anyAuth ? '' : 'grayscale(1) opacity(0.6)');
+      kb.title = mon ? '열람 전용 인증됨' : (anyAuth ? '인증됨' : '관리자 인증 (인증 전)');
     }
   } catch (e) {}
   var label = document.getElementById('preset-label');
