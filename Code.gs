@@ -38,9 +38,13 @@ function getGroupCfgPw() {
   return GROUP_CFG_PW;
 }
 // 공개보고 대상 설정·그룹 확정 요청을 해도 되는지 — admin/editor 토큰 또는 그룹장 비밀번호
-function canManagePublicWeek(body) {
+// 운영진(관리자·편집 토큰) 인가 — 그룹장 비밀번호와 구분한다
+function hasStaffLevel(body) {
   var lvl = getTokenLevel(body && body.adminToken) || getTokenLevel(body && body.authToken) || '';
-  if (lvl === 'admin' || lvl === 'editor') return true;
+  return lvl === 'admin' || lvl === 'editor';
+}
+function canManagePublicWeek(body) {
+  if (hasStaffLevel(body)) return true;
   return String(body && body.byRole || '') === 'group' && String(body && body.groupPw || '') === getGroupCfgPw();
 }
 // 문서 삭제 전용 비밀번호 (예: 반장용). 이 비밀번호로 인증하면 '문서 삭제'만 가능하고
@@ -248,7 +252,7 @@ function doGet(e) {
 
     // ── 버전 조회 ─────────────────────────────────────────────
     if (action === 'get_version') {
-      return ok({ version: 'gas v2026.10.21-3', gasVersion: 'gas v2026.10.21-3', updated: nowKST() });
+      return ok({ version: 'gas v2026.10.21-4', gasVersion: 'gas v2026.10.21-4', updated: nowKST() });
     }
 
     return err('알 수 없는 action: ' + action);
@@ -392,6 +396,8 @@ function doPost(e) {
       if (!canManagePublicWeek(body)) {
         return err('🔒 공개보고 대상 설정은 그룹장·부그룹장 비밀번호 또는 관리자 인증이 필요합니다.');
       }
+      // 그룹장·부그룹장 비밀번호로 온 요청은 '보고 조 선정/해제'만 가능 — 보고 수 변경·초기화는 운영진만 (setPublicConfig에서 검사)
+      body._groupOnly = !hasStaffLevel(body);
       return setPublicConfig(body);
     }
 
@@ -1452,6 +1458,15 @@ function setPublicConfig(body) {
         var mr = Math.max(sheet.getLastRow() + 1, 2);
         sheet.getRange(mr, 1, 1, PUBLIC_CFG_COLS.length).setNumberFormat('@').setValues([mEntry]);
         cfgRows.push({ row: mr, week: week, group: PUBLIC_MAX_KEY });
+      }
+    }
+    if (body._groupOnly) {
+      for (var gi = 0; gi < plan.length; gi++) {
+        var gp = plan[gi];
+        var gx = cfgRows.filter(function(r) { return r.week === week && r.group === gp.group; })[0];
+        if (gp.reset || !gx || parseInt(gx.count, 10) !== gp.count) {
+          return err('🔒 그룹별 보고 수 설정·변경은 운영진(관리자·스탭)만 할 수 있습니다. 보고 조 선정/해제만 가능합니다.');
+        }
       }
     }
     var delRows = [];

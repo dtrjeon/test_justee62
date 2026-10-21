@@ -2600,7 +2600,7 @@ pre.code-block {
   });
 })();
 
-const APP_VERSION  = 'index v2026.10.21-16';
+const APP_VERSION  = 'index v2026.10.21-17';
 const LS_SEQ       = 'report_seq_counter';
 const LS_JO        = 'report_jo_data';
 const LS_SUBMITTED = 'report_submitted';
@@ -3278,7 +3278,7 @@ function showPermTable() {
       v: [1,'전체'], e: [st.edit, st.edit ? '🔑전체' : ''], d: [!!(st.del || st.admin), (st.admin || st.del) ? '🔑인증' : ''],
       s: [st.edit,'전체'], c: [st.edit,'전체'], g: [st.edit, st.admin ? '전체·최대🔑' : '전체'] });
   });
-  rows.push({ key: 'group', name: '그룹장', sub: '부그룹장 포함', v: [1,'전체(열람)'], e: [1,'자기그룹'], d: [0,''], s: [1,'자기그룹'], c: [1,'자기그룹🔑'], g: [1,'자기그룹🔑'] });
+  rows.push({ key: 'group', name: '그룹장', sub: '부그룹장 포함', v: [1,'전체(열람)'], e: [1,'자기그룹'], d: [0,''], s: [1,'자기그룹🔑'], c: [1,'자기그룹🔑'], g: [0,''] });
   rows.push({ key: 'jo', name: '조원', sub: '조장 포함', v: [1,'조·그룹'], e: [1,'본인조'], d: [0,''], s: [1,'자기조'], c: [0,''], g: [0,''] });
   var meKey = isAdminUser() ? 'admin' : (me.scope === 'staff' ? 'staff:' + me.role : (me.scope === 'group' ? 'group' : (me.name ? 'jo' : '')));
   var tbl = '<table style="width:100%;border-collapse:collapse;font-size:11px;table-layout:auto;"><thead><tr style="background:#1a3a9e;color:#fff;">' +
@@ -6415,7 +6415,7 @@ function renderPubTab() {
   var week = wsel.value;
   var admin = isAdminUser();
   var cfgBtn = document.getElementById('pub-cfg-btn');
-  if (cfgBtn) cfgBtn.style.display = pubCfgGroups().length ? '' : 'none';
+  if (cfgBtn) cfgBtn.style.display = (pubCanSetCount() && pubCfgGroups().length) ? '' : 'none'; // ⚙️ 대상설정(보고 수)은 운영진 전용
   var jos = [];
   getJoData().forEach(function(j) { if (jos.indexOf(String(j.jo)) < 0) jos.push(String(j.jo)); });
   jos.sort(function(a, b) { return (parseInt(a, 10) || 0) - (parseInt(b, 10) || 0); });
@@ -6687,6 +6687,8 @@ function canConfirmGroup(group) {
 
 // ── ⚙️ 공개보고 대상 설정 ─────────────────────────────────
 // 설정 가능한 그룹: 관리자 = 전체 그룹 / 그룹장·부그룹장 = 자기 그룹
+// ⚙️ 공개보고 대상설정(그룹별 보고 수·최대 수)은 운영진(관리자·수정 권한 스탭)만. 그룹장·부그룹장은 목록에서 보고 조 선정/해제와 그룹 확정만 한다.
+function pubCanSetCount() { return isAdminUser() || amStaffEditor(); }
 function pubCfgGroups() {
   var all = [];
   all = pubAllGroups();
@@ -6785,6 +6787,7 @@ function pubCfgDraftTotal() {
 }
 
 async function pubOpenCfg() {
+  if (!pubCanSetCount()) { showStatus('공개보고 대상설정(보고 수)은 운영진(관리자·스탭)만 변경할 수 있습니다. 보고 조 선정은 목록에서 하세요.', 'warn'); return; }
   if (!(await pubCfgAuth())) return;
   var wsel = document.getElementById('pub-week-sel');
   var week = wsel ? wsel.value : '';
