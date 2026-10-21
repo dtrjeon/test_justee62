@@ -2600,7 +2600,7 @@ pre.code-block {
   });
 })();
 
-const APP_VERSION  = 'index v2026.10.21-17';
+const APP_VERSION  = 'index v2026.10.21-18';
 const LS_SEQ       = 'report_seq_counter';
 const LS_JO        = 'report_jo_data';
 const LS_SUBMITTED = 'report_submitted';
@@ -6522,6 +6522,11 @@ function renderPubTab() {
     if (r.can && r.docs.length > 1 && (!rLocked || admin)) {
       btn = '<button type="button" onclick="pubToggleOpen(\'' + r.jo + '\')" style="background:#fff;color:#2050c8;border:1.5px solid #2050c8;border-radius:16px;padding:5px 13px;font-size:11px;font-weight:700;cursor:pointer;">' + (st.kind === 'sel' ? '변경' : '선택') + '</button>';
     }
+    // 열람 전용(monitor) 인증: 선택 권한이 없어도 미선택 조의 등록된 보고서 목록을 '보기'만 할 수 있다(선택 버튼 없음)
+    var monView = isVerifiedUser() && !isAdminUser() && !r.can && r.docs.length > 0 && (st.kind === 'pending' || st.kind === 'missing');
+    if (monView) {
+      btn = '<button type="button" onclick="pubToggleOpen(\'' + r.jo + '\')" style="background:#fff;color:#1a6b3c;border:1.5px solid #1a6b3c;border-radius:16px;padding:5px 13px;font-size:11px;font-weight:700;cursor:pointer;">' + (_pub.openJo === r.jo ? '닫기' : '보기') + '</button>';
+    }
     // 보고 수가 정해진 그룹에서는 그룹장·관리자가 보고조 선정을 해제(후보로 되돌림)할 수 있다
     if (r.group && pubCfg(week, r.group) && pubCfgGroups().indexOf(r.group) >= 0 && (!rLocked || admin)) {
       btn += ' <a href="javascript:pubPickReporter(\'' + r.group + '\',\'' + r.jo + '\',false)" style="font-size:10px;color:#888;margin-left:6px;white-space:nowrap;">선정 해제</a>';
@@ -6537,6 +6542,13 @@ function renderPubTab() {
       }).join('') +
       (st.kind === 'sel' ? '<div style="text-align:right;margin-top:6px;"><button type="button" onclick="pubClear(\'' + week + '\',\'' + r.jo + '\')" style="background:none;border:none;color:#c0392b;font-size:11px;cursor:pointer;text-decoration:underline;">선택 해제</button></div>' : '') +
       '</div>';
+    }
+    if (monView && _pub.openJo === r.jo) {
+      picker = '<div style="margin-top:8px;border-top:1px dashed #b7dcc6;padding-top:8px;">' +
+        '<div style="font-size:10px;color:#1a6b3c;margin-bottom:4px;">🔑 열람 전용 — 등록된 보고서 ' + r.docs.length + '건 (선택 불가)</div>' +
+        r.docs.map(function(d) {
+          return '<div style="padding:6px 0;border-bottom:1px solid #f0f0f0;">' + pubDocLine(d) + '</div>';
+        }).join('') + '</div>';
     }
     var gHead = '';
     if (r.group !== _lastGrp) {
