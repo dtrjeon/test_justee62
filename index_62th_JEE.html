@@ -2600,7 +2600,7 @@ pre.code-block {
   });
 })();
 
-const APP_VERSION  = 'index v2026.10.21-14';
+const APP_VERSION  = 'index v2026.10.21-15';
 const LS_SEQ       = 'report_seq_counter';
 const LS_JO        = 'report_jo_data';
 const LS_SUBMITTED = 'report_submitted';
@@ -3381,6 +3381,15 @@ function lockSvg(open, color) {
 
 function updatePresetIndicator() {
   var p = getPreset();
+  // 오른쪽 위 🔑 버튼: 열람 전용(monitor) 인증 중이면 초록색, 그 외에는 기본(금색)
+  try {
+    var kb = document.getElementById('admin-key-btn');
+    if (kb) {
+      var mon = isVerifiedUser() && !isAdminUser();
+      kb.style.filter = mon ? 'hue-rotate(80deg) saturate(1.4)' : '';
+      kb.title = mon ? '열람 전용 인증됨' : '관리자';
+    }
+  } catch (e) {}
   var label = document.getElementById('preset-label');
   var dot = document.querySelector('.pi-dot');
   if (p && p.name) {
