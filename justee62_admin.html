@@ -2178,7 +2178,7 @@ window.TEST_DATA = {"records": [{"저장일시": "2026-03-14", "주차": 3, "전
 // ── 빈 값 표시용 옅은 회색 대시 ─────────────────────────────────────────────
 var DASH = '<span style="color:#c8ccd6;">-</span>';
 // ── 조 구성 데이터 ─────────────────────────────────────────────────────────
-const ADMIN_VERSION = 'admin v2026.10.22-9';
+const ADMIN_VERSION = 'admin v2026.10.22-10';
 (function() { var vc = document.getElementById('admin-ver-corner'); if (vc) vc.textContent = ADMIN_VERSION.replace('admin ', ''); })();
 const GAS_EXPECTED_VERSION = 'gas v2026.10.21-5'; // Code.gs가 바뀔 때만 올림
 // 하드코딩 기준 데이터 (step 복원용)
@@ -2954,10 +2954,27 @@ function buildJoSelect() {
       .map(function(m, i) { return { name: m.name, rank: (roleRank[m.role] !== undefined ? roleRank[m.role] : 2), i: i }; })
       .sort(function(a, b) { return a.rank - b.rank || a.i - b.i; })
       .map(function(x) { return x.name; });
-    opt.textContent = jo + '조' + (names.length ? '(' + names.join(', ') + ')' : '');
+    opt.dataset.short = jo + '조';
+    opt.dataset.full = jo + '조' + (names.length ? '(' + names.join(', ') + ')' : '');
+    opt.textContent = opt.dataset.short;
     sel.appendChild(opt);
   });
   if (cur) sel.value = cur;
+  // 닫혀 있을 때는 "1조"만 보여 칸이 좁아도 잘리지 않게, 열면(펼친 목록) "1조(이름, …)"로 보여준다
+  function setJoLabels(full) {
+    Array.prototype.forEach.call(sel.options, function(o) {
+      if (o.dataset && o.dataset.short) o.textContent = full ? o.dataset.full : o.dataset.short;
+    });
+  }
+  if (!sel._joLabelBound) {
+    sel._joLabelBound = true;
+    ['mousedown', 'touchstart', 'focus', 'keydown'].forEach(function(ev) {
+      sel.addEventListener(ev, function() { setJoLabels(true); }, { passive: true });
+    });
+    ['change', 'blur'].forEach(function(ev) {
+      sel.addEventListener(ev, function() { setJoLabels(false); });
+    });
+  }
 }
 
 // 최대 주차: trainEnd 기준 동적 계산 (매주 정확히 7일 간격 전제), 없으면 13주 기본
