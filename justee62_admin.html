@@ -2178,7 +2178,7 @@ window.TEST_DATA = {"records": [{"저장일시": "2026-03-14", "주차": 3, "전
 // ── 빈 값 표시용 옅은 회색 대시 ─────────────────────────────────────────────
 var DASH = '<span style="color:#c8ccd6;">-</span>';
 // ── 조 구성 데이터 ─────────────────────────────────────────────────────────
-const ADMIN_VERSION = 'admin v2026.10.22-10';
+const ADMIN_VERSION = 'admin v2026.10.22-11';
 (function() { var vc = document.getElementById('admin-ver-corner'); if (vc) vc.textContent = ADMIN_VERSION.replace('admin ', ''); })();
 const GAS_EXPECTED_VERSION = 'gas v2026.10.21-5'; // Code.gs가 바뀔 때만 올림
 // 하드코딩 기준 데이터 (step 복원용)
@@ -8013,7 +8013,7 @@ function exportT6Csv() {
   var rows = [head];
   d.forEach(function(g) {
     g.ms.forEach(function(m, i) {
-      var row = [m.jo, m.name, m.role || '', m.step || ''];
+      var row = [m.jo, m.name, (m.role === '리더' ? '조장' : (m.role || '')), m.step || ''];
       for (var w = 1; w <= maxW; w++) row.push(i === 0 ? g.cells[w - 1].map(function(r) { return t6DocLabel(r) + (t6FullGospel(r, g.ms).f1 ? '*' : ''); }).join(' / ') : '');
       rows.push(row);
     });
@@ -8103,7 +8103,7 @@ function renderTab6() {
       html += '<tr style="' + (idx === 0 ? 'border-top:2px solid #c5cde8;' : '') + '">'
         + '<td style="position:sticky;left:0;z-index:4;background:#f0f4ff;text-align:center;font-weight:700;padding:4px;width:28px;min-width:28px;max-width:28px;box-sizing:border-box;">' + m.jo + '</td>'
         + '<td style="position:sticky;left:28px;z-index:4;background:#f0f4ff;text-align:center;font-weight:700;white-space:nowrap;padding:4px;width:52px;min-width:52px;max-width:52px;box-sizing:border-box;box-shadow:2px 0 3px rgba(0,0,0,.12);">' + m.name + '</td>'
-        + '<td style="text-align:center;white-space:nowrap;padding:4px;">' + (m.role || '') + '</td>'
+        + '<td style="text-align:center;white-space:nowrap;padding:4px;">' + (m.role === '리더' ? '조장' : (m.role || '')) + '</td>'
         + '<td style="text-align:center;padding:4px;border-right:1px solid #c5cde8;">' + (m.step || '') + '</td>';
       if (idx === 0) {
         for (var w = 1; w <= maxW; w++) {
