@@ -2604,7 +2604,7 @@ pre.code-block {
   });
 })();
 
-const APP_VERSION='index v2026.10.22-11';
+const APP_VERSION='index v2026.10.22-12';
 const LS_SEQ       = 'report_seq_counter';
 const LS_JO        = 'report_jo_data';
 const LS_SUBMITTED = 'report_submitted';
@@ -6469,6 +6469,16 @@ function pubShortDate(d) {
   return m ? m[2] + '/' + m[3] : '';
 }
 
+// 조 이름 뒤에 붙일 조원 표시: "(성기현,최정화,김소형)" — 조장 → 훈련자 → 훈련생 순
+function pubJoNames(jo) {
+  try {
+    var j = getJoData().find(function(x) { return String(x.jo) === String(jo); });
+    if (!j) return '';
+    var names = [j.leader, j.trainer, j.trainee, j.trainee2].filter(function(n) { return n; });
+    return names.length ? '<span style="font-size:11px;font-weight:600;color:#667;margin-left:4px;">(' + names.join(',') + ')</span> ' : '';
+  } catch (e) { return ''; }
+}
+
 function pubDocLine(d) {
   // 색은 최소화: 주차·문서번호·날짜는 같은 연회색 칩, 결과는 결신만 초록(나머지 회색)
   var chip = 'font-size:10px;color:#1a3a9e;font-weight:700;background:#eef0f5;border-radius:4px;padding:2px 7px;';
@@ -6658,15 +6668,15 @@ function renderPubTab() {
     if (r.cand) {
       var canPick = pubCfgGroups().indexOf(r.group) >= 0 && (isAdminUser() || !pubLocked(week, r.jo));
       return gHead + '<div class="record-card" style="cursor:default;border-left-color:#f0a500;"><div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">' +
-        '<div style="font-size:15px;font-weight:800;color:#1a3a9e;"><span style="font-size:11px;background:#e8eaf6;color:#1a3a9e;border-radius:6px;padding:1px 6px;margin-right:5px;">' + r.group + '</span>' + r.jo + '조 ' +
+        '<div style="font-size:15px;font-weight:800;color:#1a3a9e;"><span style="font-size:11px;background:#e8eaf6;color:#1a3a9e;border-radius:6px;padding:1px 6px;margin-right:5px;">' + r.group + '</span>' + r.jo + '조 ' + pubJoNames(r.jo) +
         '<span style="background:#f0a500;color:#fff;border-radius:10px;padding:2px 9px;font-size:10px;font-weight:700;">후보</span></div>' +
         (canPick ? '<button type="button" onclick="pubPickReporter(\'' + r.group + '\',\'' + r.jo + '\',true)" style="background:#2050c8;color:#fff;border:none;border-radius:16px;padding:6px 14px;font-size:11px;font-weight:700;cursor:pointer;">⭐ 보고조로 선정</button>' : '') +
         '</div></div>';
     }
-    if (!r.rep) return gHead + '<div class="record-card" style="cursor:default;opacity:.5;padding:8px 12px;"><span style="font-size:13px;font-weight:800;color:#555;">' + r.jo + '조</span> <span style="background:#999;color:#fff;border-radius:10px;padding:2px 9px;font-size:10px;font-weight:700;">이번 주 보고 제외</span></div>';
+    if (!r.rep) return gHead + '<div class="record-card" style="cursor:default;opacity:.5;padding:8px 12px;"><span style="font-size:13px;font-weight:800;color:#555;">' + r.jo + '조</span> ' + pubJoNames(r.jo) + '<span style="background:#999;color:#fff;border-radius:10px;padding:2px 9px;font-size:10px;font-weight:700;">이번 주 보고 제외</span></div>';
     return gHead + '<div class="record-card" style="cursor:default;">' +
       '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">' +
-      '<div style="font-size:15px;font-weight:800;color:#1a3a9e;">' + (r.group ? '<span style="font-size:11px;background:#e8eaf6;color:#1a3a9e;border-radius:6px;padding:1px 6px;margin-right:5px;">' + r.group + '</span>' : '') + r.jo + '조 ' + badge + '</div>' + btn + '</div>' +
+      '<div style="font-size:15px;font-weight:800;color:#1a3a9e;">' + (r.group ? '<span style="font-size:11px;background:#e8eaf6;color:#1a3a9e;border-radius:6px;padding:1px 6px;margin-right:5px;">' + r.group + '</span>' : '') + r.jo + '조 ' + pubJoNames(r.jo) + badge + '</div>' + btn + '</div>' +
       body + picker + '</div>';
   }).join('');
 }
