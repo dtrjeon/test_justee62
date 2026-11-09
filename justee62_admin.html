@@ -1529,7 +1529,8 @@ window.TEST_DATA = {"records": [{"저장일시": "2026-03-14", "주차": 3, "전
 
   <!-- 주간현황 PDF 페이지 구성 설정(previewer_setting) 모달 -->
   <div class="modal-bg" id="pdf-preview-settings-modal">
-    <div class="modal" style="max-width:420px;">
+    <!-- 화면 전체를 채우는 팝업: 위 설정은 그대로 두고, 미리보기 이미지가 넓게 보이도록 함 -->
+    <div class="modal" style="width:100%;max-width:none;height:100%;max-height:none;border-radius:0;box-sizing:border-box;padding:14px 14px 0;overflow-y:auto;-webkit-overflow-scrolling:touch;">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
         <div id="pdf-preview-modal-title" style="font-size:15px;font-weight:800;color:#333;">🧩 PDF 페이지 구성 설정</div>
         <button onclick="closePdfPreviewSettings()" style="background:none;border:none;font-size:18px;color:#999;cursor:pointer;">✕</button>
@@ -1574,9 +1575,9 @@ window.TEST_DATA = {"records": [{"저장일시": "2026-03-14", "주차": 3, "전
         <label style="margin:0;">조배치 후 페이지 구성 팝업으로 보여주기</label>
       </div>
 
-      <div id="pdf-preview-result" style="display:none;font-size:11px;white-space:pre-wrap;background:#f7f9ff;border-radius:8px;padding:10px;margin-top:6px;max-height:220px;overflow-y:auto;line-height:1.5;"></div>
+      <div id="pdf-preview-result" style="display:none;font-size:11px;white-space:pre-wrap;background:#f7f9ff;border-radius:8px;padding:10px;margin-top:6px;line-height:1.5;"></div>
 
-      <div style="display:flex;gap:8px;margin-top:16px;">
+      <div style="display:flex;gap:8px;margin-top:16px;position:sticky;bottom:0;background:#fff;padding:10px 0 12px;border-top:1px solid #eee;">
         <button class="modal-btn" style="flex:1;background:#eef1f8;color:var(--primary);" onclick="previewPdfComposition()">👀 미리보기</button>
         <button class="modal-btn cancel" style="flex:1;" onclick="closePdfPreviewSettings()">닫기</button>
       </div>
@@ -2177,7 +2178,7 @@ window.TEST_DATA = {"records": [{"저장일시": "2026-03-14", "주차": 3, "전
 // ── 빈 값 표시용 옅은 회색 대시 ─────────────────────────────────────────────
 var DASH = '<span style="color:#c8ccd6;">-</span>';
 // ── 조 구성 데이터 ─────────────────────────────────────────────────────────
-const ADMIN_VERSION = 'admin v2026.10.22-4';
+const ADMIN_VERSION = 'admin v2026.10.22-5';
 (function() { var vc = document.getElementById('admin-ver-corner'); if (vc) vc.textContent = ADMIN_VERSION.replace('admin ', ''); })();
 const GAS_EXPECTED_VERSION = 'gas v2026.10.21-5'; // Code.gs가 바뀔 때만 올림
 // 하드코딩 기준 데이터 (step 복원용)
