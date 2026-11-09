@@ -2604,7 +2604,7 @@ pre.code-block {
   });
 })();
 
-const APP_VERSION='index v2026.10.22-2';
+const APP_VERSION='index v2026.10.22-3';
 const LS_SEQ       = 'report_seq_counter';
 const LS_JO        = 'report_jo_data';
 const LS_SUBMITTED = 'report_submitted';
@@ -8955,7 +8955,7 @@ async function deleteSelectedRecords() {
   document.querySelectorAll('.multi-check input:checked').forEach(function(cb) {
     var idx = parseInt(cb.id.replace('cb-', ''));
     var r = window._historyRecords && window._historyRecords[idx];
-    if (r && r.doc_number) selectedRecords.push(r);
+    if (r) selectedRecords.push(r);   // 문서번호가 없는 보고서도 삭제 가능 (행 번호+저장일시로 식별)
   });
   if (!selectedRecords.length) {
     showStatus('삭제할 보고서를 선택해주세요.', 'warn');
@@ -8997,8 +8997,10 @@ async function deleteSelectedRecords() {
 
   // ── 문서번호별로 그룹핑 ──────────────────────────────────────
   var groups = {};
-  selectedRecords.forEach(function(r) {
-    (groups[r.doc_number] = groups[r.doc_number] || []).push(r);
+  //    문서번호가 없는 보고서는 서로 같은 문서가 아니므로 각각 따로 취급(최신본 자동 보존 대상 아님)
+  selectedRecords.forEach(function(r, i) {
+    var gk = r.doc_number ? r.doc_number : ('__nodoc__' + (r._savedAt || '') + '#' + i);
+    (groups[gk] = groups[gk] || []).push(r);
   });
 
   // ── 그룹 내 2개 이상 선택된 경우, 가장 최신(_savedAt) 1건은 자동 보존하고 나머지만 삭제 ──
@@ -9032,7 +9034,7 @@ async function deleteSelectedRecords() {
   var LIST_CAP = 15;
   var fmtRow = function(r, i) {
     var name = r.name ? maskName(r.name) : '';
-    return (i + 1) + '. [' + (r.doc_number || '') + '] ' + (r.jo || '?') + '조 ' + (r.week || '?') + '주차 · '
+    return (i + 1) + '. [' + (r.doc_number || '문서번호 없음') + '] ' + (r.jo || '?') + '조 ' + (r.week || '?') + '주차 · '
       + (r.date || r._savedAt || '').slice(0, 10) + (name ? ' · ' + name : '')
       + (r._savedAt ? ' (저장: ' + r._savedAt + ')' : '');
   };
