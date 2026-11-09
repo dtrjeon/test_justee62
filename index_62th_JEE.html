@@ -2604,7 +2604,7 @@ pre.code-block {
   });
 })();
 
-const APP_VERSION='index v2026.10.22-12';
+const APP_VERSION='index v2026.10.22-13';
 const LS_SEQ       = 'report_seq_counter';
 const LS_JO        = 'report_jo_data';
 const LS_SUBMITTED = 'report_submitted';
@@ -6469,12 +6469,12 @@ function pubShortDate(d) {
   return m ? m[2] + '/' + m[3] : '';
 }
 
-// 조 이름 뒤에 붙일 조원 표시: "(성기현,최정화,김소형)" — 조장 → 훈련자 → 훈련생 순
+// 조 이름 뒤에 붙일 조원 표시: "(성기현,최정화,김소형)" — 조장 → 훈련자 → 훈련생 순 (조는 3명 구성)
 function pubJoNames(jo) {
   try {
     var j = getJoData().find(function(x) { return String(x.jo) === String(jo); });
     if (!j) return '';
-    var names = [j.leader, j.trainer, j.trainee, j.trainee2].filter(function(n) { return n; });
+    var names = [j.leader, j.trainer, j.trainee].filter(function(n) { return n; });
     return names.length ? '<span style="font-size:11px;font-weight:600;color:#667;margin-left:4px;">(' + names.join(',') + ')</span> ' : '';
   } catch (e) { return ''; }
 }
