@@ -1213,7 +1213,7 @@ window.TEST_DATA = {"records": [{"저장일시": "2026-03-14", "주차": 3, "전
 <div class="week-bar">
   <div style="display:flex;align-items:center;gap:4px;flex:1;">
     <label id="week-label-bar">주차</label>
-    <select class="week-select" id="week-select" onchange="onWeekChange()" style="flex:2.2;font-size:10px;letter-spacing:-0.3px;"></select>
+    <select class="week-select" id="week-select" onchange="onWeekChange()" style="flex:1.7;font-size:10px;letter-spacing:-0.3px;"></select>
     <label id="grp-label-bar" style="display:none;">그룹</label>
     <select class="week-select" id="grp-select" onchange="renderTab6()" style="flex:1;display:none;">
       <option value="">전체</option>
@@ -2178,7 +2178,7 @@ window.TEST_DATA = {"records": [{"저장일시": "2026-03-14", "주차": 3, "전
 // ── 빈 값 표시용 옅은 회색 대시 ─────────────────────────────────────────────
 var DASH = '<span style="color:#c8ccd6;">-</span>';
 // ── 조 구성 데이터 ─────────────────────────────────────────────────────────
-const ADMIN_VERSION = 'admin v2026.10.22-8';
+const ADMIN_VERSION = 'admin v2026.10.22-9';
 (function() { var vc = document.getElementById('admin-ver-corner'); if (vc) vc.textContent = ADMIN_VERSION.replace('admin ', ''); })();
 const GAS_EXPECTED_VERSION = 'gas v2026.10.21-5'; // Code.gs가 바뀔 때만 올림
 // 하드코딩 기준 데이터 (step 복원용)
