@@ -2604,7 +2604,7 @@ pre.code-block {
   });
 })();
 
-const APP_VERSION='index v2026.10.22-13';
+const APP_VERSION='index v2026.10.22-14';
 const LS_SEQ       = 'report_seq_counter';
 const LS_JO        = 'report_jo_data';
 const LS_SUBMITTED = 'report_submitted';
@@ -7215,6 +7215,24 @@ async function pubPickFromHistory(i) {
   if (s && s.docNumber === r.doc_number) await pubClear(week, String(r.jo));
   else await pubSelect(week, String(r.jo), r.doc_number);
 }
+
+// 앱을 열어 둔 채 다른 앱에 갔다가 돌아오면(1분 이상 지난 경우) 현재 탭의 목록을 서버에서 다시 받는다.
+// → 다른 사람이 삭제·수정한 내용이 오래된 화면에 남아 보이는 문제 방지
+(function() {
+  var hiddenAt = 0;
+  function onBack() {
+    if (!hiddenAt || Date.now() - hiddenAt < 60 * 1000) return;
+    hiddenAt = 0;
+    try {
+      if (currentTab === 'history' && typeof loadHistory === 'function') loadHistory();
+      else if (currentTab === 'pub' && typeof loadPubTab === 'function') loadPubTab(true);
+    } catch (e) {}
+  }
+  document.addEventListener('visibilitychange', function() {
+    if (document.hidden) hiddenAt = Date.now(); else onBack();
+  });
+  window.addEventListener('pageshow', function(ev) { if (ev.persisted) { hiddenAt = hiddenAt || (Date.now() - 61000); onBack(); } });
+})();
 
 async function loadHistory() {
   // 프리셋 필터 자동 활성화 — 관리자는 내 조/그룹장 범위로 제한하지 않고 전체를 봄
