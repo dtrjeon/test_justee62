@@ -1231,6 +1231,7 @@ window.TEST_DATA = {"records": [{"저장일시": "2026-03-14", "주차": 3, "전
       <option value="개인">개인</option>
       <option value="7일후">7일후(팀)</option>
       <option value="QQ">QQ</option>
+      <option value="__none__">미입력</option>
     </select>
   </div>
   <button class="act-btn" onclick="loadData()" style="font-size:20px;padding:6px 10px;background:#fff;border:none;box-shadow:none;flex-shrink:0;" title="불러오기">🔄</button>
@@ -2178,7 +2179,7 @@ window.TEST_DATA = {"records": [{"저장일시": "2026-03-14", "주차": 3, "전
 // ── 빈 값 표시용 옅은 회색 대시 ─────────────────────────────────────────────
 var DASH = '<span style="color:#c8ccd6;">-</span>';
 // ── 조 구성 데이터 ─────────────────────────────────────────────────────────
-const ADMIN_VERSION = 'admin v2026.10.22-18';
+const ADMIN_VERSION = 'admin v2026.10.22-19';
 (function() { var vc = document.getElementById('admin-ver-corner'); if (vc) vc.textContent = ADMIN_VERSION.replace('admin ', ''); })();
 const GAS_EXPECTED_VERSION = 'gas v2026.10.21-5'; // Code.gs가 바뀔 때만 올림
 // 하드코딩 기준 데이터 (step 복원용)
@@ -3260,6 +3261,7 @@ function memberPart(r, m) {
 function matchEvangType(r, et) {
   if (!et) return true;
   var t = (r.evangType || '').toString();
+  if (et === '__none__') return !t.trim();
   if (et === '관계')     return t === '관계(팀)';
   if (et === '질문지')   return t === '질문지(팀)';
   if (et === '7일후')    return t === '7일후(팀)';
