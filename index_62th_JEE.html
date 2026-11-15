@@ -2604,7 +2604,7 @@ pre.code-block {
   });
 })();
 
-const APP_VERSION='index v2026.10.22-15';
+const APP_VERSION='index v2026.10.22-16';
 const LS_SEQ       = 'report_seq_counter';
 const LS_JO        = 'report_jo_data';
 const LS_SUBMITTED = 'report_submitted';
@@ -4276,7 +4276,7 @@ function onEvangTypeChange() {
   }
   window._prevEvangType = type;
 
-  if (!window._isRevision) {
+  if (!window._isRevision || !v('doc_number')) {
     autoDocNumber();
     suggestEvangCount();
   }
@@ -4620,7 +4620,7 @@ function onJoSelect() {
     buildPersonalMemberSelect();
   }
   autoDocNumber();
-  if (!window._isRevision && v('evang_type')) suggestEvangCount();
+  if ((!window._isRevision || !v('doc_number')) && v('evang_type')) suggestEvangCount();
   // 관계=결신자 상태에서 조가 바뀌면 결신자 이름 목록도 새 조 기준으로 갱신
   var relSel = document.getElementById('q3_relation_member');
   if (relSel && relSel.value === '결신자') loadDecisionNameOptions();
