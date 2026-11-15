@@ -2513,6 +2513,7 @@ pre.code-block {
         <option value="개인">개인</option>
         <option value="관계">관계</option>
         <option value="QQ">QQ</option>
+        <option value="__none__">미입력</option>
       </select>
       <button type="button" class="search-go-btn" onclick="filterHistory()">🔍 조회</button>
       <button type="button" class="h-btn icon-only outline server" id="sort-btn" onclick="toggleSortMode()" title="정렬: 최신순" style="order:100;">🕒</button>
@@ -2604,7 +2605,7 @@ pre.code-block {
   });
 })();
 
-const APP_VERSION='index v2026.10.22-16';
+const APP_VERSION='index v2026.10.22-17';
 const LS_SEQ       = 'report_seq_counter';
 const LS_JO        = 'report_jo_data';
 const LS_SUBMITTED = 'report_submitted';
@@ -5947,7 +5948,7 @@ function filterHistory() {
     // 전도유형 필터 — 주차/조/훈련자 등 위 필터와 항상 함께(AND) 적용되는 별도 필터
     var evangEl  = document.getElementById('search-evang-type');
     var evangVal = evangEl ? evangEl.value : '';
-    var evangMatch = !evangVal || (r.evang_type || '').toString() === evangVal;
+    var evangMatch = !evangVal || (evangVal === '__none__' ? !String(r.evang_type || '').trim() : (r.evang_type || '').toString() === evangVal);
 
     c.style.display = (typeMatch && evangMatch) ? '' : 'none';
   });
